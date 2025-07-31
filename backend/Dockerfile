@@ -1,12 +1,15 @@
-FROM node:18-alpine
+FROM python:3.11-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install
+# Install system dependencies for psycopg2
+RUN apk add --no-cache gcc musl-dev postgresql-dev
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
 EXPOSE 3001
 
-CMD ["npm", "start"]
+CMD ["gunicorn", "-b", "0.0.0.0:3001", "app:app"]

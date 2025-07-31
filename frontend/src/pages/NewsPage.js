@@ -12,21 +12,69 @@ function NewsPage() {
     const [selectedWords, setSelectedWords] = useState([]);
     const [showWordSelection, setShowWordSelection] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
+    const [selectedSource, setSelectedSource] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [sources, setSources] = useState({});
+    const [categories, setCategories] = useState({});
+    const [availableCategories, setAvailableCategories] = useState([]);
+
+    useEffect(() => {
+        loadSourcesAndCategories();
+    }, []);
 
     useEffect(() => {
         loadNews();
-    }, []);
+    }, [selectedSource, selectedCategory]);
+
+    const loadSourcesAndCategories = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/news/sources');
+            const data = await response.json();
+            setSources(data.sources);
+            setCategories(data.categories);
+            setAvailableCategories(['all']); // Default to showing all categories
+        } catch (err) {
+            console.error('Error loading sources and categories:', err);
+        }
+    };
 
     const loadNews = async () => {
         try {
             setLoading(true);
-            const data = await fetchNews();
+            const params = new URLSearchParams();
+            if (selectedSource) params.append('source', selectedSource);
+            if (selectedCategory && selectedCategory !== 'all') params.append('category', selectedCategory);
+
+            const data = await fetchNews(params.toString());
             setArticles(data.articles || []);
         } catch (err) {
             setError('Failed to load news articles');
             console.error('Error loading news:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSourceChange = (e) => {
+        const newSource = e.target.value;
+        setSelectedSource(newSource);
+
+        // Update available categories based on selected source
+        if (newSource && sources[newSource] && sources[newSource].categories) {
+            setAvailableCategories(sources[newSource].categories);
+            // Reset category if it's not available for the new source
+            if (!sources[newSource].categories.includes(selectedCategory)) {
+                setSelectedCategory('all');
+            }
+        } else {
+            // Show all unique categories when "All Sources" is selected
+            const allCategories = new Set(['all']);
+            Object.values(sources).forEach(source => {
+                if (source.categories) {
+                    source.categories.forEach(cat => allCategories.add(cat));
+                }
+            });
+            setAvailableCategories(Array.from(allCategories));
         }
     };
 
@@ -136,6 +184,41 @@ function NewsPage() {
         <div className="news-page">
             <h1>Serbian News</h1>
             <p className="subtitle">Read Serbian news and learn new vocabulary in context</p>
+
+            <div className="news-filters">
+                <div className="filter-group">
+                    <label htmlFor="source-select">Source:</label>
+                    <select
+                        id="source-select"
+                        value={selectedSource}
+                        onChange={handleSourceChange}
+                        className="filter-select"
+                    >
+                        <option value="">All Sources</option>
+                        {Object.entries(sources).filter(([key]) => key !== 'all').map(([key, source]) => (
+                            <option key={key} value={source.value}>
+                                {source.name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="filter-group">
+                    <label htmlFor="category-select">Category:</label>
+                    <select
+                        id="category-select"
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                        className="filter-select"
+                    >
+                        {availableCategories.map(cat => (
+                            <option key={cat} value={cat}>
+                                {categories[cat] || cat}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            </div>
 
             {error && <div className="error">{error}</div>}
             {successMessage && <div className="success">{successMessage}</div>}

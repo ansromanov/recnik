@@ -1,0 +1,187 @@
+from datetime import datetime
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import event
+from sqlalchemy.sql import func
+
+db = SQLAlchemy()
+
+
+class Category(db.Model):
+    __tablename__ = "categories"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)
+    description = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    words = db.relationship("Word", backref="category", lazy="dynamic")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class Word(db.Model):
+    __tablename__ = "words"
+
+    id = db.Column(db.Integer, primary_key=True)
+    serbian_word = db.Column(db.String(255), nullable=False)
+    english_translation = db.Column(db.String(255), nullable=False)
+    category_id = db.Column(
+        db.Integer, db.ForeignKey("categories.id", ondelete="SET NULL")
+    )
+    context = db.Column(db.Text)
+    notes = db.Column(db.Text)
+    difficulty_level = db.Column(db.Integer, default=1, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    # Relationships
+    user_vocabulary = db.relationship(
+        "UserVocabulary", backref="word", lazy="dynamic", cascade="all, delete-orphan"
+    )
+    practice_results = db.relationship(
+        "PracticeResult", backref="word", lazy="dynamic", cascade="all, delete-orphan"
+    )
+
+    # Constraints
+    __table_args__ = (
+        db.UniqueConstraint(
+            "serbian_word", "english_translation", name="_serbian_english_uc"
+        ),
+        db.CheckConstraint(
+            "difficulty_level >= 1 AND difficulty_level <= 5",
+            name="_difficulty_level_check",
+        ),
+    )
+
+    def to_dict(self, include_user_data=False):
+        result = {
+            "id": self.id,
+            "serbian_word": self.serbian_word,
+            "english_translation": self.english_translation,
+            "category_id": self.category_id,
+            "category_name": self.category.name if self.category else None,
+            "context": self.context,
+            "notes": self.notes,
+            "difficulty_level": self.difficulty_level,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+        if include_user_data:
+            user_vocab = self.user_vocabulary.first()
+            if user_vocab:
+                result["mastery_level"] = user_vocab.mastery_level
+                result["times_practiced"] = user_vocab.times_practiced
+            else:
+                result["mastery_level"] = None
+                result["times_practiced"] = None
+
+        return result
+
+
+class UserVocabulary(db.Model):
+    __tablename__ = "user_vocabulary"
+
+    id = db.Column(db.Integer, primary_key=True)
+    word_id = db.Column(
+        db.Integer,
+        db.ForeignKey("words.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    times_practiced = db.Column(db.Integer, default=0)
+    times_correct = db.Column(db.Integer, default=0)
+    last_practiced = db.Column(db.DateTime)
+    mastery_level = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Constraints
+    __table_args__ = (
+        db.CheckConstraint(
+            "mastery_level >= 0 AND mastery_level <= 100", name="_mastery_level_check"
+        ),
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "word_id": self.word_id,
+            "times_practiced": self.times_practiced,
+            "times_correct": self.times_correct,
+            "last_practiced": self.last_practiced.isoformat()
+            if self.last_practiced
+            else None,
+            "mastery_level": self.mastery_level,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class PracticeSession(db.Model):
+    __tablename__ = "practice_sessions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    session_date = db.Column(db.DateTime, default=datetime.utcnow)
+    total_questions = db.Column(db.Integer, default=0)
+    correct_answers = db.Column(db.Integer, default=0)
+    duration_seconds = db.Column(db.Integer)
+
+    # Relationships
+    practice_results = db.relationship(
+        "PracticeResult",
+        backref="session",
+        lazy="dynamic",
+        cascade="all, delete-orphan",
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "session_date": self.session_date.isoformat()
+            if self.session_date
+            else None,
+            "total_questions": self.total_questions,
+            "correct_answers": self.correct_answers,
+            "duration_seconds": self.duration_seconds,
+        }
+
+
+class PracticeResult(db.Model):
+    __tablename__ = "practice_results"
+
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(
+        db.Integer,
+        db.ForeignKey("practice_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    word_id = db.Column(
+        db.Integer, db.ForeignKey("words.id", ondelete="CASCADE"), nullable=False
+    )
+    was_correct = db.Column(db.Boolean, nullable=False)
+    response_time_seconds = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "session_id": self.session_id,
+            "word_id": self.word_id,
+            "was_correct": self.was_correct,
+            "response_time_seconds": self.response_time_seconds,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+# Event listener to update the updated_at timestamp
+@event.listens_for(Word, "before_update")
+def update_word_timestamp(mapper, connection, target):
+    target.updated_at = datetime.utcnow()

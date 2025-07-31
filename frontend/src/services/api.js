@@ -60,7 +60,12 @@ export const apiService = {
     getStats: () => api.get('/stats'),
 
     // News
-    getNews: () => api.get('/news'),
+    getNews: (queryParams) => {
+        const url = queryParams ? `/news?${queryParams}` : '/news';
+        return api.get(url);
+    },
+
+    getNewsSources: () => api.get('/news/sources'),
 };
 
 // Export individual functions for components that use them
@@ -77,8 +82,8 @@ export const processText = async (text) => {
     };
 };
 
-export const fetchNews = async () => {
-    const response = await apiService.getNews();
+export const fetchNews = async (queryParams) => {
+    const response = await apiService.getNews(queryParams);
     return response.data;
 };
 
