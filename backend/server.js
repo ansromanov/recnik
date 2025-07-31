@@ -95,7 +95,8 @@ app.post('/api/process-text', async (req, res) => {
         // Get unique words
         const uniqueWords = [...new Set(words)];
 
-        // Check which words already exist in database
+        // We'll need to check both the original forms and potential infinitive forms
+        // For now, we'll check original forms and let the AI handle the conversion
         const existingWordsResult = await pool.query(
             'SELECT serbian_word FROM words WHERE serbian_word = ANY($1)',
             [uniqueWords]
@@ -112,7 +113,7 @@ app.post('/api/process-text', async (req, res) => {
         // Translate new words using OpenAI
         const translations = [];
 
-        for (const word of newWords.slice(0, 20)) { // Limit to 20 words per request
+        for (const word of newWords.slice(0, 50)) { // Limit to 50 words per request
             try {
                 const completion = await openai.chat.completions.create({
                     model: "gpt-3.5-turbo",
@@ -120,10 +121,12 @@ app.post('/api/process-text', async (req, res) => {
                         {
                             role: "system",
                             content: `You are a Serbian-English translator and linguist. For the given Serbian word:
-1. Translate it to English
-2. Categorize it into one of these categories: ${categoryNames}
+1. If it's a verb, convert it to infinitive form (e.g., "радим" → "радити", "идем" → "ићи")
+2. Convert to lowercase UNLESS it's a proper noun (names of people, places, etc.)
+3. Translate it to English
+4. Categorize it into one of these categories: ${categoryNames}
 
-Respond in JSON format: {"translation": "english word", "category": "category name"}`
+Respond in JSON format: {"serbian_infinitive": "word in infinitive/base form", "translation": "english word", "category": "category name", "is_proper_noun": true/false}`
                         },
                         {
                             role: "user",
@@ -131,7 +134,7 @@ Respond in JSON format: {"translation": "english word", "category": "category na
                         }
                     ],
                     temperature: 0.3,
-                    max_tokens: 100
+                    max_tokens: 150
                 });
 
                 const response = completion.choices[0].message.content.trim();
@@ -139,11 +142,15 @@ Respond in JSON format: {"translation": "english word", "category": "category na
                     const parsed = JSON.parse(response);
                     const category = categories.find(c => c.name.toLowerCase() === parsed.category.toLowerCase());
 
+                    // Use the infinitive form provided by AI, or fall back to original word
+                    const serbianWord = parsed.serbian_infinitive || word;
+
                     translations.push({
-                        serbian_word: word,
+                        serbian_word: serbianWord,
                         english_translation: parsed.translation,
                         category_id: category ? category.id : 1, // Default to "Common Words" if category not found
-                        category_name: category ? category.name : 'Common Words'
+                        category_name: category ? category.name : 'Common Words',
+                        original_form: word // Keep track of the original form found in text
                     });
                 } catch (parseError) {
                     // Fallback if JSON parsing fails

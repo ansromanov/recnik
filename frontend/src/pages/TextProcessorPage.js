@@ -171,6 +171,11 @@ function TextProcessorPage() {
                                             />
                                             <span>
                                                 <strong>{word.serbian_word}</strong> - {word.english_translation}
+                                                {word.original_form && word.original_form !== word.serbian_word && (
+                                                    <span style={{ fontSize: '12px', color: '#666', marginLeft: '10px' }}>
+                                                        (from: {word.original_form})
+                                                    </span>
+                                                )}
                                             </span>
                                         </div>
                                         <select
@@ -212,8 +217,10 @@ function TextProcessorPage() {
                 <h3>Tips:</h3>
                 <ul style={{ marginLeft: '20px', lineHeight: '1.8' }}>
                     <li>The system will automatically detect unique words from your text</li>
+                    <li>Verbs are converted to infinitive form (e.g., "радим" → "радити")</li>
+                    <li>Words are lowercase except proper nouns (names, places)</li>
                     <li>Words already in your vocabulary will be skipped</li>
-                    <li>OpenAI API will translate up to 20 new words at a time</li>
+                    <li>OpenAI API will translate up to 50 new words at a time</li>
                     <li>Categories are automatically assigned by AI based on word type</li>
                     <li>You can manually change categories and select/deselect words before saving</li>
                     <li>Use "Select All" or "Deselect All" buttons for quick selection</li>
