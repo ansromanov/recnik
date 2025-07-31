@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 import requests
 from html.parser import HTMLParser
 import re
+import redis
 
 # Import our models
 from models import (
@@ -75,6 +76,10 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 3600,
     "pool_pre_ping": True,
 }
+
+# Redis configuration
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
 # JWT configuration
 app.config["JWT_SECRET_KEY"] = os.getenv(
@@ -928,10 +933,40 @@ def get_news_sources():
 @app.route("/api/news")
 def get_news():
     try:
-        source = request.args.get("source")
-        category = request.args.get("category")
+        source = request.args.get("source", "all")
+        category = request.args.get("category", "all")
 
-        # Try to fetch from RSS feed first if parser is available
+        # Try to get from Redis cache first
+        try:
+            # Construct cache key
+            if source and source != "all":
+                cache_key = f"news:{source}:{category if category else 'all'}"
+            else:
+                cache_key = "news:all:all"
+
+            # Check if we have cached articles
+            cached_articles = redis_client.get(cache_key)
+            if cached_articles:
+                articles = json.loads(cached_articles)
+
+                # Filter by category if needed and not already filtered
+                if category and category != "all" and source == "all":
+                    articles = [a for a in articles if a.get("category") == category]
+
+                # Get last update time
+                last_update = redis_client.get("news:last_update")
+
+                return jsonify(
+                    {
+                        "articles": articles[:20],  # Return top 20 articles
+                        "from_cache": True,
+                        "last_update": last_update,
+                    }
+                )
+        except Exception as redis_error:
+            print(f"Redis error, falling back to RSS feeds: {redis_error}")
+
+        # If no cache or Redis error, try to fetch from RSS feed
         if RSS_PARSER_AVAILABLE:
             try:
                 # Define available RSS feeds with categories

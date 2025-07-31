@@ -39,3 +39,7 @@ coverage/
 *.pid
 *.seed
 *.pid.lock
+
+# Ignore Python cache files
+__pycache__/
+*.py[cod]

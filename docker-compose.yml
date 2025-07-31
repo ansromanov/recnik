@@ -14,22 +14,51 @@ services:
     networks:
       - vocab-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: serbian-vocab-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - vocab-network
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
   backend:
     build: ./backend
     container_name: serbian-vocab-backend
     environment:
       DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
+      REDIS_URL: redis://redis:6379
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       PORT: 3001
     ports:
       - "3001:3001"
     depends_on:
       - postgres
+      - redis
     networks:
       - vocab-network
     volumes:
       - ./backend:/app
       - /app/node_modules
+
+  cache-updater:
+    build: ./backend
+    container_name: serbian-vocab-cache-updater
+    environment:
+      DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - vocab-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: python cache_updater.py
 
   frontend:
     build: ./frontend
@@ -43,6 +72,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   vocab-network:

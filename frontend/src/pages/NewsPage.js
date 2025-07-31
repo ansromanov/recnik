@@ -19,6 +19,7 @@ function NewsPage() {
     const [sources, setSources] = useState({});
     const [categories, setCategories] = useState({});
     const [availableCategories, setAvailableCategories] = useState([]);
+    const [cacheInfo, setCacheInfo] = useState(null);
 
     useEffect(() => {
         loadSourcesAndCategories();
@@ -49,6 +50,16 @@ function NewsPage() {
 
             const data = await fetchNews(params.toString());
             setArticles(data.articles || []);
+
+            // Set cache info if available
+            if (data.from_cache) {
+                setCacheInfo({
+                    fromCache: true,
+                    lastUpdate: data.last_update
+                });
+            } else {
+                setCacheInfo(null);
+            }
         } catch (err) {
             setError('Failed to load news articles');
             console.error('Error loading news:', err);
@@ -193,6 +204,17 @@ function NewsPage() {
         <div className="news-page">
             <h1>Serbian News</h1>
             <p className="subtitle">Read Serbian news and learn new vocabulary in context</p>
+
+            {cacheInfo && (
+                <div className="cache-info">
+                    <span className="cache-badge">📦 Cached</span>
+                    {cacheInfo.lastUpdate && (
+                        <span className="cache-time">
+                            Last updated: {new Date(cacheInfo.lastUpdate).toLocaleTimeString()}
+                        </span>
+                    )}
+                </div>
+            )}
 
             <div className="news-filters">
                 <div className="filter-group">
