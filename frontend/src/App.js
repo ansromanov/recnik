@@ -7,6 +7,7 @@ import PracticePage from './pages/PracticePage';
 import NewsPage from './pages/NewsPage';
 import LoginPage from './pages/LoginPage';
 import SettingsPage from './pages/SettingsPage';
+import Top100Page from './pages/Top100Page';
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -54,6 +55,9 @@ function App() {
                         </NavLink>
                         <NavLink to="/vocabulary" className={({ isActive }) => isActive ? 'active' : ''}>
                             My Vocabulary
+                        </NavLink>
+                        <NavLink to="/top100" className={({ isActive }) => isActive ? 'active' : ''}>
+                            Top 100
                         </NavLink>
                         <NavLink to="/practice" className={({ isActive }) => isActive ? 'active' : ''}>
                             Practice
@@ -106,6 +110,14 @@ function App() {
                         element={
                             isAuthenticated ?
                                 <VocabularyPage /> :
+                                <Navigate to="/login" replace />
+                        }
+                    />
+                    <Route
+                        path="/top100"
+                        element={
+                            isAuthenticated ?
+                                <Top100Page /> :
                                 <Navigate to="/login" replace />
                         }
                     />

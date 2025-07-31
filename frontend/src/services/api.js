@@ -98,6 +98,10 @@ export const apiService = {
     // Settings
     getSettings: () => api.get('/settings'),
     updateSettings: (settings) => api.put('/settings', settings),
+
+    // Top 100 Words
+    getTop100WordsByCategory: (categoryId) => api.get(`/top100/categories/${categoryId}`),
+    addTop100WordsToVocabulary: (wordIds) => api.post('/top100/add', { word_ids: wordIds }),
 };
 
 // Export individual functions for components that use them

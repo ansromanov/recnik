@@ -265,10 +265,42 @@ def update_settings():
 
 
 @app.route("/api/categories")
+@jwt_required(optional=True)
 def get_categories():
     try:
+        user_id = get_jwt_identity()
         categories = Category.query.order_by(Category.name).all()
-        return jsonify([cat.to_dict() for cat in categories])
+
+        result = []
+        for cat in categories:
+            cat_dict = cat.to_dict()
+
+            # Count top 100 words in this category
+            top_100_count = Word.query.filter_by(
+                category_id=cat.id, is_top_100=True
+            ).count()
+            cat_dict["top_100_count"] = top_100_count
+
+            # If user is logged in, count how many top 100 words they've added
+            if user_id:
+                user_id = int(user_id)
+                added_count = (
+                    db.session.query(Word)
+                    .join(UserVocabulary)
+                    .filter(
+                        Word.category_id == cat.id,
+                        Word.is_top_100 == True,
+                        UserVocabulary.user_id == user_id,
+                    )
+                    .count()
+                )
+                cat_dict["user_added_count"] = added_count
+            else:
+                cat_dict["user_added_count"] = 0
+
+            result.append(cat_dict)
+
+        return jsonify(result)
     except Exception as e:
         print(f"Error fetching categories: {e}")
         return jsonify({"error": "Failed to fetch categories"}), 500
@@ -928,6 +960,119 @@ def get_news_sources():
     }
 
     return jsonify({"sources": sources, "categories": categories})
+
+
+@app.route("/api/top100/categories/<int:category_id>")
+@jwt_required()
+def get_top_100_words_by_category(category_id):
+    """Get top 100 words for a specific category"""
+    try:
+        user_id = int(get_jwt_identity())
+
+        # Get category
+        category = Category.query.get(category_id)
+        if not category:
+            return jsonify({"error": "Category not found"}), 404
+
+        # Get top 100 words for this category
+        words = (
+            Word.query.filter_by(category_id=category_id, is_top_100=True)
+            .order_by(Word.serbian_word)
+            .all()
+        )
+
+        # Get user's vocabulary word IDs for quick lookup
+        user_word_ids = set(
+            uv.word_id for uv in UserVocabulary.query.filter_by(user_id=user_id).all()
+        )
+
+        # Build response with user-specific data
+        words_data = []
+        for word in words:
+            word_dict = word.to_dict()
+            word_dict["is_in_vocabulary"] = word.id in user_word_ids
+
+            # Get user-specific vocabulary data if the word is in their vocabulary
+            if word.id in user_word_ids:
+                user_vocab = UserVocabulary.query.filter_by(
+                    user_id=user_id, word_id=word.id
+                ).first()
+                if user_vocab:
+                    word_dict["mastery_level"] = user_vocab.mastery_level
+                    word_dict["times_practiced"] = user_vocab.times_practiced
+                    word_dict["last_practiced"] = (
+                        user_vocab.last_practiced.isoformat()
+                        if user_vocab.last_practiced
+                        else None
+                    )
+            else:
+                word_dict["mastery_level"] = 0
+                word_dict["times_practiced"] = 0
+                word_dict["last_practiced"] = None
+
+            words_data.append(word_dict)
+
+        return jsonify(
+            {
+                "category": category.to_dict(),
+                "words": words_data,
+                "total": len(words_data),
+                "added_count": len([w for w in words_data if w["is_in_vocabulary"]]),
+            }
+        )
+    except Exception as e:
+        print(f"Error fetching top 100 words: {e}")
+        return jsonify({"error": "Failed to fetch top 100 words"}), 500
+
+
+@app.route("/api/top100/add", methods=["POST"])
+@jwt_required()
+def add_top_100_words_to_vocabulary():
+    """Add selected top 100 words to user's vocabulary"""
+    try:
+        user_id = int(get_jwt_identity())
+        data = request.get_json()
+        word_ids = data.get("word_ids", [])
+
+        if not word_ids or not isinstance(word_ids, list):
+            return jsonify({"error": "word_ids array is required"}), 400
+
+        added_words = []
+        already_in_vocabulary = []
+
+        for word_id in word_ids:
+            # Check if word exists and is a top 100 word
+            word = Word.query.filter_by(id=word_id, is_top_100=True).first()
+            if not word:
+                continue
+
+            # Check if already in user's vocabulary
+            existing = UserVocabulary.query.filter_by(
+                user_id=user_id, word_id=word_id
+            ).first()
+
+            if existing:
+                already_in_vocabulary.append(word.to_dict())
+            else:
+                # Add to user's vocabulary
+                user_vocab = UserVocabulary(user_id=user_id, word_id=word_id)
+                db.session.add(user_vocab)
+                added_words.append(word.to_dict())
+
+        db.session.commit()
+
+        return jsonify(
+            {
+                "added": len(added_words),
+                "already_in_vocabulary": len(already_in_vocabulary),
+                "added_words": added_words,
+                "skipped_words": already_in_vocabulary,
+            }
+        )
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error adding top 100 words: {e}")
+        return jsonify({"error": "Failed to add words"}), 500
 
 
 @app.route("/api/news")

@@ -102,6 +102,7 @@ class Word(db.Model):
     context = db.Column(db.Text)
     notes = db.Column(db.Text)
     difficulty_level = db.Column(db.Integer, default=1, nullable=False)
+    is_top_100 = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -136,6 +137,7 @@ class Word(db.Model):
             "context": self.context,
             "notes": self.notes,
             "difficulty_level": self.difficulty_level,
+            "is_top_100": self.is_top_100,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
