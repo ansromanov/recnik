@@ -11,6 +11,8 @@ function Top100Page() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
+    const [wordImages, setWordImages] = useState({});
+    const [loadingImages, setLoadingImages] = useState({});
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -124,6 +126,47 @@ function Top100Page() {
         }
     };
 
+    const loadWordImage = async (word) => {
+        if (wordImages[word.id] || loadingImages[word.id]) {
+            return; // Already loaded or loading
+        }
+
+        setLoadingImages(prev => ({ ...prev, [word.id]: true }));
+
+        try {
+            const response = await apiService.getWordImage(word.id);
+            if (response.data.success && response.data.image) {
+                setWordImages(prev => ({
+                    ...prev,
+                    [word.id]: `data:${response.data.image.content_type};base64,${response.data.image.image_data}`
+                }));
+            }
+        } catch (error) {
+            console.error(`Error loading image for word ${word.serbian_word}:`, error);
+            // Try to search for a new image if the cached one failed
+            try {
+                const searchResponse = await apiService.searchImage(word.serbian_word, word.english_translation);
+                if (searchResponse.data.success && searchResponse.data.image) {
+                    setWordImages(prev => ({
+                        ...prev,
+                        [word.id]: `data:${searchResponse.data.image.content_type};base64,${searchResponse.data.image.image_data}`
+                    }));
+                }
+            } catch (searchError) {
+                console.error(`Error searching image for word ${word.serbian_word}:`, searchError);
+            }
+        } finally {
+            setLoadingImages(prev => ({ ...prev, [word.id]: false }));
+        }
+    };
+
+    // Load images for words when they change
+    useEffect(() => {
+        words.forEach(word => {
+            loadWordImage(word);
+        });
+    }, [words]);
+
     const getProgressPercentage = (category) => {
         if (category.top_100_count === 0) return 0;
         return Math.round((category.user_added_count / category.top_100_count) * 100);
@@ -134,7 +177,7 @@ function Top100Page() {
     }
 
     return (
-        <div className="top100-page">
+        <div className="container">
             <h1>Top 100 Serbian Words</h1>
             <p className="subtitle">Learn the most common Serbian words organized by category</p>
 
@@ -204,7 +247,21 @@ function Top100Page() {
                                         key={word.id}
                                         className={`word-card ${word.is_in_vocabulary ? 'in-vocabulary' : ''} ${selectedWords.has(word.id) ? 'selected' : ''}`}
                                         onClick={() => !word.is_in_vocabulary && toggleWordSelection(word.id)}
+                                        style={{
+                                            backgroundImage: wordImages[word.id] ? `url(${wordImages[word.id]})` : 'none'
+                                        }}
                                     >
+                                        {/* Image status indicator */}
+                                        {loadingImages[word.id] ? (
+                                            <div className="image-placeholder loading-image">
+                                                <div className="image-spinner"></div>
+                                            </div>
+                                        ) : !wordImages[word.id] ? (
+                                            <div className="image-placeholder">
+                                                <span>📷</span>
+                                            </div>
+                                        ) : null}
+
                                         <div className="word-content">
                                             <h4>{word.serbian_word}</h4>
                                             <p>{word.english_translation}</p>

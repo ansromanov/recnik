@@ -165,33 +165,75 @@ code {
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }
 
+/* Enhanced navigation */
 .nav {
-    background-color: #333;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(51, 51, 51, 0.9));
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     overflow: hidden;
     margin-bottom: 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.nav::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #4CAF50, #2196F3, #FF9800, #E91E63);
+    background-size: 400% 100%;
+    animation: gradientShift 3s ease infinite;
 }
 
 .nav a {
-    float: left;
     display: block;
-    color: white;
+    color: rgba(255, 255, 255, 0.9);
     text-align: center;
-    padding: 14px 20px;
+    padding: 16px 24px;
     text-decoration: none;
-    transition: background-color 0.3s;
+    transition: all 0.3s ease;
+    position: relative;
+    font-weight: 500;
+    border-radius: 8px;
+    margin: 4px 2px;
+}
+
+.nav a::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.nav a:hover::before {
+    opacity: 1;
 }
 
 .nav a:hover {
-    background-color: #ddd;
-    color: black;
+    color: white;
+    transform: translateY(-2px);
 }
 
 .nav a.active {
-    background-color: #4CAF50;
+    background: linear-gradient(135deg, #4CAF50, #45a049);
     color: white;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.nav a.active::before {
+    display: none;
 }
 
 .nav-right {
@@ -202,23 +244,31 @@ code {
 }
 
 .user-info {
-    color: white;
+    color: rgba(255, 255, 255, 0.9);
     font-size: 14px;
+    font-weight: 500;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    backdrop-filter: blur(5px);
 }
 
 .logout-button {
-    background-color: #f44336;
+    background: linear-gradient(135deg, #f44336, #da190b);
     color: white;
     border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
+    padding: 10px 18px;
+    border-radius: 20px;
     cursor: pointer;
     font-size: 14px;
-    transition: background-color 0.3s;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
 }
 
 .logout-button:hover {
-    background-color: #da190b;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
 }
 
 .stats-grid {
