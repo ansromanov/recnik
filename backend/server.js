@@ -95,25 +95,16 @@ app.post('/api/process-text', async (req, res) => {
         // Get unique words
         const uniqueWords = [...new Set(words)];
 
-        // We'll need to check both the original forms and potential infinitive forms
-        // For now, we'll check original forms and let the AI handle the conversion
-        const existingWordsResult = await pool.query(
-            'SELECT serbian_word FROM words WHERE serbian_word = ANY($1)',
-            [uniqueWords]
-        );
-
-        const existingWords = new Set(existingWordsResult.rows.map(row => row.serbian_word));
-        const newWords = uniqueWords.filter(word => !existingWords.has(word));
-
         // Get available categories for categorization
         const categoriesResult = await pool.query('SELECT id, name FROM categories');
         const categories = categoriesResult.rows;
         const categoryNames = categories.map(c => c.name).join(', ');
 
-        // Translate new words using OpenAI
-        const translations = [];
+        // First, process all words to get their infinitive forms
+        const processedWords = [];
+        const seenInfinitives = new Set();
 
-        for (const word of newWords.slice(0, 50)) { // Limit to 50 words per request
+        for (const word of uniqueWords.slice(0, 50)) { // Limit to 50 words per request
             try {
                 const completion = await openai.chat.completions.create({
                     model: "gpt-3.5-turbo",
@@ -145,7 +136,13 @@ Respond in JSON format: {"serbian_infinitive": "word in infinitive/base form", "
                     // Use the infinitive form provided by AI, or fall back to original word
                     const serbianWord = parsed.serbian_infinitive || word;
 
-                    translations.push({
+                    // Skip if we've already seen this infinitive form
+                    if (seenInfinitives.has(serbianWord)) {
+                        continue;
+                    }
+                    seenInfinitives.add(serbianWord);
+
+                    processedWords.push({
                         serbian_word: serbianWord,
                         english_translation: parsed.translation,
                         category_id: category ? category.id : 1, // Default to "Common Words" if category not found
@@ -154,29 +151,45 @@ Respond in JSON format: {"serbian_infinitive": "word in infinitive/base form", "
                     });
                 } catch (parseError) {
                     // Fallback if JSON parsing fails
-                    translations.push({
+                    if (!seenInfinitives.has(word)) {
+                        seenInfinitives.add(word);
+                        processedWords.push({
+                            serbian_word: word,
+                            english_translation: response,
+                            category_id: 1,
+                            category_name: 'Common Words'
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error(`Error translating word "${word}":`, error);
+                if (!seenInfinitives.has(word)) {
+                    seenInfinitives.add(word);
+                    processedWords.push({
                         serbian_word: word,
-                        english_translation: response,
+                        english_translation: 'Translation failed',
                         category_id: 1,
                         category_name: 'Common Words'
                     });
                 }
-            } catch (error) {
-                console.error(`Error translating word "${word}":`, error);
-                translations.push({
-                    serbian_word: word,
-                    english_translation: 'Translation failed',
-                    category_id: 1,
-                    category_name: 'Common Words'
-                });
             }
         }
+
+        // Now check which words already exist in database
+        const infinitiveForms = processedWords.map(w => w.serbian_word);
+        const existingWordsResult = await pool.query(
+            'SELECT serbian_word FROM words WHERE serbian_word = ANY($1)',
+            [infinitiveForms]
+        );
+
+        const existingWords = new Set(existingWordsResult.rows.map(row => row.serbian_word));
+        const newWords = processedWords.filter(word => !existingWords.has(word.serbian_word));
 
         res.json({
             total_words: uniqueWords.length,
             existing_words: existingWords.size,
             new_words: newWords.length,
-            translations: translations
+            translations: newWords
         });
     } catch (error) {
         console.error('Error processing text:', error);
@@ -237,7 +250,7 @@ app.post('/api/words', async (req, res) => {
     }
 });
 
-// Get practice words
+// Get practice words with multiple choice options
 app.get('/api/practice/words', async (req, res) => {
     try {
         const { limit = 10, difficulty } = req.query;
@@ -260,10 +273,68 @@ app.get('/api/practice/words', async (req, res) => {
       LIMIT $1`;
 
         const result = await pool.query(query, [limit]);
-        res.json(result.rows);
+
+        // For each word, get 3 random incorrect options
+        const practiceWords = [];
+        for (const word of result.rows) {
+            // Get 3 random words as incorrect options
+            const optionsResult = await pool.query(
+                `SELECT english_translation FROM words 
+                 WHERE id != $1 
+                 ORDER BY RANDOM() 
+                 LIMIT 3`,
+                [word.id]
+            );
+
+            const incorrectOptions = optionsResult.rows.map(row => row.english_translation);
+            const allOptions = [word.english_translation, ...incorrectOptions];
+
+            // Shuffle options
+            for (let i = allOptions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [allOptions[i], allOptions[j]] = [allOptions[j], allOptions[i]];
+            }
+
+            practiceWords.push({
+                ...word,
+                options: allOptions,
+                correct_answer: word.english_translation
+            });
+        }
+
+        res.json(practiceWords);
     } catch (error) {
         console.error('Error fetching practice words:', error);
         res.status(500).json({ error: 'Failed to fetch practice words' });
+    }
+});
+
+// Generate example sentence for a word
+app.post('/api/practice/example-sentence', async (req, res) => {
+    try {
+        const { serbian_word, english_translation, category } = req.body;
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [
+                {
+                    role: "system",
+                    content: `You are a Serbian language teacher. Create a simple Serbian sentence using the given word. The sentence should be easy to understand and help reinforce the word's meaning.`
+                },
+                {
+                    role: "user",
+                    content: `Create a Serbian sentence using the word "${serbian_word}" (${english_translation}). Keep it simple and educational.`
+                }
+            ],
+            temperature: 0.7,
+            max_tokens: 100
+        });
+
+        const sentence = completion.choices[0].message.content.trim();
+        res.json({ sentence });
+    } catch (error) {
+        console.error('Error generating example sentence:', error);
+        res.status(500).json({ error: 'Failed to generate example sentence' });
     }
 });
 

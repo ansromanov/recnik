@@ -4,11 +4,14 @@ import apiService from '../services/api';
 function PracticePage() {
     const [practiceWords, setPracticeWords] = useState([]);
     const [currentWordIndex, setCurrentWordIndex] = useState(0);
-    const [userAnswer, setUserAnswer] = useState('');
+    const [selectedAnswer, setSelectedAnswer] = useState('');
     const [sessionId, setSessionId] = useState(null);
     const [sessionStartTime, setSessionStartTime] = useState(null);
+    const [questionStartTime, setQuestionStartTime] = useState(null);
     const [showResult, setShowResult] = useState(false);
     const [isCorrect, setIsCorrect] = useState(false);
+    const [exampleSentence, setExampleSentence] = useState('');
+    const [loadingSentence, setLoadingSentence] = useState(false);
     const [sessionStats, setSessionStats] = useState({
         total: 0,
         correct: 0
@@ -31,7 +34,7 @@ function PracticePage() {
             setSessionId(sessionResponse.data.id);
             setSessionStartTime(Date.now());
 
-            // Get practice words
+            // Get practice words with multiple choice options
             const wordsResponse = await apiService.getPracticeWords(10);
             if (wordsResponse.data.length === 0) {
                 setError('No words available for practice. Please add some words to your vocabulary first.');
@@ -41,10 +44,12 @@ function PracticePage() {
 
             setPracticeWords(wordsResponse.data);
             setCurrentWordIndex(0);
+            setQuestionStartTime(Date.now());
             setSessionStats({ total: 0, correct: 0 });
             setSessionComplete(false);
             setShowResult(false);
-            setUserAnswer('');
+            setSelectedAnswer('');
+            setExampleSentence('');
         } catch (err) {
             setError('Failed to start practice session');
             console.error('Error starting practice session:', err);
@@ -53,14 +58,34 @@ function PracticePage() {
         }
     };
 
-    const handleSubmitAnswer = async () => {
-        if (!userAnswer.trim()) return;
+    const handleAnswerSelect = async (answer) => {
+        if (showResult) return;
 
+        setSelectedAnswer(answer);
         const currentWord = practiceWords[currentWordIndex];
-        const correct = userAnswer.toLowerCase().trim() === currentWord.english_translation.toLowerCase().trim();
+        const correct = answer === currentWord.correct_answer;
+        const responseTime = Math.floor((Date.now() - questionStartTime) / 1000);
 
         setIsCorrect(correct);
         setShowResult(true);
+
+        // If correct, fetch example sentence
+        if (correct) {
+            setLoadingSentence(true);
+            try {
+                const sentenceResponse = await apiService.getExampleSentence(
+                    currentWord.serbian_word,
+                    currentWord.english_translation,
+                    currentWord.category_name
+                );
+                setExampleSentence(sentenceResponse.data.sentence);
+            } catch (err) {
+                console.error('Error fetching example sentence:', err);
+                setExampleSentence('');
+            } finally {
+                setLoadingSentence(false);
+            }
+        }
 
         // Submit result to backend
         try {
@@ -68,7 +93,7 @@ function PracticePage() {
                 sessionId,
                 currentWord.id,
                 correct,
-                Math.floor((Date.now() - sessionStartTime) / 1000)
+                responseTime
             );
 
             setSessionStats(prev => ({
@@ -83,8 +108,10 @@ function PracticePage() {
     const handleNextWord = () => {
         if (currentWordIndex < practiceWords.length - 1) {
             setCurrentWordIndex(prev => prev + 1);
-            setUserAnswer('');
+            setSelectedAnswer('');
             setShowResult(false);
+            setExampleSentence('');
+            setQuestionStartTime(Date.now());
         } else {
             completeSession();
         }
@@ -106,14 +133,28 @@ function PracticePage() {
         }
     };
 
-    const handleKeyPress = (e) => {
-        if (e.key === 'Enter') {
-            if (showResult) {
-                handleNextWord();
-            } else {
-                handleSubmitAnswer();
-            }
-        }
+    const highlightWordInSentence = (sentence, word) => {
+        if (!sentence || !word) return sentence;
+
+        // Create a regex that matches the word (case-insensitive)
+        const regex = new RegExp(`\\b${word}\\b`, 'gi');
+        const parts = sentence.split(regex);
+        const matches = sentence.match(regex) || [];
+
+        return (
+            <>
+                {parts.map((part, index) => (
+                    <React.Fragment key={index}>
+                        {part}
+                        {index < matches.length && (
+                            <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>
+                                {matches[index]}
+                            </span>
+                        )}
+                    </React.Fragment>
+                ))}
+            </>
+        );
     };
 
     if (loading) return <div className="loading">Loading practice session...</div>;
@@ -170,41 +211,85 @@ function PracticePage() {
                     </span>
                 )}
 
-                <input
-                    type="text"
-                    className="practice-input"
-                    placeholder="Enter English translation..."
-                    value={userAnswer}
-                    onChange={(e) => setUserAnswer(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    disabled={showResult}
-                    autoFocus
-                />
+                <p style={{ fontSize: '18px', color: '#666', marginTop: '20px', marginBottom: '30px' }}>
+                    Choose the correct English translation:
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
+                    {currentWord.options && currentWord.options.map((option, index) => (
+                        <button
+                            key={index}
+                            className={`btn ${showResult && option === currentWord.correct_answer
+                                    ? 'btn-success'
+                                    : showResult && option === selectedAnswer && !isCorrect
+                                        ? 'btn-danger'
+                                        : selectedAnswer === option && !showResult
+                                            ? 'btn-secondary'
+                                            : ''
+                                }`}
+                            onClick={() => handleAnswerSelect(option)}
+                            disabled={showResult}
+                            style={{
+                                padding: '15px 20px',
+                                fontSize: '16px',
+                                textAlign: 'center',
+                                backgroundColor: showResult && option === currentWord.correct_answer
+                                    ? '#4CAF50'
+                                    : showResult && option === selectedAnswer && !isCorrect
+                                        ? '#f44336'
+                                        : selectedAnswer === option && !showResult
+                                            ? '#008CBA'
+                                            : '',
+                                color: (showResult && (option === currentWord.correct_answer || (option === selectedAnswer && !isCorrect))) || (selectedAnswer === option && !showResult)
+                                    ? 'white'
+                                    : ''
+                            }}
+                        >
+                            {option}
+                        </button>
+                    ))}
+                </div>
 
                 {showResult && (
                     <div style={{ marginTop: '20px' }}>
                         {isCorrect ? (
-                            <div className="success">
-                                ✓ Correct!
-                            </div>
+                            <>
+                                <div className="success">
+                                    ✓ Correct!
+                                </div>
+                                {exampleSentence && (
+                                    <div style={{
+                                        marginTop: '20px',
+                                        padding: '15px',
+                                        backgroundColor: '#e8f5e9',
+                                        borderRadius: '8px',
+                                        fontSize: '16px',
+                                        lineHeight: '1.6'
+                                    }}>
+                                        <p style={{ margin: 0, fontWeight: 'bold', marginBottom: '10px', color: '#2e7d32' }}>
+                                            Example sentence:
+                                        </p>
+                                        <p style={{ margin: 0 }}>
+                                            {highlightWordInSentence(exampleSentence, currentWord.serbian_word)}
+                                        </p>
+                                    </div>
+                                )}
+                                {loadingSentence && (
+                                    <div style={{ marginTop: '20px', textAlign: 'center', color: '#666' }}>
+                                        Loading example sentence...
+                                    </div>
+                                )}
+                            </>
                         ) : (
                             <div className="error">
-                                ✗ Incorrect. The correct answer is: <strong>{currentWord.english_translation}</strong>
+                                ✗ Incorrect. The correct answer is: <strong>{currentWord.correct_answer}</strong>
                             </div>
                         )}
                     </div>
                 )}
 
                 <div className="button-group">
-                    {!showResult ? (
-                        <button
-                            className="btn"
-                            onClick={handleSubmitAnswer}
-                            disabled={!userAnswer.trim()}
-                        >
-                            Submit Answer
-                        </button>
-                    ) : (
+                    {showResult && (
                         <button
                             className="btn"
                             onClick={handleNextWord}
@@ -237,8 +322,9 @@ function PracticePage() {
             <div className="card">
                 <h3>Practice Tips:</h3>
                 <ul style={{ marginLeft: '20px', lineHeight: '1.8' }}>
-                    <li>Take your time to think about the translation</li>
-                    <li>Press Enter to submit your answer or continue to the next word</li>
+                    <li>Click on the answer you think is correct</li>
+                    <li>Correct answers will show an example sentence</li>
+                    <li>The Serbian word is highlighted in green in the example</li>
                     <li>Words with lower mastery levels appear more frequently</li>
                     <li>Regular practice helps improve retention</li>
                 </ul>

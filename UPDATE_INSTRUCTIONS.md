@@ -62,6 +62,9 @@ npm start
 - AI now returns both translation and category in JSON format
 - Added verb infinitive transformation (e.g., "радим" → "радити")
 - Converts words to lowercase except proper nouns
+- **NEW**: Removes duplicate words during processing (same infinitive forms)
+- **NEW**: Practice mode now provides multiple choice options (4 choices)
+- **NEW**: Added endpoint to generate example sentences with OpenAI
 
 ### Frontend (TextProcessorPage.js)
 
@@ -70,6 +73,14 @@ npm start
 - Updated tips to reflect 50-word limit
 - Shows original form when different from infinitive
 - Added tips about infinitive transformation
+
+### Frontend (PracticePage.js)
+
+- **NEW**: Changed from text input to multiple choice questions
+- **NEW**: Shows 4 answer options for each word
+- **NEW**: Displays example sentences for correct answers
+- **NEW**: Highlights the Serbian word in green within example sentences
+- **NEW**: Visual feedback with colored buttons (green for correct, red for wrong)
 
 ## Troubleshooting
 

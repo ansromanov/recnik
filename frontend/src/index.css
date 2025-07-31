@@ -56,6 +56,15 @@ code {
     background-color: #da190b;
 }
 
+.btn-success {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #45a049;
+}
+
 .input-field {
     width: 100%;
     padding: 12px 20px;

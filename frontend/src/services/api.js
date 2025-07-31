@@ -49,6 +49,13 @@ export const apiService = {
             duration_seconds: durationSeconds,
         }),
 
+    getExampleSentence: (serbianWord, englishTranslation, category) =>
+        api.post('/practice/example-sentence', {
+            serbian_word: serbianWord,
+            english_translation: englishTranslation,
+            category: category,
+        }),
+
     // Statistics
     getStats: () => api.get('/stats'),
 };
