@@ -96,6 +96,30 @@
     margin-bottom: 1rem;
 }
 
+.article-link {
+    color: #3498db;
+    text-decoration: none;
+}
+
+.article-link:hover {
+    text-decoration: underline;
+}
+
+.article-note {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-left: 3px solid #3498db;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.article-note-success {
+    border-left-color: #27ae60;
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
 .extract-button {
     background: #3498db;
     color: white;

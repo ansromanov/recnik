@@ -469,46 +469,253 @@ app.get('/api/stats', async (req, res) => {
     }
 });
 
+// Helper function to fetch full article content
+async function fetchFullArticle(url) {
+    if (!axios) return null;
+
+    try {
+        const response = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'sr,en;q=0.9',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            },
+            timeout: 10000 // 10 second timeout
+        });
+
+        const html = response.data;
+        let content = '';
+
+        // N1 Info specific patterns
+        const n1Patterns = [
+            // N1 Info article body pattern
+            /<div[^>]*class="[^"]*rich-text[^"]*"[^>]*>([\s\S]*?)(?=<\/div>(?:\s*<div|$))/gi,
+            /<div[^>]*class="[^"]*article__text[^"]*"[^>]*>([\s\S]*?)(?=<\/div>(?:\s*<div|$))/gi,
+            /<div[^>]*class="[^"]*text-editor[^"]*"[^>]*>([\s\S]*?)(?=<\/div>(?:\s*<div|$))/gi,
+            /<div[^>]*class="[^"]*entry-content[^"]*"[^>]*>([\s\S]*?)(?=<\/div>(?:\s*<div|$))/gi,
+            // Look for paragraphs within article containers
+            /<article[^>]*>([\s\S]*?)<\/article>/gi,
+            /<div[^>]*class="[^"]*content[^"]*"[^>]*>([\s\S]*?)(?=<\/div>(?:\s*<div|$))/gi
+        ];
+
+        // Try each pattern
+        for (const pattern of n1Patterns) {
+            const matches = html.matchAll(pattern);
+            for (const match of matches) {
+                if (match[1]) {
+                    // Extract all paragraph text from the matched content
+                    const paragraphs = match[1].match(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+                    if (paragraphs && paragraphs.length > 0) {
+                        const extractedContent = paragraphs
+                            .map(p => p.replace(/<[^>]*>/g, ' ').trim())
+                            .filter(text => text.length > 20) // Filter out very short paragraphs
+                            .join('\n\n');
+
+                        if (extractedContent.length > content.length) {
+                            content = extractedContent;
+                        }
+                    }
+                }
+            }
+        }
+
+        // If no content found with specific patterns, try a more general approach
+        if (!content || content.length < 200) {
+            // Extract all paragraphs from the page
+            const allParagraphs = html.match(/<p[^>]*>[\s\S]*?<\/p>/gi) || [];
+            const paragraphTexts = allParagraphs
+                .map(p => p.replace(/<[^>]*>/g, ' ').trim())
+                .filter(text => {
+                    // Filter out navigation, ads, and very short paragraphs
+                    return text.length > 50 &&
+                        !text.includes('Cookie') &&
+                        !text.includes('cookie') &&
+                        !text.includes('Prihvati') &&
+                        !text.includes('Saglasnost') &&
+                        !text.includes('©');
+                });
+
+            // Take the longest consecutive sequence of paragraphs (likely the article body)
+            if (paragraphTexts.length > 3) {
+                content = paragraphTexts.slice(0, -2).join('\n\n'); // Exclude likely footer paragraphs
+            }
+        }
+
+        // Clean up the content - remove any embedded JavaScript first
+        content = content
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove script tags and content
+            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '') // Remove style tags and content
+            .replace(/window\.addEventListener\s*\([^)]+\)\s*{[^{}]*(?:{[^{}]*(?:{[^{}]*}[^{}]*)*}[^{}]*)*}\s*\)\s*;?/g, '') // Remove window.addEventListener blocks with nested braces
+            .replace(/window\.addEventListener[^;]+;/g, '') // Remove any remaining addEventListener
+            .replace(/let\s+target\s*=\s*document\.querySelector[^}]+}\s*}\s*\)\s*;?/g, '') // Remove video embed code pattern
+            .replace(/const\s+targetClose\s*=\s*document\.createElement[^}]+}\s*}\s*\)\s*;?/g, '') // Remove close button code
+            .replace(/\/\/\s*add close button[^}]+}/g, '') // Remove code comments and blocks
+            .replace(/\/\/\s*top position of sticky embed[^}]+}\s*\)\s*;?\s*}\s*\)\s*;?/g, '') // Remove sticky embed code
+            .replace(/\/\/[^}]*}\s*}\s*\);?/g, '') // Remove any remaining comment with closing braces
+            .replace(/}\s*}\s*\);?\s*}/g, '') // Remove orphaned closing braces
+            .replace(/}\s*\)\s*;?\s*}/g, '') // Remove more orphaned closures
+            .replace(/\bif\s*\([^)]+\)\s*{[^}]*}/g, '') // Remove if statements
+            .replace(/\bfunction\s+\w+\s*\([^)]*\)\s*{[^}]*}/g, '') // Remove function declarations
+            .replace(/\.\w+\s*\([^)]*\)/g, '') // Remove method calls
+            .replace(/Foto:\s*[^/]+\/[^/]+/g, '') // Remove photo credits
+            .replace(/&nbsp;/gi, ' ')
+            .replace(/&quot;/gi, '"')
+            .replace(/&#39;/gi, "'")
+            .replace(/&amp;/gi, '&')
+            .replace(/&lt;/gi, '<')
+            .replace(/&gt;/gi, '>')
+            .replace(/&#(\d+);/gi, (match, dec) => String.fromCharCode(dec))
+            .replace(/&#x([a-fA-F0-9]+);/gi, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
+            .replace(/\s+/g, ' ')
+            .replace(/\n\s*\n\s*\n/g, '\n\n') // Remove excessive line breaks
+            .trim();
+
+        // Only return content if it's substantial
+        return content.length > 300 ? content : null;
+    } catch (error) {
+        console.error('Error fetching full article:', error.message);
+        return null;
+    }
+}
+
 // Get Serbian news articles
 app.get('/api/news', async (req, res) => {
     try {
         // Try to fetch from RSS feed first if parser is available
-        if (Parser) {
+        if (Parser && axios) {
             try {
-                const parser = new Parser();
-                const feedUrl = 'https://n1info.rs/feed/';
-                const feed = await parser.parseURL(feedUrl);
-
-                // Transform RSS items to our article format
-                const articles = feed.items.slice(0, 10).map(item => {
-                    // Extract text content from description/content
-                    let content = item.contentSnippet || item.content || item.description || '';
-
-                    // Remove HTML tags if present
-                    content = content.replace(/<[^>]*>/g, '');
-
-                    // Ensure content is at least 200 characters
-                    if (content.length < 200 && item.link) {
-                        content = `${content} Pročitajte ceo članak na originalnom sajtu za više informacija.`;
+                const parser = new Parser({
+                    timeout: 10000,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (compatible; SerbianVocabApp/1.0)'
                     }
-
-                    return {
-                        title: item.title,
-                        content: content,
-                        source: "N1 Info",
-                        date: new Date(item.pubDate).toLocaleDateString('sr-Latn-RS'),
-                        category: item.categories && item.categories.length > 0 ? item.categories[0] : "Vesti",
-                        link: item.link
-                    };
                 });
 
-                res.json({ articles });
-                return;
+                // Try multiple RSS feeds
+                const rssFeeds = [
+                    'https://n1info.rs/feed/',
+                    'https://www.blic.rs/rss/danasnje-vesti',
+                    'https://www.b92.net/info/rss/danas.xml'
+                ];
+
+                let articles = [];
+
+                for (const feedUrl of rssFeeds) {
+                    try {
+                        const feed = await parser.parseURL(feedUrl);
+
+                        // Determine source from URL
+                        let source = "Serbian News";
+                        if (feedUrl.includes('n1info')) source = "N1 Info";
+                        else if (feedUrl.includes('blic')) source = "Blic";
+                        else if (feedUrl.includes('b92')) source = "B92";
+
+                        // Transform RSS items to our article format
+                        const feedArticles = feed.items.slice(0, 5).map(item => {
+                            // Try to get the full content from various possible fields
+                            let content = '';
+
+                            // RSS feeds often have content in different fields
+                            if (item['content:encoded']) {
+                                content = item['content:encoded'];
+                            } else if (item.content) {
+                                content = item.content;
+                            } else if (item.description) {
+                                content = item.description;
+                            } else if (item.contentSnippet) {
+                                content = item.contentSnippet;
+                            } else if (item.summary) {
+                                content = item.summary;
+                            }
+
+                            // Remove scripts and their content first
+                            content = content
+                                .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove script tags and content
+                                .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '') // Remove style tags and content
+                                .replace(/window\.addEventListener\s*\([^)]+\)\s*{[^{}]*(?:{[^{}]*(?:{[^{}]*}[^{}]*)*}[^{}]*)*}\s*\)\s*;?/g, '') // Remove window.addEventListener blocks with nested braces
+                                .replace(/window\.addEventListener[^;]+;/g, '') // Remove any remaining addEventListener
+                                .replace(/let\s+target\s*=\s*document\.querySelector[^}]+}\s*}\s*\)\s*;?/g, '') // Remove video embed code pattern
+                                .replace(/const\s+targetClose\s*=\s*document\.createElement[^}]+}\s*}\s*\)\s*;?/g, '') // Remove close button code
+                                .replace(/\/\/\s*add close button[^}]+}/g, '') // Remove code comments and blocks
+                                .replace(/\/\/\s*top position of sticky embed[^}]+}\s*\)\s*;?\s*}\s*\)\s*;?/g, '') // Remove sticky embed code
+                                .replace(/\/\/[^}]*}\s*}\s*\);?/g, '') // Remove any remaining comment with closing braces
+                                .replace(/}\s*}\s*\);?\s*}/g, '') // Remove orphaned closing braces
+                                .replace(/}\s*\)\s*;?\s*}/g, '') // Remove more orphaned closures
+                                .replace(/\bif\s*\([^)]+\)\s*{[^}]*}/g, '') // Remove if statements
+                                .replace(/\bfunction\s+\w+\s*\([^)]*\)\s*{[^}]*}/g, '') // Remove function declarations
+                                .replace(/\.\w+\s*\([^)]*\)/g, '') // Remove method calls
+                                .replace(/Foto:\s*[^/]+\/[^/]+/g, '') // Remove photo credits
+                                .replace(/<[^>]*>/g, '') // Remove remaining HTML tags
+                                .replace(/&nbsp;/gi, ' ') // Replace non-breaking spaces
+                                .replace(/&quot;/gi, '"') // Replace quotes
+                                .replace(/&#39;/gi, "'") // Replace apostrophes
+                                .replace(/&amp;/gi, '&') // Replace ampersands
+                                .replace(/&#(\d+);/gi, (match, dec) => String.fromCharCode(dec))
+                                .replace(/&#x([a-fA-F0-9]+);/gi, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
+                                .replace(/\s+/g, ' ') // Normalize whitespace
+                                .trim();
+
+                            const articleLink = item.link || item.guid;
+
+                            return {
+                                title: item.title || 'Bez naslova',
+                                content: content || 'Sadržaj nije dostupan.',
+                                source: source,
+                                date: item.pubDate ? new Date(item.pubDate).toLocaleDateString('sr-Latn-RS') : new Date().toLocaleDateString('sr-Latn-RS'),
+                                category: item.categories && item.categories.length > 0 ? item.categories[0] : "Vesti",
+                                link: articleLink,
+                                needsFullContent: content.length < 400 // Flag articles that need full content
+                            };
+                        });
+
+                        articles = articles.concat(feedArticles);
+
+                        // If we have enough articles, stop fetching
+                        if (articles.length >= 10) break;
+
+                    } catch (feedError) {
+                        console.error(`Error fetching feed ${feedUrl}:`, feedError.message);
+                        // Continue to next feed
+                    }
+                }
+
+                // If we got some articles from RSS
+                if (articles.length > 0) {
+                    // Limit to 10 articles
+                    articles = articles.slice(0, 10);
+
+                    // Try to fetch full content for articles that need it
+                    const articlesWithFullContent = await Promise.all(
+                        articles.map(async (article) => {
+                            if (article.needsFullContent && article.link) {
+                                try {
+                                    const fullContent = await fetchFullArticle(article.link);
+                                    if (fullContent && fullContent.length > article.content.length) {
+                                        return {
+                                            ...article,
+                                            content: fullContent,
+                                            fullContentFetched: true,
+                                            needsFullContent: false
+                                        };
+                                    }
+                                } catch (fetchError) {
+                                    console.error(`Error fetching full content for ${article.link}:`, fetchError.message);
+                                }
+                            }
+                            return article;
+                        })
+                    );
+
+                    res.json({ articles: articlesWithFullContent });
+                    return;
+                }
             } catch (rssError) {
                 console.error('RSS feed error, falling back to sample articles:', rssError);
             }
         } else {
-            console.log('RSS parser not available, using sample articles');
+            console.log('RSS parser or axios not available, using sample articles');
         }
 
         // Fallback to sample articles if RSS fails

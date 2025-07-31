@@ -169,6 +169,19 @@ function NewsPage() {
                                 <h2>{selectedArticle.title}</h2>
                                 <p className="article-meta">
                                     {selectedArticle.source} • {selectedArticle.date}
+                                    {selectedArticle.link && (
+                                        <>
+                                            {' • '}
+                                            <a
+                                                href={selectedArticle.link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="article-link"
+                                            >
+                                                Read full article
+                                            </a>
+                                        </>
+                                    )}
                                 </p>
                                 {!showWordSelection && (
                                     <button
@@ -185,7 +198,19 @@ function NewsPage() {
                                 {showWordSelection ? (
                                     highlightWords(selectedArticle.content)
                                 ) : (
-                                    <p>{selectedArticle.content}</p>
+                                    <>
+                                        <p>{selectedArticle.content}</p>
+                                        {selectedArticle.fullContentFetched && (
+                                            <p className="article-note article-note-success">
+                                                <em>Full article content loaded from N1 Info.</em>
+                                            </p>
+                                        )}
+                                        {selectedArticle.link && selectedArticle.content.length < 500 && !selectedArticle.fullContentFetched && (
+                                            <p className="article-note">
+                                                <em>Note: This is a preview. Full content could not be loaded automatically.</em>
+                                            </p>
+                                        )}
+                                    </>
                                 )}
                             </div>
 
