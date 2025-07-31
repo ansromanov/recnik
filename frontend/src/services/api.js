@@ -58,6 +58,37 @@ export const apiService = {
 
     // Statistics
     getStats: () => api.get('/stats'),
+
+    // News
+    getNews: () => api.get('/news'),
+};
+
+// Export individual functions for components that use them
+export const processText = async (text) => {
+    const response = await apiService.processText(text);
+    return {
+        words: response.data.translations.map((word, index) => ({
+            id: index,
+            serbian: word.serbian_word,
+            english: word.english_translation,
+            category: word.category_name,
+            original: word.original_form
+        }))
+    };
+};
+
+export const fetchNews = async () => {
+    const response = await apiService.getNews();
+    return response.data;
+};
+
+export const generateExampleSentence = async (word) => {
+    const response = await apiService.getExampleSentence(
+        word.serbian_word,
+        word.english_translation,
+        word.category
+    );
+    return response.data;
 };
 
 export default apiService;

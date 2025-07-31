@@ -5,10 +5,12 @@ A web application for learning Serbian vocabulary with automatic translation, ca
 ## Features
 
 - **Text Processing**: Paste Serbian text to automatically extract and translate new vocabulary
+- **Serbian News Reader**: Read real-time Serbian news from N1 Info RSS feed and extract vocabulary
 - **Word Categories**: Organize words into categories (Verbs, Nouns, Food & Drink, etc.)
 - **Vocabulary Management**: View and search your saved words with mastery tracking
-- **Practice Mode**: Interactive exercises to test your knowledge
+- **Practice Mode**: Interactive multiple-choice exercises to test your knowledge
 - **Progress Tracking**: Monitor your learning progress with statistics and session history
+- **Example Sentences**: See words used in context with AI-generated examples
 - **Fully Containerized**: Everything runs in Docker for easy setup
 
 ## Prerequisites
@@ -53,10 +55,19 @@ A web application for learning Serbian vocabulary with automatic translation, ca
 ### Practicing Vocabulary
 
 1. Go to "Practice" page
-2. You'll see Serbian words one by one
-3. Type the English translation
-4. Press Enter to submit
+2. You'll see Serbian words with multiple choice options
+3. Select the correct English translation
+4. View example sentences for correct answers
 5. Track your progress throughout the session
+
+### Reading Serbian News
+
+1. Go to "News" page
+2. Browse latest Serbian news from N1 Info (automatically fetched from RSS)
+3. Click on an article to read it
+4. Click "Extract Vocabulary" to find new words
+5. Select words to add to your vocabulary
+6. All articles are in Latin script for easier reading
 
 ### Viewing Your Vocabulary
 
@@ -103,7 +114,9 @@ serbian-vocabulary-app/
 - `POST /api/practice/start` - Start a practice session
 - `POST /api/practice/submit` - Submit practice result
 - `POST /api/practice/complete` - Complete practice session
+- `POST /api/practice/example-sentence` - Generate example sentence for a word
 - `GET /api/stats` - Get user statistics
+- `GET /api/news` - Get Serbian news articles
 
 ## Development
 

@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage';
 import TextProcessorPage from './pages/TextProcessorPage';
 import VocabularyPage from './pages/VocabularyPage';
 import PracticePage from './pages/PracticePage';
+import NewsPage from './pages/NewsPage';
 
 function App() {
     return (
@@ -22,6 +23,9 @@ function App() {
                     <NavLink to="/practice" className={({ isActive }) => isActive ? 'active' : ''}>
                         Practice
                     </NavLink>
+                    <NavLink to="/news" className={({ isActive }) => isActive ? 'active' : ''}>
+                        News
+                    </NavLink>
                 </nav>
 
                 <Routes>
@@ -29,6 +33,7 @@ function App() {
                     <Route path="/process-text" element={<TextProcessorPage />} />
                     <Route path="/vocabulary" element={<VocabularyPage />} />
                     <Route path="/practice" element={<PracticePage />} />
+                    <Route path="/news" element={<NewsPage />} />
                 </Routes>
             </div>
         </Router>

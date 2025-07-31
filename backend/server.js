@@ -3,6 +3,17 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const { Pool } = require('pg');
 const OpenAI = require('openai');
+
+// Try to load RSS parser, but don't crash if not available
+let Parser;
+let axios;
+try {
+    Parser = require('rss-parser');
+    axios = require('axios');
+} catch (error) {
+    console.warn('RSS parser or axios not installed. News feature will use fallback articles.');
+}
+
 require('dotenv').config();
 
 const app = express();
@@ -455,6 +466,80 @@ app.get('/api/stats', async (req, res) => {
     } catch (error) {
         console.error('Error fetching statistics:', error);
         res.status(500).json({ error: 'Failed to fetch statistics' });
+    }
+});
+
+// Get Serbian news articles
+app.get('/api/news', async (req, res) => {
+    try {
+        // Try to fetch from RSS feed first if parser is available
+        if (Parser) {
+            try {
+                const parser = new Parser();
+                const feedUrl = 'https://n1info.rs/feed/';
+                const feed = await parser.parseURL(feedUrl);
+
+                // Transform RSS items to our article format
+                const articles = feed.items.slice(0, 10).map(item => {
+                    // Extract text content from description/content
+                    let content = item.contentSnippet || item.content || item.description || '';
+
+                    // Remove HTML tags if present
+                    content = content.replace(/<[^>]*>/g, '');
+
+                    // Ensure content is at least 200 characters
+                    if (content.length < 200 && item.link) {
+                        content = `${content} Pročitajte ceo članak na originalnom sajtu za više informacija.`;
+                    }
+
+                    return {
+                        title: item.title,
+                        content: content,
+                        source: "N1 Info",
+                        date: new Date(item.pubDate).toLocaleDateString('sr-Latn-RS'),
+                        category: item.categories && item.categories.length > 0 ? item.categories[0] : "Vesti",
+                        link: item.link
+                    };
+                });
+
+                res.json({ articles });
+                return;
+            } catch (rssError) {
+                console.error('RSS feed error, falling back to sample articles:', rssError);
+            }
+        } else {
+            console.log('RSS parser not available, using sample articles');
+        }
+
+        // Fallback to sample articles if RSS fails
+        const articles = [
+            {
+                title: "Novi most preko Dunava uskoro završen",
+                content: `Radovi na izgradnji novog mosta preko Dunava ulaze u završnu fazu. Gradonačelnik je izjavio da će most biti otvoren za saobraćaj do kraja godine. Ovaj projekat predstavlja jednu od najvećih investicija u infrastrukturu u poslednjih deset godina. Most će značajno poboljšati saobraćajnu povezanost između dva dela grada i smanjiti gužve na postojećim mostovima. Ukupna vrednost investicije iznosi preko 100 miliona evra. Novi most će imati šest traka za vozila, kao i posebne staze za bicikliste i pešake. Očekuje se da će preko mosta dnevno prelaziti više od 50.000 vozila.`,
+                source: "Dnevne novosti",
+                date: new Date().toLocaleDateString('sr-Latn-RS'),
+                category: "Infrastruktura"
+            },
+            {
+                title: "Otvorena nova biblioteka u centru grada",
+                content: `Danas je svečano otvorena nova gradska biblioteka koja se nalazi u samom centru grada. Biblioteka raspolaže sa preko 100.000 knjiga i modernom čitaonicom. Posebna pažnja posvećena je dečjem odeljenju koje ima interaktivne sadržaje za najmlađe čitaoce. U biblioteci se nalazi i multimedijalna sala za predavanja i kulturne događaje. Radno vreme biblioteke je od 8 do 20 časova svakog dana osim nedelje. Članarina je besplatna za učenike i studente. Direktorka biblioteke istakla je da će ustanova organizovati brojne književne večeri i radionice za decu.`,
+                source: "Kulturni pregled",
+                date: new Date().toLocaleDateString('sr-Latn-RS'),
+                category: "Kultura"
+            },
+            {
+                title: "Uspešna žetva pšenice ove godine",
+                content: `Poljoprivrednici širom zemlje izveštavaju o uspešnoj žetvi pšenice. Prinosi su iznad proseka zahvaljujući povoljnim vremenskim uslovima tokom proleća. Ministarstvo poljoprivrede saopštilo je da će otkupna cena pšenice biti stabilna. Očekuje se da će ukupan prinos premašiti prošlogodišnji za oko 15 procenata. Kvalitet pšenice je izuzetan, što će omogućiti značajan izvoz. Mnogi poljoprivrednici su zadovoljni ovogodišnjom žetvom i planiraju da prošire zasejane površine sledeće godine. Država je obećala subvencije za nabavku nove mehanizacije.`,
+                source: "Poljoprivredni glasnik",
+                date: new Date().toLocaleDateString('sr-Latn-RS'),
+                category: "Poljoprivreda"
+            }
+        ];
+
+        res.json({ articles });
+    } catch (error) {
+        console.error('Error fetching news:', error);
+        res.status(500).json({ error: 'Failed to fetch news articles' });
     }
 });
 
