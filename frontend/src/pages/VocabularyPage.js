@@ -161,35 +161,23 @@ function VocabularyPage() {
             ) : (
                 <div className="word-grid">
                     {filteredWords.map(word => (
-                        <div key={word.id} className="word-card">
-                            {/* Word Image */}
-                            <div className="word-image-container">
-                                {loadingImages[word.id] ? (
-                                    <div className="image-placeholder loading-image">
-                                        <div className="image-spinner"></div>
-                                        <span>Loading image...</span>
-                                    </div>
-                                ) : wordImages[word.id] ? (
-                                    <img
-                                        src={wordImages[word.id]}
-                                        alt={`Visual representation of ${word.serbian_word}`}
-                                        className="word-image"
-                                        onError={() => {
-                                            console.log(`Image failed to load for ${word.serbian_word}`);
-                                            setWordImages(prev => {
-                                                const newImages = { ...prev };
-                                                delete newImages[word.id];
-                                                return newImages;
-                                            });
-                                        }}
-                                    />
-                                ) : (
-                                    <div className="image-placeholder">
-                                        <span>📷</span>
-                                        <span>No image</span>
-                                    </div>
-                                )}
-                            </div>
+                        <div
+                            key={word.id}
+                            className="word-card"
+                            style={{
+                                backgroundImage: wordImages[word.id] ? `url(${wordImages[word.id]})` : 'none'
+                            }}
+                        >
+                            {/* Image status indicator */}
+                            {loadingImages[word.id] ? (
+                                <div className="image-placeholder loading-image">
+                                    <div className="image-spinner"></div>
+                                </div>
+                            ) : !wordImages[word.id] ? (
+                                <div className="image-placeholder">
+                                    <span>📷</span>
+                                </div>
+                            ) : null}
 
                             <div className="word-header">
                                 <h3 className="serbian-word">{word.serbian_word}</h3>

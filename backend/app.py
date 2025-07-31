@@ -1510,6 +1510,54 @@ def get_image_immediate():
         return jsonify({"error": "Failed to get immediate image"}), 500
 
 
+@app.route("/api/images/populate-queue", methods=["POST"])
+@jwt_required()
+def populate_image_queue():
+    """Trigger population of image queue with vocabulary and top 100 words"""
+    try:
+        from image_queue_populator import ImageQueuePopulator
+
+        populator = ImageQueuePopulator()
+
+        # Run population cycle
+        data = request.get_json() or {}
+        population_type = data.get("type", "all")  # all, top100, vocabulary, recent
+
+        if population_type == "top100":
+            added_count = populator.populate_top_100_words()
+        elif population_type == "vocabulary":
+            added_count = populator.populate_user_vocabulary_words()
+        elif population_type == "recent":
+            days = data.get("days", 7)
+            added_count = populator.populate_recent_words(days)
+        else:  # all
+            # Get initial status
+            initial_status = populator.get_queue_status()
+
+            # Run full population cycle
+            total_added = 0
+            total_added += populator.populate_top_100_words()
+            total_added += populator.populate_user_vocabulary_words()
+            total_added += populator.populate_recent_words(days=7)
+            added_count = total_added
+
+        # Get final status
+        final_status = populator.get_queue_status()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Added {added_count} words to image processing queue",
+                "added_count": added_count,
+                "queue_status": final_status,
+            }
+        )
+
+    except Exception as e:
+        print(f"Error populating image queue: {e}")
+        return jsonify({"error": "Failed to populate image queue"}), 500
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 3001))
     app.run(host="0.0.0.0", port=port, debug=True)

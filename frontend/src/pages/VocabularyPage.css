@@ -1,53 +1,83 @@
 /* Vocabulary Page Specific Styles */
 
-.word-image-container {
-    width: 100%;
-    height: 200px;
-    margin-bottom: 15px;
+.word-card {
+    position: relative;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     border-radius: 8px;
     overflow: hidden;
-    background-color: #f8f9fa;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+}
+
+.word-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: inherit;
+    opacity: 0.6;
+    z-index: 1;
+}
+
+.word-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    opacity: 0.9;
+    z-index: 2;
+}
+
+.word-card>* {
+    position: relative;
+    z-index: 3;
+}
+
+.word-image-container {
+    display: none;
+    /* Hide the old image container */
 }
 
 .word-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 8px;
-    transition: transform 0.3s ease;
-}
-
-.word-image:hover {
-    transform: scale(1.05);
+    display: none;
+    /* Hide the old image element */
 }
 
 .image-placeholder {
+    position: absolute;
+    top: 10px;
+    right: 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100%;
+    width: 40px;
+    height: 40px;
     color: #999;
-    font-size: 14px;
-    gap: 8px;
+    font-size: 12px;
+    z-index: 4;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
 }
 
 .image-placeholder span:first-child {
-    font-size: 32px;
+    font-size: 16px;
 }
 
 .loading-image {
-    gap: 12px;
+    gap: 4px;
 }
 
 .image-spinner {
-    width: 32px;
-    height: 32px;
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #4CAF50;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #4CAF50;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }

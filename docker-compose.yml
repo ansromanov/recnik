@@ -83,6 +83,29 @@ services:
       retries: 3
       start_period: 30s
 
+  queue-populator:
+    build: ./backend
+    container_name: serbian-vocab-queue-populator
+    environment:
+      DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - vocab-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: python image_queue_populator.py --continuous --interval 30
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import redis; redis.from_url('redis://redis:6379').ping()"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
   frontend:
     build: ./frontend
     container_name: serbian-vocab-frontend
