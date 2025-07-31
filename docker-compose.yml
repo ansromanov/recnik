@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: serbian-vocab-db
+    environment:
+      POSTGRES_USER: vocab_user
+      POSTGRES_PASSWORD: vocab_pass
+      POSTGRES_DB: serbian_vocabulary
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - vocab-network
+
+  backend:
+    build: ./backend
+    container_name: serbian-vocab-backend
+    environment:
+      DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+    networks:
+      - vocab-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    build: ./frontend
+    container_name: serbian-vocab-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - vocab-network
+
+volumes:
+  postgres_data:
+
+networks:
+  vocab-network:
+    driver: bridge
