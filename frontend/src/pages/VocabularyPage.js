@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
+import './VocabularyPage.css';
 
 function VocabularyPage() {
     const [words, setWords] = useState([]);
@@ -118,34 +119,36 @@ function VocabularyPage() {
                 <div className="word-grid">
                     {filteredWords.map(word => (
                         <div key={word.id} className="word-card">
-                            <h3 style={{ marginBottom: '10px' }}>{word.serbian_word}</h3>
-                            <p style={{ fontSize: '18px', marginBottom: '15px' }}>
-                                {word.english_translation}
-                            </p>
+                            <div className="word-header">
+                                <h3 className="serbian-word">{word.serbian_word}</h3>
+                                <p className="english-translation">{word.english_translation}</p>
+                            </div>
 
-                            <div style={{ fontSize: '14px', color: '#666', marginBottom: '10px' }}>
-                                <span className="category-badge" style={{ backgroundColor: '#e0e0e0' }}>
+                            <div className="word-category">
+                                <span className="category-badge">
                                     {word.category_name}
                                 </span>
                             </div>
 
                             {word.mastery_level !== null && (
-                                <div style={{ marginTop: '15px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                        <span style={{ fontSize: '12px', color: '#666' }}>Mastery</span>
-                                        <span style={{ fontSize: '12px', color: '#666' }}>{word.mastery_level}%</span>
+                                <div className="mastery-section">
+                                    <div className="mastery-header">
+                                        <span className="mastery-label">Mastery</span>
+                                        <span className="mastery-percentage">{word.mastery_level}%</span>
                                     </div>
                                     <div className="mastery-indicator">
-                                        <div
-                                            className="mastery-fill"
-                                            style={{
-                                                width: `${word.mastery_level}%`,
-                                                backgroundColor: getMasteryColor(word.mastery_level)
-                                            }}
-                                        />
+                                        <div className="mastery-bar">
+                                            <div
+                                                className="mastery-fill"
+                                                style={{
+                                                    width: `${word.mastery_level}%`,
+                                                    backgroundColor: getMasteryColor(word.mastery_level)
+                                                }}
+                                            />
+                                        </div>
                                     </div>
                                     {word.times_practiced > 0 && (
-                                        <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                                        <p className="practice-count">
                                             Practiced {word.times_practiced} times
                                         </p>
                                     )}
@@ -153,16 +156,16 @@ function VocabularyPage() {
                             )}
 
                             {word.context && (
-                                <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
-                                    <p style={{ fontSize: '12px', color: '#666' }}>Context:</p>
-                                    <p style={{ fontSize: '14px' }}>{word.context}</p>
+                                <div className="word-context">
+                                    <p className="context-label">Context:</p>
+                                    <p className="context-text">{word.context}</p>
                                 </div>
                             )}
 
                             {word.notes && (
-                                <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
-                                    <p style={{ fontSize: '12px', color: '#666' }}>Notes:</p>
-                                    <p style={{ fontSize: '14px' }}>{word.notes}</p>
+                                <div className="word-notes">
+                                    <p className="notes-label">Notes:</p>
+                                    <p className="notes-text">{word.notes}</p>
                                 </div>
                             )}
                         </div>

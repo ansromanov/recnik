@@ -20,13 +20,43 @@ function Top100Page() {
     const fetchCategories = async () => {
         try {
             setLoading(true);
+            setError(''); // Clear any previous errors
+            console.log('Fetching categories...');
             const response = await apiService.getCategories();
+            console.log('Categories response:', response);
+
+            // Check if response has data
+            if (!response || !response.data) {
+                throw new Error('Invalid response format');
+            }
+
             // Filter categories that have top 100 words
             const categoriesWithTop100 = response.data.filter(cat => cat.top_100_count > 0);
+            console.log('Categories with top 100:', categoriesWithTop100);
             setCategories(categoriesWithTop100);
             setLoading(false);
         } catch (error) {
-            setError('Failed to fetch categories');
+            console.error('Error fetching categories:', error);
+            console.error('Error response:', error.response);
+            console.error('Error request:', error.request);
+            console.error('Error config:', error.config);
+
+            let errorMessage = 'Failed to fetch categories';
+            if (error.response) {
+                // The request was made and the server responded with a status code
+                errorMessage += `: ${error.response.status} ${error.response.statusText}`;
+                if (error.response.data && error.response.data.error) {
+                    errorMessage += ` - ${error.response.data.error}`;
+                }
+            } else if (error.request) {
+                // The request was made but no response was received
+                errorMessage += ': No response from server';
+            } else {
+                // Something happened in setting up the request
+                errorMessage += `: ${error.message}`;
+            }
+
+            setError(errorMessage);
             setLoading(false);
         }
     };
@@ -36,7 +66,11 @@ function Top100Page() {
             setLoading(true);
             setError('');
             const response = await apiService.getTop100WordsByCategory(categoryId);
-            setWords(response.data.words);
+            // Sort words alphabetically by Serbian word
+            const sortedWords = response.data.words.sort((a, b) =>
+                a.serbian_word.localeCompare(b.serbian_word, 'sr')
+            );
+            setWords(sortedWords);
             setSelectedCategory(response.data.category);
             setSelectedWords(new Set());
             setLoading(false);
@@ -164,7 +198,7 @@ function Top100Page() {
                         <div className="loading">Loading words...</div>
                     ) : (
                         <>
-                            <div className="words-grid">
+                            <div className="top100-words-list">
                                 {words.map(word => (
                                     <div
                                         key={word.id}
