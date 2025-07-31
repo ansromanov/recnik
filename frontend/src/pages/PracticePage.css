@@ -1,0 +1,88 @@
+/* Practice Page Specific Styles */
+
+/* Word background image for practice */
+.word-background-image {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.15;
+    z-index: -2;
+    transition: opacity 0.8s ease-in-out;
+    filter: blur(2px);
+}
+
+.word-background-image.loading {
+    opacity: 0;
+}
+
+.word-background-image.loaded {
+    opacity: 0.15;
+}
+
+/* Word with image display */
+.word-with-image {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.word-image-preview {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    object-fit: cover;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border: 3px solid rgba(255, 255, 255, 0.8);
+    transition: transform 0.3s ease;
+}
+
+.word-image-preview:hover {
+    transform: scale(1.1);
+}
+
+/* Image attribution */
+.image-attribution {
+    position: absolute;
+    bottom: 10px;
+    right: 15px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+.image-attribution:hover {
+    opacity: 1;
+}
+
+.image-attribution a {
+    color: #81C784;
+    text-decoration: none;
+}
+
+.image-attribution a:hover {
+    text-decoration: underline;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .word-with-image {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .word-image-preview {
+        width: 60px;
+        height: 60px;
+    }
+}

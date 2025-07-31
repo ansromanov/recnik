@@ -197,11 +197,11 @@ function NewsPage() {
     };
 
     if (loading) {
-        return <div className="news-page"><div className="loading">Loading news...</div></div>;
+        return <div className="loading">Loading news...</div>;
     }
 
     return (
-        <div className="news-page">
+        <div className="container">
             <h1>Serbian News</h1>
             <p className="subtitle">Read Serbian news and learn new vocabulary in context</p>
 
