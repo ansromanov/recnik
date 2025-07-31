@@ -1,10 +1,16 @@
 import os
 import json
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from flask_jwt_extended import (
+    JWTManager,
+    create_access_token,
+    jwt_required,
+    get_jwt_identity,
+)
 from sqlalchemy import or_, and_, func
 from sqlalchemy.orm import joinedload
 import openai
@@ -14,7 +20,16 @@ from html.parser import HTMLParser
 import re
 
 # Import our models
-from models import db, Category, Word, UserVocabulary, PracticeSession, PracticeResult
+from models import (
+    db,
+    Category,
+    Word,
+    UserVocabulary,
+    PracticeSession,
+    PracticeResult,
+    User,
+    Settings,
+)
 
 # Try to import feedparser, but don't crash if not available
 try:
@@ -30,7 +45,26 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)
+
+# Configure CORS properly
+CORS(
+    app,
+    resources={
+        r"/api/*": {
+            "origins": ["http://localhost:3000", "http://localhost:3001"],
+            "allow_headers": [
+                "Content-Type",
+                "Authorization",
+                "Access-Control-Allow-Credentials",
+            ],
+            "expose_headers": ["Content-Range", "X-Content-Range"],
+            "supports_credentials": True,
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "send_wildcard": False,
+            "always_send": True,
+        }
+    },
+)
 
 # Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -42,19 +76,37 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_pre_ping": True,
 }
 
+# JWT configuration
+app.config["JWT_SECRET_KEY"] = os.getenv(
+    "JWT_SECRET_KEY", "your-secret-key-change-this"
+)
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
+jwt = JWTManager(app)
+
 # Initialize database with app
 db.init_app(app)
 
-# OpenAI configuration
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# OpenAI configuration - will be loaded from database per user
+# openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Test database connection
 with app.app_context():
     try:
-        db.session.execute("SELECT 1")
+        from sqlalchemy import text
+
+        db.session.execute(text("SELECT 1"))
         print("Connected to PostgreSQL database using SQLAlchemy")
     except Exception as e:
         print(f"Error connecting to database: {e}")
+
+
+# Helper function to get user's OpenAI API key
+def get_user_openai_key(user_id):
+    """Get OpenAI API key from user's settings"""
+    user = User.query.get(user_id)
+    if user and user.settings and user.settings.openai_api_key:
+        return user.settings.openai_api_key
+    return None
 
 
 # Routes
@@ -63,6 +115,148 @@ def health_check():
     return jsonify(
         {"status": "ok", "message": "Serbian Vocabulary API is running with ORM"}
     )
+
+
+# Authentication endpoints
+@app.route("/api/auth/register", methods=["POST", "OPTIONS"])
+def register():
+    if request.method == "OPTIONS":
+        return "", 200
+    try:
+        data = request.get_json()
+        username = data.get("username", "").strip()
+        password = data.get("password", "")
+
+        if not username or not password:
+            return jsonify({"error": "Username and password are required"}), 400
+
+        # Check if user already exists
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            return jsonify({"error": "Username already exists"}), 409
+
+        # Create new user
+        user = User(username=username)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.flush()
+
+        # Create default settings for the user
+        settings = Settings(user_id=user.id)
+        db.session.add(settings)
+        db.session.commit()
+
+        # Create access token
+        access_token = create_access_token(identity=str(user.id))
+
+        return jsonify(
+            {
+                "message": "User registered successfully",
+                "access_token": access_token,
+                "user": user.to_dict(),
+            }
+        ), 201
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error registering user: {e}")
+        return jsonify({"error": "Failed to register user"}), 500
+
+
+@app.route("/api/auth/login", methods=["POST", "OPTIONS"])
+def login():
+    if request.method == "OPTIONS":
+        return "", 200
+    try:
+        data = request.get_json()
+        username = data.get("username", "").strip()
+        password = data.get("password", "")
+
+        if not username or not password:
+            return jsonify({"error": "Username and password are required"}), 400
+
+        # Find user
+        user = User.query.filter_by(username=username).first()
+        if not user or not user.check_password(password):
+            return jsonify({"error": "Invalid username or password"}), 401
+
+        # Create access token
+        access_token = create_access_token(identity=str(user.id))
+
+        return jsonify({"access_token": access_token, "user": user.to_dict()})
+
+    except Exception as e:
+        print(f"Error logging in: {e}")
+        return jsonify({"error": "Failed to login"}), 500
+
+
+@app.route("/api/auth/me")
+@jwt_required()
+def get_current_user():
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(int(user_id))
+
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        return jsonify({"user": user.to_dict()})
+    except Exception as e:
+        print(f"Error getting current user: {e}")
+        return jsonify({"error": "Failed to get user info"}), 500
+
+
+# Settings endpoints
+@app.route("/api/settings")
+@jwt_required()
+def get_settings():
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(int(user_id))
+
+        if not user or not user.settings:
+            return jsonify({"error": "Settings not found"}), 404
+
+        return jsonify({"settings": user.settings.to_dict(include_sensitive=True)})
+    except Exception as e:
+        print(f"Error getting settings: {e}")
+        return jsonify({"error": "Failed to get settings"}), 500
+
+
+@app.route("/api/settings", methods=["PUT"])
+@jwt_required()
+def update_settings():
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(int(user_id))
+
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        data = request.get_json()
+
+        # Create settings if they don't exist
+        if not user.settings:
+            user.settings = Settings(user_id=user.id)
+            db.session.add(user.settings)
+
+        # Update OpenAI API key if provided
+        if "openai_api_key" in data:
+            user.settings.openai_api_key = data["openai_api_key"]
+
+        db.session.commit()
+
+        return jsonify(
+            {
+                "message": "Settings updated successfully",
+                "settings": user.settings.to_dict(include_sensitive=True),
+            }
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating settings: {e}")
+        return jsonify({"error": "Failed to update settings"}), 500
 
 
 @app.route("/api/categories")
@@ -76,22 +270,46 @@ def get_categories():
 
 
 @app.route("/api/words")
+@jwt_required()
 def get_words():
     try:
+        user_id = int(get_jwt_identity())
         category_id = request.args.get("category_id")
 
         # Build the query with eager loading of relationships
-        query = Word.query.options(
-            joinedload(Word.category), joinedload(Word.user_vocabulary)
-        )
+        query = Word.query.options(joinedload(Word.category))
 
         if category_id:
             query = query.filter(Word.category_id == category_id)
 
         words = query.order_by(Word.serbian_word).all()
 
-        # Convert to dict with user data
-        words_data = [word.to_dict(include_user_data=True) for word in words]
+        # Convert to dict with user-specific data
+        words_data = []
+        for word in words:
+            word_dict = word.to_dict()
+
+            # Get user-specific vocabulary data
+            user_vocab = UserVocabulary.query.filter_by(
+                user_id=user_id, word_id=word.id
+            ).first()
+
+            if user_vocab:
+                word_dict["mastery_level"] = user_vocab.mastery_level
+                word_dict["times_practiced"] = user_vocab.times_practiced
+                word_dict["last_practiced"] = (
+                    user_vocab.last_practiced.isoformat()
+                    if user_vocab.last_practiced
+                    else None
+                )
+                word_dict["is_in_vocabulary"] = True
+            else:
+                word_dict["mastery_level"] = 0
+                word_dict["times_practiced"] = 0
+                word_dict["last_practiced"] = None
+                word_dict["is_in_vocabulary"] = False
+
+            words_data.append(word_dict)
 
         return jsonify(words_data)
     except Exception as e:
@@ -100,8 +318,18 @@ def get_words():
 
 
 @app.route("/api/process-text", methods=["POST"])
+@jwt_required()
 def process_text():
     try:
+        # Get user's OpenAI API key
+        user_id = get_jwt_identity()
+        api_key = get_user_openai_key(int(user_id))
+
+        if not api_key:
+            return jsonify(
+                {"error": "Please configure your OpenAI API key in settings"}
+            ), 400
+
         data = request.get_json()
         text = data.get("text", "")
 
@@ -132,6 +360,7 @@ def process_text():
         for word in unique_words[:50]:
             try:
                 completion = openai.ChatCompletion.create(
+                    api_key=api_key,
                     model="gpt-3.5-turbo",
                     messages=[
                         {
@@ -201,25 +430,16 @@ Respond in JSON format: {{"serbian_infinitive": "word in infinitive/base form", 
                         }
                     )
 
-        # Check which words already exist
-        infinitive_forms = [w["serbian_word"] for w in processed_words]
-        existing_words = Word.query.filter(
-            Word.serbian_word.in_(infinitive_forms)
-        ).all()
-        existing_word_set = set(word.serbian_word for word in existing_words)
-
-        new_words = [
-            word
-            for word in processed_words
-            if word["serbian_word"] not in existing_word_set
-        ]
+        # For user isolation, we don't check if words already exist
+        # Each user can have their own copy of the same word
+        # This ensures complete vocabulary isolation between users
 
         return jsonify(
             {
                 "total_words": len(unique_words),
-                "existing_words": len(existing_word_set),
-                "new_words": len(new_words),
-                "translations": new_words,
+                "existing_words": 0,  # Always 0 since we're not checking for existing words
+                "new_words": len(processed_words),
+                "translations": processed_words,
             }
         )
     except Exception as e:
@@ -228,8 +448,10 @@ Respond in JSON format: {{"serbian_infinitive": "word in infinitive/base form", 
 
 
 @app.route("/api/words", methods=["POST"])
+@jwt_required()
 def add_words():
     try:
+        user_id = int(get_jwt_identity())
         data = request.get_json()
         words = data.get("words", [])
 
@@ -237,39 +459,42 @@ def add_words():
             return jsonify({"error": "Words array is required"}), 400
 
         inserted_words = []
+        added_to_vocabulary = []
 
         for word_data in words:
             try:
-                # Check if word already exists
-                existing_word = Word.query.filter_by(
+                # Always create a new word for each user - no sharing between users
+                # This ensures complete isolation of vocabulary between users
+                new_word = Word(
                     serbian_word=word_data["serbian_word"],
                     english_translation=word_data["english_translation"],
-                ).first()
+                    category_id=word_data.get("category_id", 1),
+                    context=word_data.get("context"),
+                    notes=word_data.get("notes"),
+                )
+                db.session.add(new_word)
+                db.session.flush()  # Get the ID without committing
 
-                if not existing_word:
-                    # Create new word
-                    new_word = Word(
-                        serbian_word=word_data["serbian_word"],
-                        english_translation=word_data["english_translation"],
-                        category_id=word_data.get("category_id", 1),
-                        context=word_data.get("context"),
-                        notes=word_data.get("notes"),
-                    )
-                    db.session.add(new_word)
-                    db.session.flush()  # Get the ID without committing
+                # Add to user vocabulary
+                user_vocab = UserVocabulary(user_id=user_id, word_id=new_word.id)
+                db.session.add(user_vocab)
 
-                    # Add to user vocabulary
-                    user_vocab = UserVocabulary(word_id=new_word.id)
-                    db.session.add(user_vocab)
-
-                    inserted_words.append(new_word.to_dict())
+                inserted_words.append(new_word.to_dict())
+                added_to_vocabulary.append(new_word.to_dict())
 
             except Exception as e:
-                print(f'Error inserting word "{word_data["serbian_word"]}": {e}')
+                print(f'Error processing word "{word_data["serbian_word"]}": {e}')
 
         db.session.commit()
 
-        return jsonify({"inserted": len(inserted_words), "words": inserted_words})
+        return jsonify(
+            {
+                "inserted": len(inserted_words),
+                "words": inserted_words,
+                "added_to_vocabulary": len(added_to_vocabulary),
+                "vocabulary_words": added_to_vocabulary,
+            }
+        )
     except Exception as e:
         db.session.rollback()
         print(f"Error adding words: {e}")
@@ -277,33 +502,47 @@ def add_words():
 
 
 @app.route("/api/practice/words")
+@jwt_required()
 def get_practice_words():
     try:
+        user_id = int(get_jwt_identity())
         limit = int(request.args.get("limit", 10))
         difficulty = request.args.get("difficulty")
 
-        # Build query for words with low mastery
+        # First, let's check if the user has any vocabulary at all
+        user_vocab_count = UserVocabulary.query.filter_by(user_id=user_id).count()
+        print(f"User {user_id} has {user_vocab_count} words in vocabulary")
+
+        # Build query for user's words - include all words in user's vocabulary for practice
+        # Remove the mastery_level filter to ensure we get words
         query = (
             db.session.query(Word)
             .join(UserVocabulary)
-            .filter(UserVocabulary.mastery_level < 80)
-            .options(joinedload(Word.category), joinedload(Word.user_vocabulary))
+            .filter(UserVocabulary.user_id == user_id)
+            .options(joinedload(Word.category))
         )
 
         if difficulty:
             query = query.filter(Word.difficulty_level == difficulty)
 
         # Order by last practiced (oldest first) and mastery level
+        # This ensures unpracticed words (NULL last_practiced) come first
         query = query.order_by(
             func.coalesce(UserVocabulary.last_practiced, datetime(1900, 1, 1)).asc(),
             UserVocabulary.mastery_level.asc(),
         ).limit(limit)
 
         words = query.all()
+        print(f"Query returned {len(words)} words for practice")
 
         # For each word, get 3 random incorrect options
         practice_words = []
         for word in words:
+            # Get user-specific vocabulary data
+            user_vocab = UserVocabulary.query.filter_by(
+                user_id=user_id, word_id=word.id
+            ).first()
+
             # Get random incorrect options
             incorrect_words = (
                 Word.query.filter(Word.id != word.id)
@@ -318,7 +557,11 @@ def get_practice_words():
             # Shuffle options
             random.shuffle(all_options)
 
-            word_dict = word.to_dict(include_user_data=True)
+            word_dict = word.to_dict()
+            if user_vocab:
+                word_dict["mastery_level"] = user_vocab.mastery_level
+                word_dict["times_practiced"] = user_vocab.times_practiced
+
             word_dict.update(
                 {"options": all_options, "correct_answer": word.english_translation}
             )
@@ -332,13 +575,24 @@ def get_practice_words():
 
 
 @app.route("/api/practice/example-sentence", methods=["POST"])
+@jwt_required()
 def generate_example_sentence():
     try:
+        # Get user's OpenAI API key
+        user_id = get_jwt_identity()
+        api_key = get_user_openai_key(int(user_id))
+
+        if not api_key:
+            return jsonify(
+                {"error": "Please configure your OpenAI API key in settings"}
+            ), 400
+
         data = request.get_json()
         serbian_word = data.get("serbian_word")
         english_translation = data.get("english_translation")
 
         completion = openai.ChatCompletion.create(
+            api_key=api_key,
             model="gpt-3.5-turbo",
             messages=[
                 {
@@ -362,9 +616,11 @@ def generate_example_sentence():
 
 
 @app.route("/api/practice/start", methods=["POST"])
+@jwt_required()
 def start_practice_session():
     try:
-        session = PracticeSession()
+        user_id = int(get_jwt_identity())
+        session = PracticeSession(user_id=user_id)
         db.session.add(session)
         db.session.commit()
         return jsonify(session.to_dict())
@@ -375,13 +631,23 @@ def start_practice_session():
 
 
 @app.route("/api/practice/submit", methods=["POST"])
+@jwt_required()
 def submit_practice_result():
     try:
+        user_id = int(get_jwt_identity())
         data = request.get_json()
         session_id = data.get("session_id")
         word_id = data.get("word_id")
         was_correct = data.get("was_correct")
         response_time_seconds = data.get("response_time_seconds")
+
+        # Verify session belongs to user
+        session = PracticeSession.query.filter_by(
+            id=session_id, user_id=user_id
+        ).first()
+
+        if not session:
+            return jsonify({"error": "Invalid session"}), 403
 
         # Record the result
         result = PracticeResult(
@@ -393,7 +659,10 @@ def submit_practice_result():
         db.session.add(result)
 
         # Update user vocabulary stats
-        user_vocab = UserVocabulary.query.filter_by(word_id=word_id).first()
+        user_vocab = UserVocabulary.query.filter_by(
+            user_id=user_id, word_id=word_id
+        ).first()
+
         if user_vocab:
             user_vocab.times_practiced += 1
             user_vocab.last_practiced = datetime.utcnow()
@@ -413,14 +682,19 @@ def submit_practice_result():
 
 
 @app.route("/api/practice/complete", methods=["POST"])
+@jwt_required()
 def complete_practice_session():
     try:
+        user_id = int(get_jwt_identity())
         data = request.get_json()
         session_id = data.get("session_id")
         duration_seconds = data.get("duration_seconds")
 
-        # Get session
-        session = PracticeSession.query.get(session_id)
+        # Get session and verify it belongs to user
+        session = PracticeSession.query.filter_by(
+            id=session_id, user_id=user_id
+        ).first()
+
         if not session:
             return jsonify({"error": "Session not found"}), 404
 
@@ -452,18 +726,32 @@ def complete_practice_session():
 
 
 @app.route("/api/stats")
+@jwt_required()
 def get_user_stats():
     try:
+        user_id = int(get_jwt_identity())
+
+        # Total words in the system
         total_words = Word.query.count()
+
+        # User's vocabulary words
+        user_vocabulary_count = UserVocabulary.query.filter_by(user_id=user_id).count()
+
+        # User's learned words (practiced at least once)
         learned_words = UserVocabulary.query.filter(
-            UserVocabulary.times_practiced > 0
-        ).count()
-        mastered_words = UserVocabulary.query.filter(
-            UserVocabulary.mastery_level >= 80
+            UserVocabulary.user_id == user_id, UserVocabulary.times_practiced > 0
         ).count()
 
+        # User's mastered words
+        mastered_words = UserVocabulary.query.filter(
+            UserVocabulary.user_id == user_id, UserVocabulary.mastery_level >= 80
+        ).count()
+
+        # User's recent sessions
         recent_sessions = (
-            PracticeSession.query.filter(PracticeSession.total_questions > 0)
+            PracticeSession.query.filter(
+                PracticeSession.user_id == user_id, PracticeSession.total_questions > 0
+            )
             .order_by(PracticeSession.session_date.desc())
             .limit(10)
             .all()
@@ -472,6 +760,7 @@ def get_user_stats():
         return jsonify(
             {
                 "total_words": total_words,
+                "user_vocabulary_count": user_vocabulary_count,
                 "learned_words": learned_words,
                 "mastered_words": mastered_words,
                 "recent_sessions": [session.to_dict() for session in recent_sessions],
@@ -531,6 +820,9 @@ def fetch_full_article(url):
 
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
+
+        # Ensure UTF-8 encoding
+        response.encoding = "utf-8"
 
         html = response.text
         content = ""
@@ -700,7 +992,33 @@ def get_news():
 
                 for feed_info in feeds_to_use:
                     try:
-                        feed = feedparser.parse(feed_info["url"])
+                        # Set up headers to request UTF-8 encoding
+                        headers = {
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                            "Accept-Charset": "utf-8",
+                            "Accept-Encoding": "gzip, deflate",
+                        }
+
+                        # Parse the feed with proper encoding handling
+                        feed = feedparser.parse(
+                            feed_info["url"], request_headers=headers
+                        )
+
+                        # Ensure proper encoding
+                        if hasattr(feed, "encoding"):
+                            if feed.encoding and feed.encoding.lower() not in [
+                                "utf-8",
+                                "utf8",
+                            ]:
+                                # Re-parse with explicit UTF-8 encoding
+                                try:
+                                    response = requests.get(
+                                        feed_info["url"], headers=headers, timeout=10
+                                    )
+                                    response.encoding = "utf-8"
+                                    feed = feedparser.parse(response.text)
+                                except:
+                                    pass  # Continue with original feed if re-parsing fails
 
                         # Transform RSS items to our article format
                         for item in feed.entries[:5]:

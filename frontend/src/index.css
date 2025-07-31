@@ -93,6 +93,9 @@ code {
     background-color: #333;
     overflow: hidden;
     margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .nav a {
@@ -113,6 +116,33 @@ code {
 .nav a.active {
     background-color: #4CAF50;
     color: white;
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding-right: 20px;
+}
+
+.user-info {
+    color: white;
+    font-size: 14px;
+}
+
+.logout-button {
+    background-color: #f44336;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.logout-button:hover {
+    background-color: #da190b;
 }
 
 .stats-grid {

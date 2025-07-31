@@ -9,6 +9,34 @@ const api = axios.create({
     },
 });
 
+// Add a request interceptor to include the auth token
+api.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
+// Add a response interceptor to handle auth errors
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            // Token is invalid or expired
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
+
 export const apiService = {
     // Health check
     healthCheck: () => api.get('/health'),
@@ -66,6 +94,10 @@ export const apiService = {
     },
 
     getNewsSources: () => api.get('/news/sources'),
+
+    // Settings
+    getSettings: () => api.get('/settings'),
+    updateSettings: (settings) => api.put('/settings', settings),
 };
 
 // Export individual functions for components that use them

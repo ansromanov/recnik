@@ -32,7 +32,9 @@ function VocabularyPage() {
         try {
             setLoading(true);
             const response = await apiService.getWords();
-            setWords(response.data);
+            // Filter to only show words that are in the user's vocabulary
+            const userWords = response.data.filter(word => word.is_in_vocabulary);
+            setWords(userWords);
             setError(null);
         } catch (err) {
             setError('Failed to load vocabulary');
@@ -110,7 +112,7 @@ function VocabularyPage() {
 
             {filteredWords.length === 0 ? (
                 <div className="card">
-                    <p>No words found. Start by processing some Serbian text!</p>
+                    <p>No words in your vocabulary. Start by processing some Serbian text or reading news articles!</p>
                 </div>
             ) : (
                 <div className="word-grid">

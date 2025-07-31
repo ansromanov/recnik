@@ -4,6 +4,8 @@ A web application for learning Serbian vocabulary with automatic translation, ca
 
 ## Features
 
+- **User Authentication**: Secure login system with individual user accounts
+- **Personal Vocabulary**: Each user maintains their own vocabulary list and progress
 - **Text Processing**: Paste Serbian text to automatically extract and translate new vocabulary
 - **Serbian News Reader**: Read real-time Serbian news from N1 Info RSS feed and extract vocabulary
 - **Word Categories**: Organize words into categories (Verbs, Nouns, Food & Drink, etc.)
@@ -17,6 +19,24 @@ A web application for learning Serbian vocabulary with automatic translation, ca
 
 - Docker and Docker Compose installed
 - OpenAI API key (get one from [OpenAI Platform](https://platform.openai.com/api-keys))
+
+## Important: Database Migrations
+
+After setting up the application for the first time, you need to run database migrations:
+
+1. **Authentication tables** (if not already done):
+
+   ```bash
+   docker-compose exec backend python add_auth_tables.py
+   ```
+
+2. **User-specific vocabulary** (NEW - Required for user-specific features):
+
+   ```bash
+   docker-compose exec backend python add_user_relationships.py
+   ```
+
+See [RUN_USER_MIGRATION.md](RUN_USER_MIGRATION.md) for detailed migration instructions.
 
 ## Quick Start
 
@@ -97,26 +117,48 @@ serbian-vocabulary-app/
 
 ## Database Schema
 
+- **users**: User accounts with authentication
+- **settings**: User-specific settings (OpenAI API keys)
 - **categories**: Word categories (Verbs, Nouns, etc.)
 - **words**: Serbian words with translations
-- **user_vocabulary**: Tracks user's learning progress
-- **practice_sessions**: Practice session records
-- **practice_results**: Individual practice results
+- **user_vocabulary**: Tracks each user's vocabulary and learning progress
+- **practice_sessions**: User-specific practice session records
+- **practice_results**: Individual practice results per session
 
 ## API Endpoints
 
+### Authentication (No auth required)
+
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login user
+- `GET /api/auth/me` - Get current user (requires auth)
+
+### Settings (Requires authentication)
+
+- `GET /api/settings` - Get user settings
+- `PUT /api/settings` - Update user settings (OpenAI API key)
+
+### Vocabulary (Most require authentication)
+
 - `GET /api/health` - Health check
 - `GET /api/categories` - Get all categories
-- `GET /api/words` - Get all words (with optional category filter)
-- `POST /api/process-text` - Process Serbian text and get translations
-- `POST /api/words` - Add new words to vocabulary
-- `GET /api/practice/words` - Get words for practice
+- `GET /api/words` - Get words with user-specific progress (requires auth)
+- `POST /api/process-text` - Process Serbian text and get translations (requires auth)
+- `POST /api/words` - Add new words to user's vocabulary (requires auth)
+
+### Practice (All require authentication)
+
+- `GET /api/practice/words` - Get words for practice from user's vocabulary
 - `POST /api/practice/start` - Start a practice session
 - `POST /api/practice/submit` - Submit practice result
 - `POST /api/practice/complete` - Complete practice session
 - `POST /api/practice/example-sentence` - Generate example sentence for a word
-- `GET /api/stats` - Get user statistics
-- `GET /api/news` - Get Serbian news articles
+
+### Statistics & News
+
+- `GET /api/stats` - Get user-specific statistics (requires auth)
+- `GET /api/news` - Get Serbian news articles (no auth required)
+- `GET /api/news/sources` - Get available news sources (no auth required)
 
 ## Development
 

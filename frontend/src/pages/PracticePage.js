@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
+import { Link } from 'react-router-dom';
 
 function PracticePage() {
     const [practiceWords, setPracticeWords] = useState([]);
@@ -81,7 +82,11 @@ function PracticePage() {
                 setExampleSentence(sentenceResponse.data.sentence);
             } catch (err) {
                 console.error('Error fetching example sentence:', err);
-                setExampleSentence('');
+                if (err.response && err.response.status === 400) {
+                    setExampleSentence('Configure OpenAI API key in Settings to see example sentences');
+                } else {
+                    setExampleSentence('');
+                }
             } finally {
                 setLoadingSentence(false);
             }
@@ -220,12 +225,12 @@ function PracticePage() {
                         <button
                             key={index}
                             className={`btn ${showResult && option === currentWord.correct_answer
-                                    ? 'btn-success'
-                                    : showResult && option === selectedAnswer && !isCorrect
-                                        ? 'btn-danger'
-                                        : selectedAnswer === option && !showResult
-                                            ? 'btn-secondary'
-                                            : ''
+                                ? 'btn-success'
+                                : showResult && option === selectedAnswer && !isCorrect
+                                    ? 'btn-danger'
+                                    : selectedAnswer === option && !showResult
+                                        ? 'btn-secondary'
+                                        : ''
                                 }`}
                             onClick={() => handleAnswerSelect(option)}
                             disabled={showResult}
@@ -261,16 +266,22 @@ function PracticePage() {
                                     <div style={{
                                         marginTop: '20px',
                                         padding: '15px',
-                                        backgroundColor: '#e8f5e9',
+                                        backgroundColor: exampleSentence.includes('Configure OpenAI') ? '#fff3cd' : '#e8f5e9',
                                         borderRadius: '8px',
                                         fontSize: '16px',
                                         lineHeight: '1.6'
                                     }}>
-                                        <p style={{ margin: 0, fontWeight: 'bold', marginBottom: '10px', color: '#2e7d32' }}>
+                                        <p style={{ margin: 0, fontWeight: 'bold', marginBottom: '10px', color: exampleSentence.includes('Configure OpenAI') ? '#856404' : '#2e7d32' }}>
                                             Example sentence:
                                         </p>
                                         <p style={{ margin: 0 }}>
-                                            {highlightWordInSentence(exampleSentence, currentWord.serbian_word)}
+                                            {exampleSentence.includes('Configure OpenAI') ? (
+                                                <span>
+                                                    <Link to="/settings">Configure OpenAI API key in Settings</Link> to see example sentences
+                                                </span>
+                                            ) : (
+                                                highlightWordInSentence(exampleSentence, currentWord.serbian_word)
+                                            )}
                                         </p>
                                     </div>
                                 )}

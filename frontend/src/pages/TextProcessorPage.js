@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import apiService from '../services/api';
+import { Link } from 'react-router-dom';
 
 function TextProcessorPage() {
     const [text, setText] = useState('');
@@ -43,7 +44,16 @@ function TextProcessorPage() {
                 selected: true
             })));
         } catch (err) {
-            setError('Failed to process text. Please try again.');
+            if (err.response && err.response.status === 400) {
+                setError(
+                    <span>
+                        Please configure your OpenAI API key in{' '}
+                        <Link to="/settings">Settings</Link> to process text
+                    </span>
+                );
+            } else {
+                setError('Failed to process text. Please try again.');
+            }
             console.error('Error processing text:', err);
         } finally {
             setProcessing(false);
@@ -127,7 +137,7 @@ function TextProcessorPage() {
                 </button>
             </div>
 
-            {error && <div className="error">{error}</div>}
+            {error && <div className="error">{typeof error === 'string' ? error : error}</div>}
             {success && <div className="success">{success}</div>}
 
             {results && (

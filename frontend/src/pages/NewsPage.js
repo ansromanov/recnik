@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchNews, processText } from '../services/api';
+import apiService from '../services/api';
+import { Link } from 'react-router-dom';
 import './NewsPage.css';
 
 function NewsPage() {
@@ -28,8 +30,8 @@ function NewsPage() {
 
     const loadSourcesAndCategories = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/news/sources');
-            const data = await response.json();
+            const response = await apiService.getNewsSources();
+            const data = response.data;
             setSources(data.sources);
             setCategories(data.categories);
             setAvailableCategories(['all']); // Default to showing all categories
@@ -105,7 +107,16 @@ function NewsPage() {
                 setError('No new words found in this article');
             }
         } catch (err) {
-            setError('Failed to process article text');
+            if (err.response && err.response.status === 400) {
+                setError(
+                    <span>
+                        Please configure your OpenAI API key in{' '}
+                        <Link to="/settings">Settings</Link> to extract vocabulary
+                    </span>
+                );
+            } else {
+                setError('Failed to process article text');
+            }
             console.error('Error processing text:', err);
         } finally {
             setProcessingWords(false);
@@ -137,18 +148,16 @@ function NewsPage() {
         }
 
         try {
-            // Save words using the existing vocabulary API
-            for (const word of wordsToSave) {
-                await fetch('http://localhost:5000/api/vocabulary', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        serbian: word.serbian,
-                        english: word.english,
-                        category: word.category
-                    })
-                });
-            }
+            // Convert words to the format expected by the API
+            const wordsForApi = wordsToSave.map(word => ({
+                serbian_word: word.serbian,
+                english_translation: word.english,
+                category_id: 1, // Default category, you might want to map this properly
+                context: `From article: ${selectedArticle.title}`,
+                notes: word.original && word.original !== word.serbian ? `Original form: ${word.original}` : null
+            }));
+
+            await apiService.addWords(wordsForApi);
 
             setSuccessMessage(`Successfully added ${wordsToSave.length} words to your vocabulary!`);
             setShowWordSelection(false);
@@ -220,7 +229,7 @@ function NewsPage() {
                 </div>
             </div>
 
-            {error && <div className="error">{error}</div>}
+            {error && <div className="error">{typeof error === 'string' ? error : error}</div>}
             {successMessage && <div className="success">{successMessage}</div>}
 
             <div className="news-container">

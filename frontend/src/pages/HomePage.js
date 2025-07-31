@@ -4,6 +4,7 @@ import apiService from '../services/api';
 function HomePage() {
     const [stats, setStats] = useState({
         total_words: 0,
+        user_vocabulary_count: 0,
         learned_words: 0,
         mastered_words: 0,
         recent_sessions: []
@@ -47,8 +48,8 @@ function HomePage() {
 
             <div className="stats-grid">
                 <div className="stat-card">
-                    <h3>Total Words</h3>
-                    <div className="stat-value">{stats.total_words}</div>
+                    <h3>My Vocabulary</h3>
+                    <div className="stat-value">{stats.user_vocabulary_count || 0}</div>
                 </div>
                 <div className="stat-card">
                     <h3>Learned Words</h3>
@@ -61,8 +62,8 @@ function HomePage() {
                 <div className="stat-card">
                     <h3>Progress</h3>
                     <div className="stat-value">
-                        {stats.total_words > 0
-                            ? Math.round((stats.mastered_words / stats.total_words) * 100)
+                        {stats.user_vocabulary_count > 0
+                            ? Math.round((stats.mastered_words / stats.user_vocabulary_count) * 100)
                             : 0}%
                     </div>
                 </div>

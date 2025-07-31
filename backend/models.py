@@ -2,8 +2,72 @@ from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
 from sqlalchemy.sql import func
+from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
+
+
+class User(db.Model):
+    __tablename__ = "users"
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    settings = db.relationship(
+        "Settings", backref="user", uselist=False, cascade="all, delete-orphan"
+    )
+    vocabulary = db.relationship(
+        "UserVocabulary", backref="user", lazy="dynamic", cascade="all, delete-orphan"
+    )
+    practice_sessions = db.relationship(
+        "PracticeSession", backref="user", lazy="dynamic", cascade="all, delete-orphan"
+    )
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "username": self.username,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class Settings(db.Model):
+    __tablename__ = "settings"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    openai_api_key = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    def to_dict(self, include_sensitive=False):
+        result = {
+            "id": self.id,
+            "user_id": self.user_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if include_sensitive:
+            result["openai_api_key"] = self.openai_api_key
+        else:
+            result["has_openai_key"] = bool(self.openai_api_key)
+        return result
 
 
 class Category(db.Model):
@@ -92,11 +156,15 @@ class UserVocabulary(db.Model):
     __tablename__ = "user_vocabulary"
 
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     word_id = db.Column(
         db.Integer,
         db.ForeignKey("words.id", ondelete="CASCADE"),
         nullable=False,
-        unique=True,
     )
     times_practiced = db.Column(db.Integer, default=0)
     times_correct = db.Column(db.Integer, default=0)
@@ -106,6 +174,9 @@ class UserVocabulary(db.Model):
 
     # Constraints
     __table_args__ = (
+        db.UniqueConstraint(
+            "user_id", "word_id", name="user_vocabulary_user_word_unique"
+        ),
         db.CheckConstraint(
             "mastery_level >= 0 AND mastery_level <= 100", name="_mastery_level_check"
         ),
@@ -129,6 +200,11 @@ class PracticeSession(db.Model):
     __tablename__ = "practice_sessions"
 
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     session_date = db.Column(db.DateTime, default=datetime.utcnow)
     total_questions = db.Column(db.Integer, default=0)
     correct_answers = db.Column(db.Integer, default=0)
