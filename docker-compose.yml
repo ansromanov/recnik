@@ -60,6 +60,29 @@ services:
       - /app/node_modules
     command: python cache_updater.py
 
+  image-sync-service:
+    build: ./image-sync-service
+    container_name: serbian-vocab-image-sync
+    environment:
+      REDIS_URL: redis://redis:6379
+      UNSPLASH_ACCESS_KEY: ${UNSPLASH_ACCESS_KEY}
+      LOG_LEVEL: INFO
+      LOG_FILE: /app/logs/image-sync.log
+    depends_on:
+      - redis
+    networks:
+      - vocab-network
+    volumes:
+      - ./image-sync-service:/app
+      - image_sync_logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import redis; redis.from_url('redis://redis:6379').ping()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
   frontend:
     build: ./frontend
     container_name: serbian-vocab-frontend
@@ -73,6 +96,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  image_sync_logs:
 
 networks:
   vocab-network:

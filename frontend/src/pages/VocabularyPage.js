@@ -10,6 +10,8 @@ function VocabularyPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [wordImages, setWordImages] = useState({});
+    const [loadingImages, setLoadingImages] = useState({});
 
     useEffect(() => {
         fetchCategories();
@@ -71,6 +73,47 @@ function VocabularyPage() {
         return '#F44336';
     };
 
+    const loadWordImage = async (word) => {
+        if (wordImages[word.id] || loadingImages[word.id]) {
+            return; // Already loaded or loading
+        }
+
+        setLoadingImages(prev => ({ ...prev, [word.id]: true }));
+
+        try {
+            const response = await apiService.getWordImage(word.id);
+            if (response.data.success && response.data.image) {
+                setWordImages(prev => ({
+                    ...prev,
+                    [word.id]: `data:${response.data.image.content_type};base64,${response.data.image.image_data}`
+                }));
+            }
+        } catch (error) {
+            console.error(`Error loading image for word ${word.serbian_word}:`, error);
+            // Try to search for a new image if the cached one failed
+            try {
+                const searchResponse = await apiService.searchImage(word.serbian_word, word.english_translation);
+                if (searchResponse.data.success && searchResponse.data.image) {
+                    setWordImages(prev => ({
+                        ...prev,
+                        [word.id]: `data:${searchResponse.data.image.content_type};base64,${searchResponse.data.image.image_data}`
+                    }));
+                }
+            } catch (searchError) {
+                console.error(`Error searching image for word ${word.serbian_word}:`, searchError);
+            }
+        } finally {
+            setLoadingImages(prev => ({ ...prev, [word.id]: false }));
+        }
+    };
+
+    // Load images for filtered words when they change
+    useEffect(() => {
+        filteredWords.forEach(word => {
+            loadWordImage(word);
+        });
+    }, [filteredWords]);
+
     if (loading) return <div className="loading">Loading vocabulary...</div>;
     if (error) return <div className="error">{error}</div>;
 
@@ -119,6 +162,35 @@ function VocabularyPage() {
                 <div className="word-grid">
                     {filteredWords.map(word => (
                         <div key={word.id} className="word-card">
+                            {/* Word Image */}
+                            <div className="word-image-container">
+                                {loadingImages[word.id] ? (
+                                    <div className="image-placeholder loading-image">
+                                        <div className="image-spinner"></div>
+                                        <span>Loading image...</span>
+                                    </div>
+                                ) : wordImages[word.id] ? (
+                                    <img
+                                        src={wordImages[word.id]}
+                                        alt={`Visual representation of ${word.serbian_word}`}
+                                        className="word-image"
+                                        onError={() => {
+                                            console.log(`Image failed to load for ${word.serbian_word}`);
+                                            setWordImages(prev => {
+                                                const newImages = { ...prev };
+                                                delete newImages[word.id];
+                                                return newImages;
+                                            });
+                                        }}
+                                    />
+                                ) : (
+                                    <div className="image-placeholder">
+                                        <span>📷</span>
+                                        <span>No image</span>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="word-header">
                                 <h3 className="serbian-word">{word.serbian_word}</h3>
                                 <p className="english-translation">{word.english_translation}</p>

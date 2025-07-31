@@ -32,6 +32,9 @@ from models import (
     Settings,
 )
 
+# Import image service client (lightweight version that communicates with separate service)
+from image_service_client import ImageServiceClient
+
 # Try to import feedparser, but don't crash if not available
 try:
     import feedparser
@@ -93,6 +96,9 @@ db.init_app(app)
 
 # OpenAI configuration - will be loaded from database per user
 # openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# Initialize ImageServiceClient (lightweight client for separate image sync service)
+image_service = ImageServiceClient(redis_client)
 
 # Test database connection
 with app.app_context():
@@ -1301,6 +1307,207 @@ def get_news():
     except Exception as e:
         print(f"Error fetching news: {e}")
         return jsonify({"error": "Failed to fetch news articles"}), 500
+
+
+# Image service endpoints
+@app.route("/api/words/<int:word_id>/image")
+@jwt_required()
+def get_word_image(word_id):
+    """Get image for a specific word"""
+    try:
+        user_id = int(get_jwt_identity())
+
+        # Verify the word belongs to the user's vocabulary
+        user_vocab = UserVocabulary.query.filter_by(
+            user_id=user_id, word_id=word_id
+        ).first()
+
+        if not user_vocab:
+            return jsonify({"error": "Word not found in your vocabulary"}), 404
+
+        # Get the word details
+        word = Word.query.get(word_id)
+        if not word:
+            return jsonify({"error": "Word not found"}), 404
+
+        # Get image from service
+        image_data = image_service.get_word_image(
+            word.serbian_word, word.english_translation
+        )
+
+        if image_data and "error" not in image_data:
+            return jsonify({"success": True, "image": image_data})
+        else:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": image_data.get("error", "No image found")
+                    if image_data
+                    else "No image found",
+                }
+            )
+
+    except Exception as e:
+        print(f"Error getting word image: {e}")
+        return jsonify({"error": "Failed to get word image"}), 500
+
+
+@app.route("/api/images/search", methods=["POST"])
+@jwt_required()
+def search_image():
+    """Search for an image by word"""
+    try:
+        data = request.get_json()
+        serbian_word = data.get("serbian_word")
+        english_translation = data.get("english_translation")
+
+        if not serbian_word:
+            return jsonify({"error": "Serbian word is required"}), 400
+
+        # Get image from service
+        image_data = image_service.get_word_image(serbian_word, english_translation)
+
+        if image_data and "error" not in image_data:
+            return jsonify({"success": True, "image": image_data})
+        else:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": image_data.get("error", "No image found")
+                    if image_data
+                    else "No image found",
+                }
+            )
+
+    except Exception as e:
+        print(f"Error searching for image: {e}")
+        return jsonify({"error": "Failed to search for image"}), 500
+
+
+@app.route("/api/images/cache/clear", methods=["POST"])
+@jwt_required()
+def clear_image_cache():
+    """Clear image cache for a specific word"""
+    try:
+        data = request.get_json()
+        serbian_word = data.get("serbian_word")
+
+        if not serbian_word:
+            return jsonify({"error": "Serbian word is required"}), 400
+
+        success = image_service.clear_word_image_cache(serbian_word)
+
+        return jsonify(
+            {
+                "success": success,
+                "message": f"Cache cleared for word '{serbian_word}'"
+                if success
+                else "Failed to clear cache",
+            }
+        )
+
+    except Exception as e:
+        print(f"Error clearing image cache: {e}")
+        return jsonify({"error": "Failed to clear image cache"}), 500
+
+
+@app.route("/api/images/cache/stats")
+@jwt_required()
+def get_image_cache_stats():
+    """Get image cache statistics"""
+    try:
+        stats = image_service.get_cache_stats()
+        return jsonify({"stats": stats})
+
+    except Exception as e:
+        print(f"Error getting cache stats: {e}")
+        return jsonify({"error": "Failed to get cache stats"}), 500
+
+
+@app.route("/api/images/background/status")
+@jwt_required()
+def get_background_status():
+    """Get background image processing status"""
+    try:
+        status = image_service.get_background_status()
+        return jsonify({"status": status})
+
+    except Exception as e:
+        print(f"Error getting background status: {e}")
+        return jsonify({"error": "Failed to get background status"}), 500
+
+
+@app.route("/api/images/background/populate", methods=["POST"])
+@jwt_required()
+def populate_images():
+    """Populate images for user's vocabulary words in background"""
+    try:
+        user_id = int(get_jwt_identity())
+
+        # Get user's vocabulary words that don't have images
+        user_words = (
+            db.session.query(Word)
+            .join(UserVocabulary)
+            .filter(UserVocabulary.user_id == user_id)
+            .all()
+        )
+
+        # Convert to format expected by image service
+        words_list = [
+            {
+                "serbian_word": word.serbian_word,
+                "english_translation": word.english_translation,
+            }
+            for word in user_words
+        ]
+
+        added_count = image_service.populate_images_for_words(words_list)
+
+        return jsonify(
+            {
+                "message": f"Added {added_count} words to background processing queue",
+                "total_vocabulary_words": len(user_words),
+                "queued_for_processing": added_count,
+            }
+        )
+
+    except Exception as e:
+        print(f"Error populating images: {e}")
+        return jsonify({"error": "Failed to populate images"}), 500
+
+
+@app.route("/api/images/immediate", methods=["POST"])
+@jwt_required()
+def get_image_immediate():
+    """Get image immediately (for testing/admin) - respects rate limits"""
+    try:
+        data = request.get_json()
+        serbian_word = data.get("serbian_word")
+        english_translation = data.get("english_translation")
+
+        if not serbian_word:
+            return jsonify({"error": "Serbian word is required"}), 400
+
+        # Use immediate processing method
+        image_data = image_service.get_word_image_immediate(
+            serbian_word, english_translation
+        )
+
+        if image_data and "error" not in image_data:
+            return jsonify({"success": True, "image": image_data})
+        else:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": image_data.get("error", "No image found")
+                    if image_data
+                    else "No image found",
+                }
+            )
+
+    except Exception as e:
+        print(f"Error getting immediate image: {e}")
+        return jsonify({"error": "Failed to get immediate image"}), 500
 
 
 if __name__ == "__main__":

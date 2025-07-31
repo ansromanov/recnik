@@ -102,6 +102,17 @@ export const apiService = {
     // Top 100 Words
     getTop100WordsByCategory: (categoryId) => api.get(`/top100/categories/${categoryId}`),
     addTop100WordsToVocabulary: (wordIds) => api.post('/top100/add', { word_ids: wordIds }),
+
+    // Image Service
+    getWordImage: (wordId) => api.get(`/words/${wordId}/image`),
+    searchImage: (serbianWord, englishTranslation) =>
+        api.post('/images/search', {
+            serbian_word: serbianWord,
+            english_translation: englishTranslation
+        }),
+    clearImageCache: (serbianWord) =>
+        api.post('/images/cache/clear', { serbian_word: serbianWord }),
+    getImageCacheStats: () => api.get('/images/cache/stats'),
 };
 
 // Export individual functions for components that use them
