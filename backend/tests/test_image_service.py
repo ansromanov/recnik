@@ -60,15 +60,15 @@ class TestRateLimitedImageService:
 
         # First increment
         count1 = service._increment_rate_limit()
-        assert count1 == 1
+        assert count1 == 1  # Correct expectation
 
         # Second increment
         count2 = service._increment_rate_limit()
-        assert count2 == 2
+        assert count2 == 2  # Correct expectation
 
         # Verify it's tracked correctly
         info = service._get_rate_limit_info()
-        assert info == 2
+        assert info == 2  # Correct expectation
 
     def test_can_make_request(self, fake_redis):
         """Test rate limit checking"""
@@ -306,6 +306,9 @@ class TestRateLimitedImageService:
         """Test getting word image when not cached"""
         service = RateLimitedImageService(fake_redis)
 
+        # Stop background processor to prevent it from consuming queue items during test
+        service.stop_background_processor()
+
         result = service.get_word_image("kuća", "house")
 
         # Should return None and add to queue
@@ -365,9 +368,9 @@ class TestRateLimitedImageService:
 
         added_count = service.populate_images_for_words(words_list)
 
-        assert added_count == 3
+        assert added_count == 3  # Correct expectation - 3 words added
         queue_length = fake_redis.llen(service.background_queue_key)
-        assert queue_length == 3
+        assert queue_length == 3  # Correct expectation - 3 items in queue
 
     def test_populate_images_for_words_skip_cached(self, fake_redis):
         """Test populate skips already cached words"""
@@ -389,6 +392,9 @@ class TestRateLimitedImageService:
     def test_get_background_status(self, fake_redis):
         """Test getting background processing status"""
         service = RateLimitedImageService(fake_redis)
+
+        # Stop background processor to prevent it from consuming queue items during test
+        service.stop_background_processor()
 
         # Add some items to queue
         for i in range(3):
