@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ReCAPTCHA from 'react-google-recaptcha';
 import './LoginPage.css';
 
 function LoginPage({ onLogin }) {
@@ -8,21 +9,67 @@ function LoginPage({ onLogin }) {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [captchaEnabled, setCaptchaEnabled] = useState(false);
+    const [captchaSiteKey, setCaptchaSiteKey] = useState('');
+    const [captchaResponse, setCaptchaResponse] = useState('');
     const navigate = useNavigate();
+    const recaptchaRef = useRef(null);
+
+    // Fetch CAPTCHA configuration on component mount
+    useEffect(() => {
+        const fetchCaptchaConfig = async () => {
+            try {
+                const response = await fetch('/api/captcha/site-key');
+                const data = await response.json();
+
+                if (response.ok) {
+                    setCaptchaEnabled(data.captcha_enabled);
+                    setCaptchaSiteKey(data.site_key);
+                }
+            } catch (error) {
+                console.error('Error fetching CAPTCHA config:', error);
+                // If we can't fetch config, assume CAPTCHA is disabled
+                setCaptchaEnabled(false);
+            }
+        };
+
+        fetchCaptchaConfig();
+    }, []);
+
+    const handleCaptchaChange = (response) => {
+        setCaptchaResponse(response);
+    };
+
+    const handleCaptchaExpired = () => {
+        setCaptchaResponse('');
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
+        // Validate CAPTCHA if enabled
+        if (captchaEnabled && !captchaResponse) {
+            setError('Please complete the CAPTCHA verification');
+            return;
+        }
+
         setLoading(true);
 
         try {
             const endpoint = isLoginMode ? '/api/auth/login' : '/api/auth/register';
+            const requestBody = {
+                username,
+                password,
+                ...(captchaEnabled && { captcha_response: captchaResponse })
+            };
+
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify(requestBody),
             });
 
             const data = await response.json();
@@ -81,7 +128,19 @@ function LoginPage({ onLogin }) {
                         />
                     </div>
 
-                    <button type="submit" disabled={loading}>
+                    {captchaEnabled && captchaSiteKey && (
+                        <div className="form-group captcha-group">
+                            <ReCAPTCHA
+                                ref={recaptchaRef}
+                                sitekey={captchaSiteKey}
+                                onChange={handleCaptchaChange}
+                                onExpired={handleCaptchaExpired}
+                                onErrored={() => setCaptchaResponse('')}
+                            />
+                        </div>
+                    )}
+
+                    <button type="submit" disabled={loading || (captchaEnabled && !captchaResponse)}>
                         {loading ? 'Loading...' : (isLoginMode ? 'Login' : 'Register')}
                     </button>
                 </form>
@@ -93,6 +152,11 @@ function LoginPage({ onLogin }) {
                         onClick={() => {
                             setIsLoginMode(!isLoginMode);
                             setError('');
+                            // Reset CAPTCHA when switching modes
+                            setCaptchaResponse('');
+                            if (recaptchaRef.current) {
+                                recaptchaRef.current.reset();
+                            }
                         }}
                         disabled={loading}
                         className="link-button"

@@ -23,6 +23,11 @@ JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY")
 
+# reCAPTCHA Configuration
+RECAPTCHA_SITE_KEY = os.getenv("RECAPTCHA_SITE_KEY")
+RECAPTCHA_SECRET_KEY = os.getenv("RECAPTCHA_SECRET_KEY")
+RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify"
+
 # CORS Configuration
 CORS_ORIGINS = os.getenv(
     "CORS_ORIGINS", "http://localhost:3000,http://localhost:3001"

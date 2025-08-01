@@ -39,6 +39,15 @@ from models import (
 # Import image service client (lightweight version that communicates with separate service)
 from image_service_client import ImageServiceClient
 
+# Import CAPTCHA service
+from services.captcha_service import captcha_service
+
+# Import optimized text processing service
+from services.optimized_text_processor import OptimizedSerbianTextProcessor
+
+# Import translation caching service
+from services.translation_cache import TranslationCache
+
 # Try to import feedparser, but don't crash if not available
 try:
     import feedparser
@@ -151,6 +160,19 @@ def health_check():
     )
 
 
+@app.route("/api/captcha/site-key")
+def get_captcha_site_key():
+    """Get reCAPTCHA site key for frontend"""
+    return jsonify(
+        {
+            "site_key": config.RECAPTCHA_SITE_KEY,
+            "captcha_enabled": bool(
+                config.RECAPTCHA_SITE_KEY and config.RECAPTCHA_SECRET_KEY
+            ),
+        }
+    )
+
+
 # Authentication endpoints
 @app.route("/api/auth/register", methods=["POST", "OPTIONS"])
 def register():
@@ -160,9 +182,18 @@ def register():
         data = request.get_json()
         username = data.get("username", "").strip()
         password = data.get("password", "")
+        captcha_response = data.get("captcha_response")
 
         if not username or not password:
             return jsonify({"error": "Username and password are required"}), 400
+
+        # Verify CAPTCHA
+        if config.RECAPTCHA_SECRET_KEY:  # Only verify if CAPTCHA is configured
+            captcha_result = captcha_service.verify_captcha(
+                captcha_response, request.remote_addr
+            )
+            if not captcha_result["success"]:
+                return jsonify({"error": captcha_result["error"]}), 400
 
         # Check if user already exists
         existing_user = User.query.filter_by(username=username).first()
@@ -205,9 +236,18 @@ def login():
         data = request.get_json()
         username = data.get("username", "").strip()
         password = data.get("password", "")
+        captcha_response = data.get("captcha_response")
 
         if not username or not password:
             return jsonify({"error": "Username and password are required"}), 400
+
+        # Verify CAPTCHA
+        if config.RECAPTCHA_SECRET_KEY:  # Only verify if CAPTCHA is configured
+            captcha_result = captcha_service.verify_captcha(
+                captcha_response, request.remote_addr
+            )
+            if not captcha_result["success"]:
+                return jsonify({"error": captcha_result["error"]}), 400
 
         # Find user
         user = User.query.filter_by(username=username).first()
@@ -406,152 +446,52 @@ def process_text():
 
         # Get available categories
         categories = Category.query.all()
-        category_names = ", ".join([c.name for c in categories])
+        categories_list = [{"id": cat.id, "name": cat.name} for cat in categories]
 
-        # Use a comprehensive LLM prompt to handle all filtering and processing with proper infinitive conversion
+        # Get user's excluded words to filter them out
+        user_id_int = int(user_id)
+        excluded_word_ids = set(
+            ew.word_id for ew in ExcludedWord.query.filter_by(user_id=user_id_int).all()
+        )
+
+        # Get the excluded word strings
+        if excluded_word_ids:
+            excluded_words_objs = Word.query.filter(
+                Word.id.in_(excluded_word_ids)
+            ).all()
+            excluded_words = set(
+                word.serbian_word.lower() for word in excluded_words_objs
+            )
+        else:
+            excluded_words = set()
+
+        # Create optimized text processor
         try:
-            completion = openai.ChatCompletion.create(
-                api_key=api_key,
+            processor = OptimizedSerbianTextProcessor(
+                openai_api_key=api_key,
+                redis_client=redis_client,
                 model=config.OPENAI_MODEL,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": f"""You are an expert Serbian linguist and vocabulary teacher. Your primary task is to extract meaningful Serbian words from text and convert them to their proper base forms (infinitive for verbs, nominative singular for nouns, etc.).
-
-CRITICAL REQUIREMENT - INFINITIVE CONVERSION:
-For verbs, you MUST convert all forms to infinitive:
-- Present tense forms: "radim, radiš, radi, radimo, radite, rade" → "raditi"
-- Past tense forms: "radio, radila, radilo" → "raditi" 
-- Aorist forms: "radih, radi, radismo" → "raditi"
-- Imperative forms: "radi, radite" → "raditi"
-- Common verb endings to convert:
-  * -m, -š, -mo, -te endings → find infinitive (-ti, -ći, -ši)
-  * -ao, -ala, -alo → infinitive
-  * Past participle forms → infinitive
-
-For nouns, convert to nominative singular:
-- "kuće, kućama, kućama" → "kuća"
-- "automobila, automobilom" → "automobil" 
-- "gradova, gradovima" → "grad"
-
-For adjectives, convert to masculine nominative singular:
-- "velika, veliko, velikog" → "velik"
-- "lepa, lepo, lepom" → "lep"
-
-FILTERING RULES:
-- ONLY Latin Serbian script (a-z, č, ć, ž, š, đ)
-- EXCLUDE Cyrillic, English, URLs, numbers, special characters
-- EXCLUDE proper names except major cities (Beograd, Novi Sad, Niš, etc.)
-- EXCLUDE common function words: je, su, da, ne, i, u, na, za, od, do, se, će, bi, što, kako, kada, gde, koji, koja, koje, mi, ti, vi, oni, ono
-- EXCLUDE words shorter than 3 characters after processing
-- LIMIT to 20 BEST vocabulary words
-
-EXAMPLES OF PROPER CONVERSION:
-Input: "kupujem, kupuje, kupovao" → Output: "kupovati" (to buy)
-Input: "ide, idem, išao" → Output: "ići" (to go)  
-Input: "voli, volim, voleo" → Output: "voleti" (to love)
-Input: "kuće, kućama" → Output: "kuća" (house)
-Input: "gradovi, gradova" → Output: "grad" (city)
-
-OUTPUT FORMAT (JSON):
-{{
-  "processed_words": [
-    {{
-      "serbian_word": "INFINITIVE or base form",
-      "english_translation": "english translation of base form",
-      "category": "category from: {category_names}",
-      "original_form": "original inflected form from text"
-    }}
-  ],
-  "filtering_summary": {{
-    "total_raw_words": number,
-    "filtered_out": number, 
-    "processed_words": number,
-    "exclusion_reasons": ["reasons for filtering"]
-  }}
-}}
-
-IMPORTANT: Always convert to proper base forms. This is critical for vocabulary learning!""",
-                    },
-                    {
-                        "role": "user",
-                        "content": f"Extract and convert to infinitive/base forms from this Serbian text:\n\n{text[:2500]}",
-                    },
-                ],
-                temperature=config.OPENAI_TEMPERATURE,
-                max_tokens=2000,  # Increased for more detailed processing
             )
 
-            response = completion.choices[0].message["content"].strip()
+            # Process text with optimization features
+            result = processor.process_text_optimized(
+                text=text,
+                categories=categories_list,
+                max_words=20,
+                temperature=config.OPENAI_TEMPERATURE,
+                use_cache=True,
+                excluded_words=excluded_words,
+            )
 
-            try:
-                parsed_response = json.loads(response)
-                processed_words_data = parsed_response.get("processed_words", [])
-                filtering_summary = parsed_response.get("filtering_summary", {})
+            # Return the result in the expected format
+            return jsonify(result)
 
-                # Convert to expected format and map categories
-                processed_words = []
-                seen_words = set()
-
-                for word_data in processed_words_data:
-                    serbian_word = word_data.get("serbian_word", "").lower()
-
-                    # Skip if already seen (additional deduplication)
-                    if serbian_word in seen_words:
-                        continue
-                    seen_words.add(serbian_word)
-
-                    # Find matching category
-                    category = next(
-                        (
-                            c
-                            for c in categories
-                            if c.name.lower() == word_data.get("category", "").lower()
-                        ),
-                        categories[0]
-                        if categories
-                        else None,  # Default to first category
-                    )
-
-                    processed_words.append(
-                        {
-                            "serbian_word": serbian_word,
-                            "english_translation": word_data.get(
-                                "english_translation", "Translation unavailable"
-                            ),
-                            "category_id": category.id if category else 1,
-                            "category_name": category.name
-                            if category
-                            else "Common Words",
-                            "original_form": word_data.get("original_form"),
-                        }
-                    )
-
-                return jsonify(
-                    {
-                        "total_words": filtering_summary.get(
-                            "total_raw_words", len(processed_words)
-                        ),
-                        "existing_words": 0,  # Always 0 since we're not checking for existing words
-                        "new_words": len(processed_words),
-                        "translations": processed_words,
-                        "filtering_summary": filtering_summary,
-                    }
-                )
-
-            except json.JSONDecodeError as json_err:
-                print(f"JSON decode error: {json_err}")
-                print(f"Raw response: {response}")
-                return jsonify(
-                    {
-                        "error": "Failed to parse LLM response",
-                        "raw_response": response[:500],  # First 500 chars for debugging
-                    }
-                ), 500
-
-        except Exception as api_error:
-            print(f"OpenAI API error: {api_error}")
-            return jsonify({"error": f"OpenAI API error: {str(api_error)}"}), 500
+        except Exception as processor_error:
+            print(f"Optimized processor error: {processor_error}")
+            # Fallback to basic processing if optimized processor fails
+            return jsonify(
+                {"error": f"Text processing error: {str(processor_error)}"}
+            ), 500
 
     except Exception as e:
         print(f"Error processing text: {e}")
@@ -1815,6 +1755,196 @@ def bulk_exclude_words():
         db.session.rollback()
         print(f"Error bulk excluding words: {e}")
         return jsonify({"error": "Failed to bulk exclude words"}), 500
+
+
+# Text processing performance and cache endpoints
+@app.route("/api/text-processing/stats")
+@jwt_required()
+def get_text_processing_stats():
+    """Get text processing performance statistics"""
+    try:
+        user_id = get_jwt_identity()
+        api_key = get_user_openai_key(int(user_id))
+
+        if not api_key:
+            return jsonify(
+                {"error": "Please configure your OpenAI API key in settings"}
+            ), 400
+
+        # Create processor to get stats
+        processor = OptimizedSerbianTextProcessor(
+            openai_api_key=api_key,
+            redis_client=redis_client,
+            model=config.OPENAI_MODEL,
+        )
+
+        stats = processor.get_processing_stats()
+        return jsonify(stats)
+
+    except Exception as e:
+        print(f"Error getting text processing stats: {e}")
+        return jsonify({"error": "Failed to get processing stats"}), 500
+
+
+@app.route("/api/text-processing/cache/clear", methods=["POST"])
+@jwt_required()
+def clear_text_processing_cache():
+    """Clear text processing cache"""
+    try:
+        user_id = get_jwt_identity()
+        api_key = get_user_openai_key(int(user_id))
+
+        if not api_key:
+            return jsonify(
+                {"error": "Please configure your OpenAI API key in settings"}
+            ), 400
+
+        # Create processor to clear cache
+        processor = OptimizedSerbianTextProcessor(
+            openai_api_key=api_key,
+            redis_client=redis_client,
+            model=config.OPENAI_MODEL,
+        )
+
+        cleared_count = processor.clear_processing_cache()
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Cleared {cleared_count} cache entries",
+                "cleared_count": cleared_count,
+            }
+        )
+
+    except Exception as e:
+        print(f"Error clearing text processing cache: {e}")
+        return jsonify({"error": "Failed to clear processing cache"}), 500
+
+
+@app.route("/api/text-processing/cache/warm", methods=["POST"])
+@jwt_required()
+def warm_text_processing_cache():
+    """Warm cache with user's vocabulary words"""
+    try:
+        user_id = get_jwt_identity()
+        user_id_int = int(user_id)
+        api_key = get_user_openai_key(user_id_int)
+
+        if not api_key:
+            return jsonify(
+                {"error": "Please configure your OpenAI API key in settings"}
+            ), 400
+
+        # Get user's vocabulary words
+        user_words = (
+            db.session.query(Word)
+            .join(UserVocabulary)
+            .filter(UserVocabulary.user_id == user_id_int)
+            .all()
+        )
+
+        vocabulary_data = []
+        for word in user_words:
+            vocabulary_data.append(
+                {
+                    "serbian_word": word.serbian_word,
+                    "english_translation": word.english_translation,
+                    "category_id": word.category_id,
+                    "category_name": word.category.name
+                    if word.category
+                    else "Common Words",
+                }
+            )
+
+        # Create processor and warm cache
+        processor = OptimizedSerbianTextProcessor(
+            openai_api_key=api_key,
+            redis_client=redis_client,
+            model=config.OPENAI_MODEL,
+        )
+
+        warmed_count = processor.warm_cache_with_vocabulary(vocabulary_data)
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Cache warmed with {warmed_count} vocabulary words",
+                "warmed_count": warmed_count,
+                "total_vocabulary": len(vocabulary_data),
+            }
+        )
+
+    except Exception as e:
+        print(f"Error warming text processing cache: {e}")
+        return jsonify({"error": "Failed to warm processing cache"}), 500
+
+
+@app.route("/api/text-processing/analyze", methods=["POST"])
+@jwt_required()
+def analyze_text_patterns():
+    """Analyze text patterns for optimization insights"""
+    try:
+        user_id = get_jwt_identity()
+        api_key = get_user_openai_key(int(user_id))
+
+        if not api_key:
+            return jsonify(
+                {"error": "Please configure your OpenAI API key in settings"}
+            ), 400
+
+        data = request.get_json()
+        texts = data.get("texts", [])
+
+        if not texts or not isinstance(texts, list):
+            return jsonify({"error": "texts array is required"}), 400
+
+        # Create processor and analyze patterns
+        processor = OptimizedSerbianTextProcessor(
+            openai_api_key=api_key,
+            redis_client=redis_client,
+            model=config.OPENAI_MODEL,
+        )
+
+        analysis = processor.analyze_text_patterns(texts)
+        return jsonify(analysis)
+
+    except Exception as e:
+        print(f"Error analyzing text patterns: {e}")
+        return jsonify({"error": "Failed to analyze text patterns"}), 500
+
+
+@app.route("/api/translation-cache/stats")
+@jwt_required()
+def get_translation_cache_stats():
+    """Get translation cache statistics"""
+    try:
+        # Create translation cache instance
+        cache = TranslationCache(redis_client)
+        stats = cache.get_stats()
+        return jsonify(stats)
+
+    except Exception as e:
+        print(f"Error getting translation cache stats: {e}")
+        return jsonify({"error": "Failed to get cache stats"}), 500
+
+
+@app.route("/api/translation-cache/clear", methods=["POST"])
+@jwt_required()
+def clear_translation_cache():
+    """Clear translation cache"""
+    try:
+        # Create translation cache instance
+        cache = TranslationCache(redis_client)
+        cleared_count = cache.clear_cache()
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Cleared {cleared_count} translation cache entries",
+                "cleared_count": cleared_count,
+            }
+        )
+
+    except Exception as e:
+        print(f"Error clearing translation cache: {e}")
+        return jsonify({"error": "Failed to clear translation cache"}), 500
 
 
 if __name__ == "__main__":
