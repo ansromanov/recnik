@@ -466,7 +466,7 @@ class ImageSyncService:
         """Main processing loop"""
         self.logger.info("🚀 Starting Image Sync Service")
         self.logger.info(f"Rate limit: {self.max_requests_per_hour} requests/hour")
-        self.logger.info(f"Processing interval: 70 seconds")
+        self.logger.info(f"Processing interval: 30 seconds")
 
         last_stats_log = time.time()
 
@@ -479,11 +479,11 @@ class ImageSyncService:
 
                 # Check rate limit
                 if not self._can_make_request():
-                    wait_minutes = 5
+                    wait_minutes = 2
                     self.logger.info(
                         f"⏸️  Rate limit reached, waiting {wait_minutes} minutes..."
                     )
-                    time.sleep(wait_minutes * 60)
+                    time.sleep(wait_minutes * 5)
                     continue
 
                 # Try to acquire processing lock
@@ -522,8 +522,8 @@ class ImageSyncService:
                     self.process_word(serbian_word, english_translation)
 
                     # Wait between requests to be conservative
-                    self.logger.info("⏳ Waiting 70 seconds before next request...")
-                    time.sleep(70)
+                    self.logger.info("⏳ Waiting 30 seconds before next request...")
+                    time.sleep(30)
 
                 except Exception as e:
                     self.logger.error(f"Error processing queue item: {e}")
