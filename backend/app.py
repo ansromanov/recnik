@@ -20,6 +20,9 @@ from html.parser import HTMLParser
 import re
 import redis
 
+# Import configuration
+import config
+
 # Import our models
 from models import (
     db,
@@ -78,7 +81,7 @@ CORS(
     app,
     resources={
         r"/api/*": {
-            "origins": ["http://localhost:3000", "http://localhost:3001"],
+            "origins": config.CORS_ORIGINS,
             "allow_headers": [
                 "Content-Type",
                 "Authorization",
@@ -94,24 +97,20 @@ CORS(
 )
 
 # Database configuration
-DATABASE_URL = os.getenv("DATABASE_URL")
-app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
+app.config["SQLALCHEMY_DATABASE_URI"] = config.DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_size": 20,
-    "pool_recycle": 3600,
-    "pool_pre_ping": True,
+    "pool_size": config.DB_POOL_SIZE,
+    "pool_recycle": config.DB_POOL_RECYCLE,
+    "pool_pre_ping": config.DB_POOL_PRE_PING,
 }
 
 # Redis configuration
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+redis_client = redis.from_url(config.REDIS_URL, decode_responses=True)
 
 # JWT configuration
-app.config["JWT_SECRET_KEY"] = os.getenv(
-    "JWT_SECRET_KEY", "your-secret-key-change-this"
-)
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
+app.config["JWT_SECRET_KEY"] = config.JWT_SECRET_KEY
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = config.JWT_ACCESS_TOKEN_EXPIRES
 jwt = JWTManager(app)
 
 # Initialize database with app
@@ -422,12 +421,12 @@ def process_text():
         processed_words = []
         seen_infinitives = set()
 
-        # Limit to 50 words per request
-        for word in unique_words[:50]:
+        # Limit words per request using config
+        for word in unique_words[: config.MAX_WORDS_PER_REQUEST]:
             try:
                 completion = openai.ChatCompletion.create(
                     api_key=api_key,
-                    model="gpt-3.5-turbo",
+                    model=config.OPENAI_MODEL,
                     messages=[
                         {
                             "role": "system",
@@ -441,8 +440,8 @@ Respond in JSON format: {{"serbian_infinitive": "word in infinitive/base form", 
                         },
                         {"role": "user", "content": f'Serbian word: "{word}"'},
                     ],
-                    temperature=0.3,
-                    max_tokens=150,
+                    temperature=config.OPENAI_TEMPERATURE,
+                    max_tokens=config.OPENAI_MAX_TOKENS,
                 )
 
                 response = completion.choices[0].message["content"].strip()
@@ -1582,5 +1581,4 @@ def populate_image_queue():
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 3001))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=config.APP_PORT, debug=config.DEBUG)

@@ -12,24 +12,18 @@ from datetime import datetime, timedelta
 from flask import Flask
 from models import db, Word, UserVocabulary
 import redis
-import os
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
+from config import Config
 
 
 class ImageQueuePopulator:
     def __init__(self):
-        self.redis_client = redis.from_url(
-            os.getenv("REDIS_URL", "redis://localhost:6379"), decode_responses=True
-        )
+        self.redis_client = redis.from_url(Config.REDIS_URL, decode_responses=True)
         self.queue_key = "image_queue"
         self.population_lock_key = "image_queue_population_lock"
 
         # Initialize Flask app for database access
         self.app = Flask(__name__)
-        self.app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
+        self.app.config["SQLALCHEMY_DATABASE_URI"] = Config.DATABASE_URL
         self.app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
         db.init_app(self.app)

@@ -43,3 +43,5 @@ coverage/
 # Ignore Python cache files
 __pycache__/
 *.py[cod]
+*.pyc
+# Ignore Python virtual environments

@@ -40,16 +40,21 @@ class ImageSyncService:
         )
 
         self.headers = {
-            "User-Agent": "Serbian Vocabulary App Image Sync/1.0",
+            "User-Agent": os.getenv(
+                "IMAGE_USER_AGENT", "Serbian Vocabulary App Image Sync/1.0"
+            ),
             "Accept": "application/json",
         }
 
         # Unsplash API endpoints
         self.unsplash_search_url = "https://api.unsplash.com/search/photos"
+        self.unsplash_timeout = int(os.getenv("UNSPLASH_TIMEOUT", "10"))
 
-        # Rate limiting - very conservative
+        # Rate limiting - configurable
         self.rate_limit_key = "unsplash_rate_limit"
-        self.max_requests_per_hour = 25
+        self.max_requests_per_hour = int(
+            os.getenv("UNSPLASH_RATE_LIMIT_PER_HOUR", "25")
+        )
         self.rate_limit_window = 3600  # 1 hour
 
         # Background processing
@@ -143,7 +148,10 @@ class ImageSyncService:
             }
 
             response = requests.get(
-                self.unsplash_search_url, params=params, headers=headers, timeout=10
+                self.unsplash_search_url,
+                params=params,
+                headers=headers,
+                timeout=self.unsplash_timeout,
             )
             response.raise_for_status()
 
@@ -225,7 +233,7 @@ class ImageSyncService:
                     img = img.convert("RGB")
                     self.logger.debug(f"Converted image mode to RGB")
 
-                max_size = 400
+                max_size = int(os.getenv("IMAGE_MAX_SIZE", "400"))
                 if img.width > max_size or img.height > max_size:
                     img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
                     self.logger.debug(
@@ -233,7 +241,12 @@ class ImageSyncService:
                     )
 
                 output = io.BytesIO()
-                img.save(output, format="JPEG", quality=85, optimize=True)
+                img.save(
+                    output,
+                    format="JPEG",
+                    quality=int(os.getenv("IMAGE_QUALITY", "85")),
+                    optimize=True,
+                )
                 processed_data = output.getvalue()
                 final_size = len(processed_data)
 
