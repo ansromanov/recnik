@@ -259,6 +259,45 @@ class PracticeResult(db.Model):
         }
 
 
+class ExcludedWord(db.Model):
+    __tablename__ = "excluded_words"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    word_id = db.Column(
+        db.Integer,
+        db.ForeignKey("words.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    reason = db.Column(db.String(255))  # "manual_removal", "news_parser_skip", etc.
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    word = db.relationship("Word", backref="excluded_by_users")
+    user = db.relationship("User", backref="excluded_words")
+
+    # Constraints
+    __table_args__ = (
+        db.UniqueConstraint(
+            "user_id", "word_id", name="excluded_words_user_word_unique"
+        ),
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "word_id": self.word_id,
+            "reason": self.reason,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "word": self.word.to_dict() if self.word else None,
+        }
+
+
 # Event listener to update the updated_at timestamp
 @event.listens_for(Word, "before_update")
 def update_word_timestamp(mapper, connection, target):

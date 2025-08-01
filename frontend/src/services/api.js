@@ -113,6 +113,14 @@ export const apiService = {
     clearImageCache: (serbianWord) =>
         api.post('/images/cache/clear', { serbian_word: serbianWord }),
     getImageCacheStats: () => api.get('/images/cache/stats'),
+
+    // Excluded Words
+    getExcludedWords: () => api.get('/excluded-words'),
+    excludeWordFromVocabulary: (wordId, reason = 'manual_removal') =>
+        api.post(`/words/${wordId}/exclude`, { reason }),
+    removeFromExcludedWords: (excludedWordId) => api.delete(`/excluded-words/${excludedWordId}`),
+    bulkExcludeWords: (words, reason = 'news_parser_skip') =>
+        api.post('/excluded-words/bulk', { words, reason }),
 };
 
 // Export individual functions for components that use them

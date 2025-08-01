@@ -12,10 +12,14 @@ function VocabularyPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [wordImages, setWordImages] = useState({});
     const [loadingImages, setLoadingImages] = useState({});
+    const [excludedWords, setExcludedWords] = useState([]);
+    const [showExcludedWords, setShowExcludedWords] = useState(false);
+    const [loadingExcluded, setLoadingExcluded] = useState(false);
 
     useEffect(() => {
         fetchCategories();
         fetchWords();
+        fetchExcludedWords();
     }, []);
 
     useEffect(() => {
@@ -44,6 +48,66 @@ function VocabularyPage() {
             console.error('Error fetching words:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchExcludedWords = async () => {
+        try {
+            setLoadingExcluded(true);
+            const response = await apiService.getExcludedWords();
+            setExcludedWords(response.data);
+        } catch (err) {
+            console.error('Error fetching excluded words:', err);
+        } finally {
+            setLoadingExcluded(false);
+        }
+    };
+
+    const handleRemoveWord = async (word) => {
+        if (window.confirm(`Are you sure you want to remove "${word.serbian_word}" from your vocabulary? This will add it to your excluded words list.`)) {
+            try {
+                await apiService.excludeWordFromVocabulary(word.id);
+                // Refresh both vocabulary and excluded words
+                fetchWords();
+                fetchExcludedWords();
+            } catch (err) {
+                setError('Failed to remove word from vocabulary');
+                console.error('Error removing word:', err);
+            }
+        }
+    };
+
+    const handleRestoreWord = async (excludedWord) => {
+        if (window.confirm(`Are you sure you want to restore "${excludedWord.word.serbian_word}" to your vocabulary?`)) {
+            try {
+                await apiService.removeFromExcludedWords(excludedWord.id);
+                // Add the word back to vocabulary
+                await apiService.addWords([{
+                    serbian_word: excludedWord.word.serbian_word,
+                    english_translation: excludedWord.word.english_translation,
+                    category_id: excludedWord.word.category_id,
+                    context: excludedWord.word.context,
+                    notes: excludedWord.word.notes
+                }]);
+                // Refresh both vocabulary and excluded words
+                fetchWords();
+                fetchExcludedWords();
+            } catch (err) {
+                setError('Failed to restore word to vocabulary');
+                console.error('Error restoring word:', err);
+            }
+        }
+    };
+
+    const handlePermanentlyDeleteExcluded = async (excludedWord) => {
+        if (window.confirm(`Are you sure you want to permanently remove "${excludedWord.word.serbian_word}" from your excluded list? You will be able to add it back to vocabulary later.`)) {
+            try {
+                await apiService.removeFromExcludedWords(excludedWord.id);
+                fetchExcludedWords();
+            } catch (err) {
+                setError('Failed to remove word from excluded list');
+                console.error('Error removing from excluded list:', err);
+            }
         }
     };
 
@@ -228,6 +292,16 @@ function VocabularyPage() {
                                     <p className="notes-text">{word.notes}</p>
                                 </div>
                             )}
+
+                            <div className="word-actions">
+                                <button
+                                    className="remove-word-btn"
+                                    onClick={() => handleRemoveWord(word)}
+                                    title="Remove from vocabulary"
+                                >
+                                    ❌ Remove
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -258,7 +332,92 @@ function VocabularyPage() {
                             {words.filter(w => !w.mastery_level || w.mastery_level === 0).length}
                         </p>
                     </div>
+                    <div>
+                        <p style={{ color: '#666', marginBottom: '5px' }}>Excluded Words</p>
+                        <p style={{ fontSize: '24px', fontWeight: 'bold' }}>{excludedWords.length}</p>
+                    </div>
                 </div>
+            </div>
+
+            <div className="card" style={{ marginTop: '30px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3>Excluded Words</h3>
+                    <button
+                        className="category-badge"
+                        onClick={() => setShowExcludedWords(!showExcludedWords)}
+                        style={{ cursor: 'pointer' }}
+                    >
+                        {showExcludedWords ? 'Hide' : 'Show'} ({excludedWords.length})
+                    </button>
+                </div>
+
+                {showExcludedWords && (
+                    <div>
+                        <p style={{ color: '#666', marginBottom: '20px' }}>
+                            These words have been excluded from your vocabulary and will not appear in lessons or practice sessions.
+                        </p>
+
+                        {loadingExcluded ? (
+                            <div className="loading">Loading excluded words...</div>
+                        ) : excludedWords.length === 0 ? (
+                            <p>No excluded words. Words you remove from vocabulary will appear here.</p>
+                        ) : (
+                            <div className="excluded-words-table">
+                                <div className="table-header">
+                                    <div className="table-cell">Serbian Word</div>
+                                    <div className="table-cell">English Translation</div>
+                                    <div className="table-cell">Category</div>
+                                    <div className="table-cell">Reason</div>
+                                    <div className="table-cell">Date Excluded</div>
+                                    <div className="table-cell">Actions</div>
+                                </div>
+                                {excludedWords.map(excluded => (
+                                    <div key={excluded.id} className="table-row">
+                                        <div className="table-cell">
+                                            <strong>{excluded.word.serbian_word}</strong>
+                                        </div>
+                                        <div className="table-cell">
+                                            {excluded.word.english_translation}
+                                        </div>
+                                        <div className="table-cell">
+                                            <span className="category-badge">
+                                                {excluded.word.category_name || 'Unknown'}
+                                            </span>
+                                        </div>
+                                        <div className="table-cell">
+                                            <span className={`reason-badge ${excluded.reason}`}>
+                                                {excluded.reason === 'manual_removal' ? 'Manual' :
+                                                    excluded.reason === 'news_parser_skip' ? 'News Skip' :
+                                                        excluded.reason || 'Unknown'}
+                                            </span>
+                                        </div>
+                                        <div className="table-cell">
+                                            {new Date(excluded.created_at).toLocaleDateString()}
+                                        </div>
+                                        <div className="table-cell">
+                                            <div className="table-actions">
+                                                <button
+                                                    className="restore-btn"
+                                                    onClick={() => handleRestoreWord(excluded)}
+                                                    title="Restore to vocabulary"
+                                                >
+                                                    ↩️ Restore
+                                                </button>
+                                                <button
+                                                    className="delete-btn"
+                                                    onClick={() => handlePermanentlyDeleteExcluded(excluded)}
+                                                    title="Remove from excluded list"
+                                                >
+                                                    🗑️ Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

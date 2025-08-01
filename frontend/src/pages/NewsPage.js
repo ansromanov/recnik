@@ -152,6 +152,7 @@ function NewsPage() {
 
     const handleSaveWords = async () => {
         const wordsToSave = processedWords.filter(w => selectedWords.includes(w.id));
+        const wordsToExclude = processedWords.filter(w => !selectedWords.includes(w.id));
 
         if (wordsToSave.length === 0) {
             setError('Please select at least one word to save');
@@ -170,7 +171,21 @@ function NewsPage() {
 
             await apiService.addWords(wordsForApi);
 
-            setSuccessMessage(`Successfully added ${wordsToSave.length} words to your vocabulary!`);
+            // Add unselected words to excluded list so they won't appear in future lessons
+            if (wordsToExclude.length > 0) {
+                const wordsToExcludeApi = wordsToExclude.map(word => ({
+                    serbian_word: word.serbian,
+                    english_translation: word.english,
+                    category_id: 1
+                }));
+
+                await apiService.bulkExcludeWords(wordsToExcludeApi, 'news_parser_skip');
+            }
+
+            setSuccessMessage(
+                `Successfully added ${wordsToSave.length} words to your vocabulary!` +
+                (wordsToExclude.length > 0 ? ` ${wordsToExclude.length} words were excluded from future lessons.` : '')
+            );
             setShowWordSelection(false);
             setProcessedWords([]);
             setSelectedWords([]);

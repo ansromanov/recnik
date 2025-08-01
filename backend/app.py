@@ -33,6 +33,7 @@ from models import (
     PracticeResult,
     User,
     Settings,
+    ExcludedWord,
 )
 
 # Import image service client (lightweight version that communicates with separate service)
@@ -578,12 +579,20 @@ def get_practice_words():
         user_vocab_count = UserVocabulary.query.filter_by(user_id=user_id).count()
         print(f"User {user_id} has {user_vocab_count} words in vocabulary")
 
+        # Get user's excluded word IDs to filter them out from practice
+        excluded_word_ids = set(
+            ew.word_id for ew in ExcludedWord.query.filter_by(user_id=user_id).all()
+        )
+
         # Build query for user's words - include all words in user's vocabulary for practice
-        # Remove the mastery_level filter to ensure we get words
+        # Exclude words that are in the excluded list
         query = (
             db.session.query(Word)
             .join(UserVocabulary)
-            .filter(UserVocabulary.user_id == user_id)
+            .filter(
+                UserVocabulary.user_id == user_id,
+                ~Word.id.in_(excluded_word_ids) if excluded_word_ids else True,
+            )
             .options(joinedload(Word.category))
         )
 
@@ -1578,6 +1587,189 @@ def populate_image_queue():
     except Exception as e:
         print(f"Error populating image queue: {e}")
         return jsonify({"error": "Failed to populate image queue"}), 500
+
+
+# Excluded words endpoints
+@app.route("/api/excluded-words")
+@jwt_required()
+def get_excluded_words():
+    """Get user's excluded words"""
+    try:
+        user_id = int(get_jwt_identity())
+
+        excluded_words = (
+            db.session.query(ExcludedWord)
+            .filter_by(user_id=user_id)
+            .options(joinedload(ExcludedWord.word).joinedload(Word.category))
+            .order_by(ExcludedWord.created_at.desc())
+            .all()
+        )
+
+        excluded_words_data = []
+        for excluded in excluded_words:
+            excluded_dict = excluded.to_dict()
+            excluded_words_data.append(excluded_dict)
+
+        return jsonify(excluded_words_data)
+
+    except Exception as e:
+        print(f"Error fetching excluded words: {e}")
+        return jsonify({"error": "Failed to fetch excluded words"}), 500
+
+
+@app.route("/api/words/<int:word_id>/exclude", methods=["POST"])
+@jwt_required()
+def exclude_word_from_vocabulary(word_id):
+    """Remove word from vocabulary and add to excluded words"""
+    try:
+        user_id = int(get_jwt_identity())
+        data = request.get_json() or {}
+        reason = data.get("reason", "manual_removal")
+
+        # Check if word exists in user's vocabulary
+        user_vocab = UserVocabulary.query.filter_by(
+            user_id=user_id, word_id=word_id
+        ).first()
+
+        if not user_vocab:
+            return jsonify({"error": "Word not found in your vocabulary"}), 404
+
+        # Get the word
+        word = Word.query.get(word_id)
+        if not word:
+            return jsonify({"error": "Word not found"}), 404
+
+        # Check if already excluded
+        existing_excluded = ExcludedWord.query.filter_by(
+            user_id=user_id, word_id=word_id
+        ).first()
+
+        if existing_excluded:
+            return jsonify({"error": "Word is already excluded"}), 400
+
+        # Remove from vocabulary
+        db.session.delete(user_vocab)
+
+        # Add to excluded words
+        excluded_word = ExcludedWord(user_id=user_id, word_id=word_id, reason=reason)
+        db.session.add(excluded_word)
+
+        db.session.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Word '{word.serbian_word}' removed from vocabulary and excluded",
+                "excluded_word": excluded_word.to_dict(),
+            }
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error excluding word: {e}")
+        return jsonify({"error": "Failed to exclude word"}), 500
+
+
+@app.route("/api/excluded-words/<int:excluded_word_id>", methods=["DELETE"])
+@jwt_required()
+def remove_from_excluded_words(excluded_word_id):
+    """Remove word from excluded list (allows it to be added back to vocabulary)"""
+    try:
+        user_id = int(get_jwt_identity())
+
+        excluded_word = ExcludedWord.query.filter_by(
+            id=excluded_word_id, user_id=user_id
+        ).first()
+
+        if not excluded_word:
+            return jsonify({"error": "Excluded word not found"}), 404
+
+        word = excluded_word.word
+        db.session.delete(excluded_word)
+        db.session.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Word '{word.serbian_word}' removed from excluded list",
+            }
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error removing from excluded words: {e}")
+        return jsonify({"error": "Failed to remove from excluded words"}), 500
+
+
+@app.route("/api/excluded-words/bulk", methods=["POST"])
+@jwt_required()
+def bulk_exclude_words():
+    """Add multiple words to excluded list (used by news parser)"""
+    try:
+        user_id = int(get_jwt_identity())
+        data = request.get_json()
+        words_data = data.get("words", [])
+        reason = data.get("reason", "news_parser_skip")
+
+        if not words_data or not isinstance(words_data, list):
+            return jsonify({"error": "Words array is required"}), 400
+
+        excluded_count = 0
+        already_excluded = 0
+
+        for word_data in words_data:
+            serbian_word = word_data.get("serbian_word")
+            english_translation = word_data.get("english_translation")
+
+            if not serbian_word or not english_translation:
+                continue
+
+            # Find or create the word
+            word = Word.query.filter_by(
+                serbian_word=serbian_word, english_translation=english_translation
+            ).first()
+
+            if not word:
+                # Create the word if it doesn't exist
+                word = Word(
+                    serbian_word=serbian_word,
+                    english_translation=english_translation,
+                    category_id=word_data.get("category_id", 1),
+                )
+                db.session.add(word)
+                db.session.flush()
+
+            # Check if already excluded
+            existing_excluded = ExcludedWord.query.filter_by(
+                user_id=user_id, word_id=word.id
+            ).first()
+
+            if existing_excluded:
+                already_excluded += 1
+                continue
+
+            # Add to excluded words
+            excluded_word = ExcludedWord(
+                user_id=user_id, word_id=word.id, reason=reason
+            )
+            db.session.add(excluded_word)
+            excluded_count += 1
+
+        db.session.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Added {excluded_count} words to excluded list",
+                "excluded_count": excluded_count,
+                "already_excluded": already_excluded,
+            }
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error bulk excluding words: {e}")
+        return jsonify({"error": "Failed to bulk exclude words"}), 500
 
 
 if __name__ == "__main__":
