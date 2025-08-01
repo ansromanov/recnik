@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
+import CustomModal from '../components/CustomModal';
+import { useToast } from '../components/ToastNotification';
 import './VocabularyPage.css';
 
 function VocabularyPage() {
@@ -25,6 +27,17 @@ function VocabularyPage() {
         context: '',
         notes: ''
     });
+
+    // Custom modal state
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [confirmModalData, setConfirmModalData] = useState({
+        title: '',
+        message: '',
+        onConfirm: null
+    });
+
+    // Toast notifications
+    const { showToast, ToastContainer } = useToast();
 
     useEffect(() => {
         fetchCategories();
@@ -73,52 +86,73 @@ function VocabularyPage() {
         }
     };
 
-    const handleRemoveWord = async (word) => {
-        if (window.confirm(`Are you sure you want to remove "${word.serbian_word}" from your vocabulary? This will add it to your excluded words list.`)) {
-            try {
-                await apiService.excludeWordFromVocabulary(word.id);
-                // Refresh both vocabulary and excluded words
-                fetchWords();
-                fetchExcludedWords();
-            } catch (err) {
-                setError('Failed to remove word from vocabulary');
-                console.error('Error removing word:', err);
+    const handleRemoveWord = (word) => {
+        setConfirmModalData({
+            title: 'Remove Word',
+            message: `Are you sure you want to remove "${word.serbian_word}" from your vocabulary? This will add it to your excluded words list.`,
+            onConfirm: async () => {
+                try {
+                    await apiService.excludeWordFromVocabulary(word.id);
+                    // Refresh both vocabulary and excluded words
+                    fetchWords();
+                    fetchExcludedWords();
+                    showToast(`"${word.serbian_word}" has been removed from your vocabulary`, 'success');
+                } catch (err) {
+                    showToast('Failed to remove word from vocabulary', 'error');
+                    console.error('Error removing word:', err);
+                }
+                setShowConfirmModal(false);
             }
-        }
+        });
+        setShowConfirmModal(true);
     };
 
-    const handleRestoreWord = async (excludedWord) => {
-        if (window.confirm(`Are you sure you want to restore "${excludedWord.word.serbian_word}" to your vocabulary?`)) {
-            try {
-                await apiService.removeFromExcludedWords(excludedWord.id);
-                // Add the word back to vocabulary
-                await apiService.addWords([{
-                    serbian_word: excludedWord.word.serbian_word,
-                    english_translation: excludedWord.word.english_translation,
-                    category_id: excludedWord.word.category_id,
-                    context: excludedWord.word.context,
-                    notes: excludedWord.word.notes
-                }]);
-                // Refresh both vocabulary and excluded words
-                fetchWords();
-                fetchExcludedWords();
-            } catch (err) {
-                setError('Failed to restore word to vocabulary');
-                console.error('Error restoring word:', err);
+    const handleRestoreWord = (excludedWord) => {
+        setConfirmModalData({
+            title: 'Restore Word',
+            message: `Are you sure you want to restore "${excludedWord.word.serbian_word}" to your vocabulary?`,
+            onConfirm: async () => {
+                try {
+                    await apiService.removeFromExcludedWords(excludedWord.id);
+                    // Add the word back to vocabulary
+                    await apiService.addWords([{
+                        serbian_word: excludedWord.word.serbian_word,
+                        english_translation: excludedWord.word.english_translation,
+                        category_id: excludedWord.word.category_id,
+                        context: excludedWord.word.context,
+                        notes: excludedWord.word.notes
+                    }]);
+                    // Refresh both vocabulary and excluded words
+                    fetchWords();
+                    fetchExcludedWords();
+                    showToast(`"${excludedWord.word.serbian_word}" has been restored to your vocabulary`, 'success');
+                } catch (err) {
+                    showToast('Failed to restore word to vocabulary', 'error');
+                    console.error('Error restoring word:', err);
+                }
+                setShowConfirmModal(false);
             }
-        }
+        });
+        setShowConfirmModal(true);
     };
 
-    const handlePermanentlyDeleteExcluded = async (excludedWord) => {
-        if (window.confirm(`Are you sure you want to permanently remove "${excludedWord.word.serbian_word}" from your excluded list? You will be able to add it back to vocabulary later.`)) {
-            try {
-                await apiService.removeFromExcludedWords(excludedWord.id);
-                fetchExcludedWords();
-            } catch (err) {
-                setError('Failed to remove word from excluded list');
-                console.error('Error removing from excluded list:', err);
+    const handlePermanentlyDeleteExcluded = (excludedWord) => {
+        setConfirmModalData({
+            title: 'Delete Excluded Word',
+            message: `Are you sure you want to permanently remove "${excludedWord.word.serbian_word}" from your excluded list? You will be able to add it back to vocabulary later.`,
+            onConfirm: async () => {
+                try {
+                    await apiService.removeFromExcludedWords(excludedWord.id);
+                    fetchExcludedWords();
+                    showToast(`"${excludedWord.word.serbian_word}" has been permanently removed from excluded list`, 'success');
+                } catch (err) {
+                    showToast('Failed to remove word from excluded list', 'error');
+                    console.error('Error removing from excluded list:', err);
+                }
+                setShowConfirmModal(false);
             }
-        }
+        });
+        setShowConfirmModal(true);
     };
 
     const handleSearch = async (query) => {
@@ -174,7 +208,7 @@ function VocabularyPage() {
                 fetchWords();
 
                 // Show success message
-                alert(response.data.message);
+                showToast(response.data.message, 'success');
             }
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to add word');
@@ -735,6 +769,19 @@ function VocabularyPage() {
                     </div>
                 )}
             </div>
+
+            {/* Custom Modal for confirmations */}
+            <CustomModal
+                isOpen={showConfirmModal}
+                onClose={() => setShowConfirmModal(false)}
+                onConfirm={confirmModalData.onConfirm}
+                title={confirmModalData.title}
+                message={confirmModalData.message}
+                type="confirm"
+            />
+
+            {/* Toast notifications */}
+            <ToastContainer />
         </div>
     );
 }
