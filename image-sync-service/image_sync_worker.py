@@ -24,6 +24,15 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Import configuration
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "backend"))
+try:
+    from config import UNSPLASH_RATE_LIMIT, RATE_LIMIT_WINDOW
+except ImportError:
+    # Fallback values if config import fails
+    UNSPLASH_RATE_LIMIT = 50
+    RATE_LIMIT_WINDOW = 3600
+
 
 class ImageSyncService:
     def __init__(self, redis_client, logger):
@@ -52,10 +61,8 @@ class ImageSyncService:
 
         # Rate limiting - configurable
         self.rate_limit_key = "unsplash_rate_limit"
-        self.max_requests_per_hour = int(
-            os.getenv("UNSPLASH_RATE_LIMIT_PER_HOUR", "25")
-        )
-        self.rate_limit_window = 3600  # 1 hour
+        self.max_requests_per_hour = UNSPLASH_RATE_LIMIT
+        self.rate_limit_window = RATE_LIMIT_WINDOW
 
         # Background processing
         self.background_queue_key = "image_queue"
