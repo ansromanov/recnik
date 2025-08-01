@@ -3,8 +3,7 @@ global:
   evaluation_interval: 15s
 
 rule_files:
-  # - "first_rules.yml"
-  # - "second_rules.yml"
+  - "alert-rules.yml"
 
 scrape_configs:
   # Prometheus itself
@@ -14,7 +13,7 @@ scrape_configs:
 
   # Main Backend Service (current implementation)
   - job_name: "backend-service"
-    metrics_path: "/api/metrics"
+    metrics_path: "/metrics"
     static_configs:
       - targets: ["backend:3001"]
     scrape_interval: 10s
@@ -26,9 +25,9 @@ scrape_configs:
       - targets: ["auth-service:3002"]
     scrape_interval: 10s
 
-  # Vocabulary Service (new microservice - when enabled)
-  - job_name: "vocabulary-service"
-    metrics_path: "/metrics"
-    static_configs:
-      - targets: ["vocabulary-service:3003"]
-    scrape_interval: 10s
+  # Vocabulary Service (new microservice - disabled until controllers are implemented)
+  # - job_name: "vocabulary-service"
+  #   metrics_path: "/metrics"
+  #   static_configs:
+  #     - targets: ["vocabulary-service:3003"]
+  #   scrape_interval: 10s

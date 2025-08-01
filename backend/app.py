@@ -50,6 +50,29 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 
+# Initialize Prometheus metrics
+from prometheus_flask_exporter import PrometheusMetrics
+
+# Configure metrics with proper endpoint tracking
+metrics = PrometheusMetrics(
+    app,
+    defaults_prefix="flask",
+    group_by_endpoint=True,  # This ensures metrics are grouped by endpoint
+    path="/metrics",
+    static_labels={"service": "vocabulary-backend"},  # Add service label
+)
+
+# Configure application info metric
+metrics.info("app_info", "Application info", version="1.0")
+
+
+# Don't track static files
+@metrics.do_not_track()
+def skip_static():
+    """Don't track static files"""
+    return request.endpoint == "static"
+
+
 # Configure CORS properly
 CORS(
     app,

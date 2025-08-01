@@ -1,0 +1,62 @@
+groups:
+  - name: serbian-vocabulary-app-alerts
+    rules:
+      # Service Down Alert
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} on {{ $labels.instance }} has been down for more than 1 minute."
+
+      # High Error Rate Alert
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(flask_http_request_total{status=~"5.."}[5m]) /
+            rate(flask_http_request_total[5m])
+          ) * 100 > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate on {{ $labels.job }}"
+          description: "Error rate is {{ $value }}% on {{ $labels.job }} for more than 2 minutes."
+
+      # High Response Time Alert
+      - alert: HighResponseTime
+        expr: |
+          histogram_quantile(0.95, rate(flask_http_request_duration_seconds_bucket[5m])) > 2
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time on {{ $labels.job }}"
+          description: "95th percentile response time is {{ $value }}s on {{ $labels.job }} for more than 3 minutes."
+
+      # Authentication Failures Alert
+      - alert: HighAuthFailureRate
+        expr: |
+          (
+            rate(flask_http_request_total{job="auth-service", path="/api/auth/login", status=~"4.."}[5m]) /
+            rate(flask_http_request_total{job="auth-service", path="/api/auth/login"}[5m])
+          ) * 100 > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Login failure rate is {{ $value }}% for more than 5 minutes."
+
+      # Low User Registration Alert (Business Metric)
+      - alert: LowUserRegistrations
+        expr: |
+          increase(flask_http_request_total{job="auth-service", path="/api/auth/register", status="200"}[1h]) < 1
+        for: 0m
+        labels:
+          severity: info
+        annotations:
+          summary: "Low user registration activity"
+          description: "Only {{ $value }} new user registrations in the last hour."
