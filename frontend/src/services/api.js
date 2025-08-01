@@ -114,6 +114,10 @@ export const apiService = {
         api.post('/images/cache/clear', { serbian_word: serbianWord }),
     getImageCacheStats: () => api.get('/images/cache/stats'),
 
+    // Word Search and Suggestions
+    searchWords: (query) => api.get('/words/search', { params: { q: query } }),
+    addSuggestedWord: (wordData) => api.post('/words/add-suggested', wordData),
+
     // Excluded Words
     getExcludedWords: () => api.get('/excluded-words'),
     excludeWordFromVocabulary: (wordId, reason = 'manual_removal') =>

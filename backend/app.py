@@ -152,6 +152,115 @@ def get_user_openai_key(user_id):
     return None
 
 
+# Helper function to generate word suggestions using LLM
+def generate_word_suggestion(query_term, api_key):
+    """
+    Generate word suggestion with proper translation and normalization using LLM
+
+    Args:
+        query_term: The search term that wasn't found
+        api_key: OpenAI API key
+
+    Returns:
+        Dictionary with word suggestion data
+    """
+    try:
+        # Determine if the query is likely Serbian or English
+        serbian_chars = any(c in query_term.lower() for c in ["č", "ć", "š", "ž", "đ"])
+
+        # Create system prompt for word suggestion
+        system_prompt = """You are an expert Serbian-English translator and linguist. Your task is to analyze a word and provide proper translation and normalization.
+
+CRITICAL REQUIREMENTS:
+1. If input is Serbian: convert to proper infinitive/base form, then translate to English
+2. If input is English: translate to Serbian in proper infinitive/base form
+3. Always normalize Serbian words to their dictionary forms:
+   - Verbs: convert to infinitive (-ti, -ći, -ši endings)
+   - Nouns: convert to nominative singular
+   - Adjectives: convert to masculine nominative singular
+
+EXAMPLES:
+Serbian input "radim" → "raditi" (to work)
+Serbian input "kuće" → "kuća" (house)  
+English input "working" → "raditi" (to work)
+English input "houses" → "kuća" (house)
+
+OUTPUT FORMAT (JSON):
+{
+  "suggested_serbian": "properly normalized Serbian word",
+  "suggested_english": "English translation",
+  "confidence": "high/medium/low",
+  "word_type": "verb/noun/adjective/other",
+  "message": "explanatory message for user"
+}"""
+
+        # Determine the direction of translation
+        if serbian_chars:
+            user_prompt = f"Analyze this Serbian word and normalize it to proper dictionary form, then translate to English: '{query_term}'"
+        else:
+            user_prompt = f"Translate this English word to Serbian in proper dictionary form (infinitive for verbs, nominative singular for nouns): '{query_term}'"
+
+        # Call OpenAI API
+        completion = openai.ChatCompletion.create(
+            api_key=api_key,
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.3,
+            max_tokens=300,
+        )
+
+        response = completion.choices[0].message["content"].strip()
+
+        try:
+            # Parse JSON response
+            suggestion_data = json.loads(response)
+
+            # Add metadata
+            suggestion_data.update(
+                {
+                    "search_term": query_term,
+                    "needs_openai_key": False,
+                    "llm_processed": True,
+                }
+            )
+
+            return suggestion_data
+
+        except json.JSONDecodeError:
+            # Fallback if JSON parsing fails
+            print(f"Failed to parse LLM response: {response}")
+            return {
+                "search_term": query_term,
+                "suggested_serbian": query_term if serbian_chars else "",
+                "suggested_english": "" if serbian_chars else query_term,
+                "confidence": "low",
+                "word_type": "unknown",
+                "message": f"Word '{query_term}' not found. LLM processing failed, but you can still add it manually.",
+                "needs_openai_key": False,
+                "llm_processed": False,
+            }
+
+    except Exception as e:
+        print(f"Error in generate_word_suggestion: {e}")
+        # Fallback to heuristic approach
+        serbian_chars = any(c in query_term.lower() for c in ["č", "ć", "š", "ž", "đ"])
+
+        return {
+            "search_term": query_term,
+            "suggested_serbian": query_term if serbian_chars else "",
+            "suggested_english": "" if serbian_chars else query_term,
+            "confidence": "low",
+            "word_type": "unknown",
+            "message": f"Word '{query_term}' not found. Translation service unavailable, but you can add it manually.",
+            "needs_openai_key": False,
+            "llm_processed": False,
+            "error": str(e),
+        }
+
+
 # Routes
 @app.route("/api/health")
 def health_check():
@@ -435,6 +544,260 @@ def get_words():
     except Exception as e:
         print(f"Error fetching words: {e}")
         return jsonify({"error": "Failed to fetch words"}), 500
+
+
+@app.route("/api/words/search")
+@jwt_required()
+def search_words():
+    """Search for words in both Serbian and English, proposing to add if not found"""
+    try:
+        user_id = int(get_jwt_identity())
+        query_term = request.args.get("q", "").strip()
+
+        if not query_term:
+            return jsonify({"error": "Search query is required"}), 400
+
+        # Search in user's vocabulary and all words
+        search_term = query_term.lower()
+
+        # Get user's vocabulary word IDs for filtering
+        user_word_ids = set(
+            uv.word_id for uv in UserVocabulary.query.filter_by(user_id=user_id).all()
+        )
+
+        # Search in both Serbian and English words
+        vocabulary_results = []
+        all_results = []
+
+        # Search in user's vocabulary first
+        if user_word_ids:
+            vocab_words = (
+                Word.query.filter(Word.id.in_(user_word_ids))
+                .filter(
+                    or_(
+                        Word.serbian_word.ilike(f"%{search_term}%"),
+                        Word.english_translation.ilike(f"%{search_term}%"),
+                    )
+                )
+                .options(joinedload(Word.category))
+                .order_by(Word.serbian_word)
+                .all()
+            )
+
+            for word in vocab_words:
+                word_dict = word.to_dict()
+                user_vocab = UserVocabulary.query.filter_by(
+                    user_id=user_id, word_id=word.id
+                ).first()
+
+                if user_vocab:
+                    word_dict["mastery_level"] = user_vocab.mastery_level
+                    word_dict["times_practiced"] = user_vocab.times_practiced
+                    word_dict["last_practiced"] = (
+                        user_vocab.last_practiced.isoformat()
+                        if user_vocab.last_practiced
+                        else None
+                    )
+                    word_dict["is_in_vocabulary"] = True
+                    vocabulary_results.append(word_dict)
+
+        # Search in all words (including those not in user's vocabulary)
+        all_words = (
+            Word.query.filter(
+                or_(
+                    Word.serbian_word.ilike(f"%{search_term}%"),
+                    Word.english_translation.ilike(f"%{search_term}%"),
+                )
+            )
+            .options(joinedload(Word.category))
+            .order_by(Word.serbian_word)
+            .limit(20)  # Limit results for performance
+            .all()
+        )
+
+        for word in all_words:
+            word_dict = word.to_dict()
+            word_dict["is_in_vocabulary"] = word.id in user_word_ids
+
+            if word.id in user_word_ids:
+                user_vocab = UserVocabulary.query.filter_by(
+                    user_id=user_id, word_id=word.id
+                ).first()
+                if user_vocab:
+                    word_dict["mastery_level"] = user_vocab.mastery_level
+                    word_dict["times_practiced"] = user_vocab.times_practiced
+                    word_dict["last_practiced"] = (
+                        user_vocab.last_practiced.isoformat()
+                        if user_vocab.last_practiced
+                        else None
+                    )
+            else:
+                word_dict["mastery_level"] = 0
+                word_dict["times_practiced"] = 0
+                word_dict["last_practiced"] = None
+
+            all_results.append(word_dict)
+
+        # Check if we have any results
+        has_results = len(vocabulary_results) > 0 or len(all_results) > 0
+
+        # If no results found, suggest adding the word with LLM assistance
+        suggestion = None
+        if not has_results:
+            # Get user's OpenAI API key for translation
+            api_key = get_user_openai_key(user_id)
+
+            if api_key:
+                # Use LLM to translate and normalize the word
+                suggestion = generate_word_suggestion(query_term, api_key)
+            else:
+                # Fallback to simple heuristics if no API key
+                is_likely_serbian = any(
+                    c in query_term.lower() for c in ["č", "ć", "š", "ž", "đ"]
+                )
+
+                suggestion = {
+                    "search_term": query_term,
+                    "suggested_serbian": query_term if is_likely_serbian else "",
+                    "suggested_english": "" if is_likely_serbian else query_term,
+                    "message": f"No words found for '{query_term}'. Would you like to add it to your vocabulary?",
+                    "needs_openai_key": True,
+                }
+
+        return jsonify(
+            {
+                "query": query_term,
+                "vocabulary_results": vocabulary_results,
+                "all_results": all_results,
+                "has_results": has_results,
+                "suggestion": suggestion,
+                "counts": {
+                    "vocabulary": len(vocabulary_results),
+                    "all_words": len(all_results),
+                },
+            }
+        )
+
+    except Exception as e:
+        print(f"Error searching words: {e}")
+        return jsonify({"error": "Failed to search words"}), 500
+
+
+@app.route("/api/words/add-suggested", methods=["POST"])
+@jwt_required()
+def add_suggested_word():
+    """Add a suggested word to vocabulary and queue for image processing"""
+    try:
+        user_id = int(get_jwt_identity())
+        data = request.get_json()
+
+        serbian_word = data.get("serbian_word", "").strip()
+        english_translation = data.get("english_translation", "").strip()
+        category_id = data.get("category_id", 1)  # Default to first category
+        context = data.get("context", "")
+        notes = data.get("notes", "")
+
+        if not serbian_word or not english_translation:
+            return jsonify(
+                {"error": "Both Serbian word and English translation are required"}
+            ), 400
+
+        # Check if word already exists
+        existing_word = Word.query.filter_by(
+            serbian_word=serbian_word, english_translation=english_translation
+        ).first()
+
+        if existing_word:
+            # Check if already in user's vocabulary
+            existing_vocab = UserVocabulary.query.filter_by(
+                user_id=user_id, word_id=existing_word.id
+            ).first()
+
+            if existing_vocab:
+                return jsonify(
+                    {
+                        "error": "Word already exists in your vocabulary",
+                        "word": existing_word.to_dict(),
+                    }
+                ), 409
+            else:
+                # Add existing word to user's vocabulary
+                user_vocab = UserVocabulary(user_id=user_id, word_id=existing_word.id)
+                db.session.add(user_vocab)
+                db.session.commit()
+
+                # Queue for image processing
+                image_service.populate_images_for_words(
+                    [
+                        {
+                            "serbian_word": serbian_word,
+                            "english_translation": english_translation,
+                        }
+                    ],
+                    priority=True,
+                )
+
+                word_dict = existing_word.to_dict()
+                word_dict["is_in_vocabulary"] = True
+                word_dict["mastery_level"] = 0
+                word_dict["times_practiced"] = 0
+                word_dict["last_practiced"] = None
+
+                return jsonify(
+                    {
+                        "success": True,
+                        "message": f"Added existing word '{serbian_word}' to your vocabulary",
+                        "word": word_dict,
+                        "queued_for_image": True,
+                    }
+                )
+
+        # Create new word
+        new_word = Word(
+            serbian_word=serbian_word,
+            english_translation=english_translation,
+            category_id=category_id,
+            context=context,
+            notes=notes,
+        )
+        db.session.add(new_word)
+        db.session.flush()  # Get the ID
+
+        # Add to user's vocabulary
+        user_vocab = UserVocabulary(user_id=user_id, word_id=new_word.id)
+        db.session.add(user_vocab)
+        db.session.commit()
+
+        # Queue for image processing with high priority
+        image_service.populate_images_for_words(
+            [
+                {
+                    "serbian_word": serbian_word,
+                    "english_translation": english_translation,
+                }
+            ],
+            priority=True,
+        )
+
+        word_dict = new_word.to_dict()
+        word_dict["is_in_vocabulary"] = True
+        word_dict["mastery_level"] = 0
+        word_dict["times_practiced"] = 0
+        word_dict["last_practiced"] = None
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Successfully added '{serbian_word}' to your vocabulary",
+                "word": word_dict,
+                "queued_for_image": True,
+            }
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error adding suggested word: {e}")
+        return jsonify({"error": "Failed to add word"}), 500
 
 
 @app.route("/api/process-text", methods=["POST", "OPTIONS"])

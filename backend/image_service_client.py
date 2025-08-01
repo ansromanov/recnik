@@ -46,20 +46,34 @@ class ImageServiceClient:
         # Return immediately - image will be available later
         return None
 
-    def _add_to_background_queue(self, serbian_word, english_translation=None):
+    def _add_to_background_queue(
+        self, serbian_word, english_translation=None, priority=False
+    ):
         """Add word to background processing queue for the image sync service"""
         try:
             queue_item = {
                 "serbian_word": serbian_word,
                 "english_translation": english_translation,
                 "added_at": int(time.time()),
+                "priority": priority,
             }
-            self.redis_client.lpush(self.background_queue_key, json.dumps(queue_item))
-            print(f"Queued {serbian_word} for image processing")
+
+            # Use different queue based on priority
+            if priority:
+                # High priority items go to the front of a priority queue
+                priority_queue_key = f"{self.background_queue_key}_priority"
+                self.redis_client.lpush(priority_queue_key, json.dumps(queue_item))
+                print(f"Queued {serbian_word} for high-priority image processing")
+            else:
+                # Regular items go to the regular queue
+                self.redis_client.lpush(
+                    self.background_queue_key, json.dumps(queue_item)
+                )
+                print(f"Queued {serbian_word} for image processing")
         except Exception as e:
             print(f"Error adding {serbian_word} to queue: {e}")
 
-    def populate_images_for_words(self, words_list):
+    def populate_images_for_words(self, words_list, priority=False):
         """Add a list of words to the background processing queue"""
         added_count = 0
 
@@ -81,10 +95,13 @@ class ImageServiceClient:
                 except:
                     pass
 
-                self._add_to_background_queue(serbian_word, english_translation)
+                self._add_to_background_queue(
+                    serbian_word, english_translation, priority
+                )
                 added_count += 1
 
-        print(f"Added {added_count} words to image processing queue")
+        priority_text = "high-priority " if priority else ""
+        print(f"Added {added_count} words to {priority_text}image processing queue")
         return added_count
 
     def get_background_status(self):
