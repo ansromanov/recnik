@@ -23,10 +23,27 @@ function PracticePage() {
     const [error, setError] = useState(null);
     const [wordImage, setWordImage] = useState(null);
     const [imageLoading, setImageLoading] = useState(false);
+    const [userSettings, setUserSettings] = useState(null);
+    const [autoAdvanceTimer, setAutoAdvanceTimer] = useState(null);
+    const [countdown, setCountdown] = useState(0);
+    const [countdownInterval, setCountdownInterval] = useState(null);
 
     useEffect(() => {
+        loadUserSettings();
         startNewSession();
     }, []);
+
+    // Load user settings
+    const loadUserSettings = async () => {
+        try {
+            const response = await apiService.getSettings();
+            if (response.data.settings) {
+                setUserSettings(response.data.settings);
+            }
+        } catch (error) {
+            console.error('Failed to load user settings:', error);
+        }
+    };
 
     // Fetch word image when current word changes
     useEffect(() => {
@@ -144,9 +161,24 @@ function PracticePage() {
         } catch (err) {
             console.error('Error submitting practice result:', err);
         }
+
+        // Start auto-advance timer if enabled
+        if (userSettings && userSettings.auto_advance_enabled) {
+            const timeout = (userSettings.auto_advance_timeout || 3) * 1000; // Convert to milliseconds
+            const timer = setTimeout(() => {
+                handleNextWord();
+            }, timeout);
+            setAutoAdvanceTimer(timer);
+        }
     };
 
     const handleNextWord = () => {
+        // Clear auto-advance timer if it exists
+        if (autoAdvanceTimer) {
+            clearTimeout(autoAdvanceTimer);
+            setAutoAdvanceTimer(null);
+        }
+
         if (currentWordIndex < practiceWords.length - 1) {
             setCurrentWordIndex(prev => prev + 1);
             setSelectedAnswer('');

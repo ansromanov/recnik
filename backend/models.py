@@ -51,6 +51,8 @@ class Settings(db.Model):
         unique=True,
     )
     openai_api_key = db.Column(db.String(255))
+    auto_advance_enabled = db.Column(db.Boolean, default=False, nullable=False)
+    auto_advance_timeout = db.Column(db.Integer, default=3, nullable=False)  # seconds
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -60,6 +62,8 @@ class Settings(db.Model):
         result = {
             "id": self.id,
             "user_id": self.user_id,
+            "auto_advance_enabled": self.auto_advance_enabled,
+            "auto_advance_timeout": self.auto_advance_timeout,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

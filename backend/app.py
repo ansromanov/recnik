@@ -318,6 +318,20 @@ def update_settings():
         if "openai_api_key" in data:
             user.settings.openai_api_key = data["openai_api_key"]
 
+        # Update auto-advance settings if provided
+        if "auto_advance_enabled" in data:
+            user.settings.auto_advance_enabled = bool(data["auto_advance_enabled"])
+
+        if "auto_advance_timeout" in data:
+            timeout = int(data["auto_advance_timeout"])
+            # Validate timeout range (1-10 seconds)
+            if 1 <= timeout <= 10:
+                user.settings.auto_advance_timeout = timeout
+            else:
+                return jsonify(
+                    {"error": "Auto-advance timeout must be between 1 and 10 seconds"}
+                ), 400
+
         db.session.commit()
 
         return jsonify(

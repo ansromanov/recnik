@@ -161,9 +161,25 @@ setup:
 	fi
 	make build
 	make up
-	sleep 10
-	make migrate
-	@echo "✅ Setup completed! App should be running at http://localhost:3000"
+	@echo "⏳ Waiting for services to be ready..."
+	@sleep 15
+	@echo "✅ Setup completed! App should be running at http://localhost:80"
+	@echo "🔗 Backend API available at http://localhost:3000"
+	@echo "📊 Grafana dashboard at http://localhost:3001 (admin/admin)"
+
+# Complete automated setup with testing
+setup-full:
+	@echo "🚀 Complete automated setup with testing..."
+	make setup
+	@echo "🧪 Running tests to verify setup..."
+	make test
+	@echo "🎉 Full setup completed successfully!"
+
+# Quick development setup
+dev-setup:
+	@echo "⚡ Quick development setup..."
+	make rebuild-all
+	@echo "✅ Development environment ready!"
 
 # Production commands
 prod-deploy:

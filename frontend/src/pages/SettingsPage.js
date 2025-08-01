@@ -5,6 +5,8 @@ import './SettingsPage.css';
 function SettingsPage() {
     const [apiKey, setApiKey] = useState('');
     const [showApiKey, setShowApiKey] = useState(false);
+    const [autoAdvanceEnabled, setAutoAdvanceEnabled] = useState(false);
+    const [autoAdvanceTimeout, setAutoAdvanceTimeout] = useState(3);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
@@ -17,8 +19,13 @@ function SettingsPage() {
         try {
             setLoading(true);
             const response = await apiService.getSettings();
-            if (response.data.settings && response.data.settings.openai_api_key) {
-                setApiKey(response.data.settings.openai_api_key);
+            if (response.data.settings) {
+                const settings = response.data.settings;
+                if (settings.openai_api_key) {
+                    setApiKey(settings.openai_api_key);
+                }
+                setAutoAdvanceEnabled(settings.auto_advance_enabled || false);
+                setAutoAdvanceTimeout(settings.auto_advance_timeout || 3);
             }
         } catch (error) {
             console.error('Error loading settings:', error);
@@ -33,7 +40,11 @@ function SettingsPage() {
             setSaving(true);
             setMessage({ type: '', text: '' });
 
-            await apiService.updateSettings({ openai_api_key: apiKey });
+            await apiService.updateSettings({
+                openai_api_key: apiKey,
+                auto_advance_enabled: autoAdvanceEnabled,
+                auto_advance_timeout: autoAdvanceTimeout
+            });
             setMessage({ type: 'success', text: 'Settings saved successfully!' });
 
             // Clear success message after 3 seconds
@@ -94,21 +105,70 @@ function SettingsPage() {
                             <li>Generating example sentences for practice</li>
                         </ul>
                     </div>
+                </div>
+            </div>
 
-                    {message.text && (
-                        <div className={`message ${message.type}`}>
-                            {message.text}
+            <div className="settings-section">
+                <h2>Practice Settings</h2>
+                <p className="settings-description">
+                    Configure how the practice session behaves to optimize your learning experience.
+                </p>
+
+                <div className="practice-settings-section">
+                    <div className="setting-item">
+                        <label className="checkbox-label">
+                            <input
+                                type="checkbox"
+                                checked={autoAdvanceEnabled}
+                                onChange={(e) => setAutoAdvanceEnabled(e.target.checked)}
+                                className="checkbox-input"
+                            />
+                            <span className="checkbox-text">
+                                Auto-advance to next word after answer
+                            </span>
+                        </label>
+                        <p className="setting-description">
+                            Automatically move to the next word after a short delay when you answer correctly or incorrectly.
+                        </p>
+                    </div>
+
+                    {autoAdvanceEnabled && (
+                        <div className="setting-item">
+                            <label htmlFor="timeout-setting">Auto-advance timeout (seconds):</label>
+                            <div className="timeout-input-group">
+                                <input
+                                    id="timeout-setting"
+                                    type="range"
+                                    min="1"
+                                    max="10"
+                                    value={autoAdvanceTimeout}
+                                    onChange={(e) => setAutoAdvanceTimeout(parseInt(e.target.value))}
+                                    className="timeout-slider"
+                                />
+                                <span className="timeout-value">{autoAdvanceTimeout}s</span>
+                            </div>
+                            <p className="setting-description">
+                                How long to wait before automatically advancing to the next word.
+                            </p>
                         </div>
                     )}
-
-                    <button
-                        onClick={handleSave}
-                        disabled={saving || !apiKey.trim()}
-                        className="save-button"
-                    >
-                        {saving ? 'Saving...' : 'Save Settings'}
-                    </button>
                 </div>
+            </div>
+
+            <div className="settings-actions">
+                {message.text && (
+                    <div className={`message ${message.type}`}>
+                        {message.text}
+                    </div>
+                )}
+
+                <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="save-button"
+                >
+                    {saving ? 'Saving...' : 'Save Settings'}
+                </button>
             </div>
 
             <div className="settings-section">
