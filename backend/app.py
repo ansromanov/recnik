@@ -433,6 +433,7 @@ WORD PROCESSING:
 - Convert adjectives to masculine nominative singular (e.g., "velika" → "velik", "crvenog" → "crven")
 - Remove common Serbian suffixes from inflected words: -ama, -ima, -ova, -ati, -eti, -iti, -uje, -ava, -eva
 - Keep only meaningful word roots (minimum 3 characters after processing)
+- LIMIT OUTPUT TO MAXIMUM 20 WORDS to ensure complete response
 
 OUTPUT FORMAT:
 Return a JSON object with this structure:
@@ -453,16 +454,15 @@ Return a JSON object with this structure:
   }}
 }}
 
-Process the text and extract only high-quality Serbian vocabulary words suitable for language learning.""",
+Process the text and extract only the TOP 20 high-quality Serbian vocabulary words suitable for language learning.""",
                     },
                     {
                         "role": "user",
-                        "content": f"Please extract and process Serbian vocabulary words from the following text:\n\n{text}",
+                        "content": f"Please extract and process Serbian vocabulary words from the following text (limit to 20 best words):\n\n{text[:2000]}",
                     },
                 ],
                 temperature=config.OPENAI_TEMPERATURE,
-                max_tokens=config.OPENAI_MAX_TOKENS
-                * 3,  # More tokens for comprehensive processing
+                max_tokens=1500,  # Increased token limit to ensure complete response
             )
 
             response = completion.choices[0].message["content"].strip()
