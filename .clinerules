@@ -1,0 +1,51 @@
+# Clean Rules for Python Microservices (MVC + 12-Factor)
+- do not open browser on acting, as it broke Cline API calls
+- do not create additional md files
+## Structure
+- Use MVC: models/, views/, controllers/
+- One service per domain, each as a Python package
+- Expose RESTful APIs via FastAPI or Flask
+
+## Environment & Tooling
+- Use uv for Python env + dependency management
+- .env files for config (use dotenv loaders)
+- Dockerize each service
+
+## 12-Factor Compliance
+- Codebase: 1 repo per service
+- Dependencies: use pyproject.toml
+- Config: via env vars only
+- Logs: JSON to stdout
+- Stateless processes; scale horizontally
+- Port binding: $PORT env
+
+## Docs
+- Each service: minimal README.md (purpose, setup, endpoints)
+- Architecture in docs/architecture.mmd (Mermaid)
+- Update diagram on changes
+
+## Testing
+- Tests in tests/ (models, controllers, endpoints)
+- Use pytest/unittest
+- Mock external calls
+- Enforce tests in CI
+
+## Code Quality
+- Format: black
+- Lint: ruff or flake8
+- Type checks: mypy or pyright
+- Clean imports, no circular deps
+
+## Observability
+- Logs: JSON, include timestamp, level, service, req ID
+- Endpoints:
+    - GET /health (no auth)
+    - GET /metrics (Prometheus)
+
+## Sample Service Structure
+- controllers/ - Business logic
+- models/ - Database models
+- views/ - API endpoints (main.py)
+- main.py - Flask app entry point
+- health.py - Health check endpoint
+- metrics.py - Prometheus metrics

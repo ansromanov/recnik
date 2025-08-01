@@ -1,4 +1,5 @@
 services:
+  # Infrastructure
   postgres:
     image: postgres:15-alpine
     container_name: serbian-vocab-db
@@ -13,6 +14,11 @@ services:
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - vocab-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vocab_user -d serbian_vocabulary"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   redis:
     image: redis:7-alpine
@@ -24,7 +30,13 @@ services:
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
+  # Core Services - Using existing backend for now, auth-service when ready
   backend:
     build: ./backend
     container_name: serbian-vocab-backend
@@ -32,18 +44,80 @@ services:
       DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
       REDIS_URL: redis://redis:6379
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-secret-key-change-this}
       PORT: 3001
     ports:
       - "3001:3001"
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - vocab-network
     volumes:
       - ./backend:/app
       - /app/node_modules
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
+  # New Auth Service (when ready)
+  auth-service:
+    build: ./services/auth-service
+    container_name: serbian-vocab-auth
+    environment:
+      DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-auth-service-secret-key}
+      PORT: 3002
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    ports:
+      - "3002:3002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - vocab-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # New Vocabulary Service (when controllers are implemented)
+  vocabulary-service:
+    build: ./services/vocabulary-service
+    container_name: serbian-vocab-vocabulary
+    environment:
+      DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-vocabulary-service-secret-key}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      PORT: 3003
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    ports:
+      - "3003:3003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - vocab-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    profiles:
+      - microservices  # Only start when explicitly requested
+
+  # Background Services
   cache-updater:
     build: ./backend
     container_name: serbian-vocab-cache-updater
@@ -51,14 +125,17 @@ services:
       DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
       REDIS_URL: redis://redis:6379
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - vocab-network
     volumes:
       - ./backend:/app
       - /app/node_modules
     command: python cache_updater.py
+    restart: unless-stopped
 
   image-sync-service:
     build: ./image-sync-service
@@ -69,7 +146,8 @@ services:
       LOG_LEVEL: INFO
       LOG_FILE: /app/logs/image-sync.log
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
       - vocab-network
     volumes:
@@ -90,8 +168,10 @@ services:
       DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
       REDIS_URL: redis://redis:6379
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - vocab-network
     volumes:
@@ -106,6 +186,7 @@ services:
       retries: 3
       start_period: 60s
 
+  # Frontend
   frontend:
     build: ./frontend
     container_name: serbian-vocab-frontend
@@ -115,11 +196,48 @@ services:
       - backend
     networks:
       - vocab-network
+    restart: unless-stopped
+
+  # Monitoring Stack
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: serbian-vocab-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - vocab-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: serbian-vocab-grafana
+    ports:
+      - "3100:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - vocab-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
 
 volumes:
   postgres_data:
   redis_data:
   image_sync_logs:
+  prometheus_data:
+  grafana_data:
 
 networks:
   vocab-network:

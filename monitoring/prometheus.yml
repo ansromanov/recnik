@@ -1,0 +1,34 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Main Backend Service (current implementation)
+  - job_name: "backend-service"
+    metrics_path: "/api/metrics"
+    static_configs:
+      - targets: ["backend:3001"]
+    scrape_interval: 10s
+
+  # Auth Service (new microservice)
+  - job_name: "auth-service"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["auth-service:3002"]
+    scrape_interval: 10s
+
+  # Vocabulary Service (new microservice - when enabled)
+  - job_name: "vocabulary-service"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["vocabulary-service:3003"]
+    scrape_interval: 10s
