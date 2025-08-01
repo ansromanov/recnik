@@ -16,7 +16,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from models import db, Category
 from services.translation_cache import TranslationCache
-from services.optimized_text_processor import OptimizedTextProcessor
 import redis
 
 # Configure logging
@@ -205,34 +204,9 @@ def warm_translation_cache(redis_client):
 
 def create_optimized_processor_instance():
     """Create an instance of the optimized text processor for testing"""
-    logger.info("Creating optimized text processor instance...")
-
-    try:
-        # Get Redis connection
-        REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-        redis_client = redis.from_url(REDIS_URL, decode_responses=True)
-
-        # Mock categories for testing (in production, this would come from the database)
-        class MockCategory:
-            def __init__(self, id, name):
-                self.id = id
-                self.name = name
-
-        categories = [
-            MockCategory(1, "Common Words"),
-            MockCategory(2, "Verbs"),
-            MockCategory(3, "Nouns"),
-            MockCategory(4, "Adjectives"),
-            MockCategory(5, "Food & Drink"),
-        ]
-
-        processor = OptimizedTextProcessor(redis_client, categories)
-        logger.info("Optimized text processor created successfully")
-        return processor
-
-    except Exception as e:
-        logger.error(f"Error creating optimized processor: {e}")
-        return None
+    logger.info("Optimized text processor is now integrated into main app.py")
+    logger.info("LLM-based processing replaces the old OptimizedTextProcessor")
+    return True
 
 
 def run_performance_benchmarks():

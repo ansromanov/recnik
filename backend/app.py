@@ -402,143 +402,140 @@ def process_text():
         if not text:
             return jsonify({"error": "Text is required"}), 400
 
-        # Split text into words (basic tokenization for Serbian)
-        words = [
-            word
-            for word in re.split(
-                r"\s+", re.sub(r'[.,!?;:\'"«»()[\]{}]', " ", text.lower())
-            )
-            if len(word) > 1
-        ]
-
-        # Get unique words
-        unique_words = list(set(words))
-
         # Get available categories
         categories = Category.query.all()
         category_names = ", ".join([c.name for c in categories])
 
-        # Process words to get their infinitive forms
-        processed_words = []
-        seen_infinitives = set()
+        # Use a comprehensive LLM prompt to handle all filtering and processing
+        try:
+            completion = openai.ChatCompletion.create(
+                api_key=api_key,
+                model=config.OPENAI_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": f"""You are an expert Serbian linguist and vocabulary teacher. Your task is to extract meaningful Serbian words from the given text for vocabulary learning.
 
-        # Limit words per request using config
-        words_to_process = unique_words[: config.MAX_WORDS_PER_REQUEST]
+FILTERING RULES:
+- ONLY include words written in Latin Serbian script (a-z and čćžšđ)
+- EXCLUDE all Cyrillic words completely
+- EXCLUDE English words, URLs, email addresses, technical terms
+- EXCLUDE proper names (people, places) EXCEPT major Serbian cities (Beograd, Novi Sad, Niš, Kragujevac, etc.)
+- EXCLUDE acronyms and all-caps words
+- EXCLUDE words containing numbers or special characters
+- EXCLUDE very common words that aren't useful for learning: je, su, da, ne, i, u, na, za, od, do, se, će, bi, mi, ti, vi, oni, ono, što, kako, kada, gde, koji, koja, koje
+- EXCLUDE words shorter than 3 characters
+- EXCLUDE foreign language words mixed in the text
 
-        # Process words in batches to improve efficiency
-        batch_size = 5
-        for i in range(0, len(words_to_process), batch_size):
-            batch_words = words_to_process[i : i + batch_size]
+WORD PROCESSING:
+- Convert verbs to infinitive form (e.g., "radim" → "raditi", "idem" → "ići")
+- Convert nouns to nominative singular (e.g., "kuće" → "kuća", "automobila" → "automobil")
+- Convert adjectives to masculine nominative singular (e.g., "velika" → "velik", "crvenog" → "crven")
+- Remove common Serbian suffixes from inflected words: -ama, -ima, -ova, -ati, -eti, -iti, -uje, -ava, -eva
+- Keep only meaningful word roots (minimum 3 characters after processing)
+
+OUTPUT FORMAT:
+Return a JSON object with this structure:
+{{
+  "processed_words": [
+    {{
+      "serbian_word": "base form of the word",
+      "english_translation": "english translation",
+      "category": "category name from: {category_names}",
+      "original_form": "original form if different from base form"
+    }}
+  ],
+  "filtering_summary": {{
+    "total_raw_words": number,
+    "filtered_out": number,
+    "processed_words": number,
+    "exclusion_reasons": ["list of main reasons words were excluded"]
+  }}
+}}
+
+Process the text and extract only high-quality Serbian vocabulary words suitable for language learning.""",
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Please extract and process Serbian vocabulary words from the following text:\n\n{text}",
+                    },
+                ],
+                temperature=config.OPENAI_TEMPERATURE,
+                max_tokens=config.OPENAI_MAX_TOKENS
+                * 3,  # More tokens for comprehensive processing
+            )
+
+            response = completion.choices[0].message["content"].strip()
 
             try:
-                # Create a batch prompt for multiple words
-                words_text = ", ".join(f'"{word}"' for word in batch_words)
+                parsed_response = json.loads(response)
+                processed_words_data = parsed_response.get("processed_words", [])
+                filtering_summary = parsed_response.get("filtering_summary", {})
 
-                completion = openai.ChatCompletion.create(
-                    api_key=api_key,
-                    model=config.OPENAI_MODEL,
-                    messages=[
+                # Convert to expected format and map categories
+                processed_words = []
+                seen_words = set()
+
+                for word_data in processed_words_data:
+                    serbian_word = word_data.get("serbian_word", "").lower()
+
+                    # Skip if already seen (additional deduplication)
+                    if serbian_word in seen_words:
+                        continue
+                    seen_words.add(serbian_word)
+
+                    # Find matching category
+                    category = next(
+                        (
+                            c
+                            for c in categories
+                            if c.name.lower() == word_data.get("category", "").lower()
+                        ),
+                        categories[0]
+                        if categories
+                        else None,  # Default to first category
+                    )
+
+                    processed_words.append(
                         {
-                            "role": "system",
-                            "content": f"""You are a Serbian-English translator and linguist. For each given Serbian word:
-1. If it's a verb, convert it to infinitive form (e.g., "радим" → "радити", "идем" → "ићи")
-2. Convert to lowercase UNLESS it's a proper noun (names of people, places, etc.)
-3. Translate it to English
-4. Categorize it into one of these categories: {category_names}
+                            "serbian_word": serbian_word,
+                            "english_translation": word_data.get(
+                                "english_translation", "Translation unavailable"
+                            ),
+                            "category_id": category.id if category else 1,
+                            "category_name": category.name
+                            if category
+                            else "Common Words",
+                            "original_form": word_data.get("original_form"),
+                        }
+                    )
 
-Respond with a JSON array where each object has this format: {{"original": "original word", "serbian_infinitive": "word in infinitive/base form", "translation": "english word", "category": "category name", "is_proper_noun": true/false}}""",
-                        },
-                        {"role": "user", "content": f"Serbian words: {words_text}"},
-                    ],
-                    temperature=config.OPENAI_TEMPERATURE,
-                    max_tokens=config.OPENAI_MAX_TOKENS
-                    * 2,  # More tokens for batch processing
+                return jsonify(
+                    {
+                        "total_words": filtering_summary.get(
+                            "total_raw_words", len(processed_words)
+                        ),
+                        "existing_words": 0,  # Always 0 since we're not checking for existing words
+                        "new_words": len(processed_words),
+                        "translations": processed_words,
+                        "filtering_summary": filtering_summary,
+                    }
                 )
 
-                response = completion.choices[0].message["content"].strip()
-                try:
-                    parsed_results = json.loads(response)
-                    if not isinstance(parsed_results, list):
-                        parsed_results = [parsed_results]
+            except json.JSONDecodeError as json_err:
+                print(f"JSON decode error: {json_err}")
+                print(f"Raw response: {response}")
+                return jsonify(
+                    {
+                        "error": "Failed to parse LLM response",
+                        "raw_response": response[:500],  # First 500 chars for debugging
+                    }
+                ), 500
 
-                    for parsed in parsed_results:
-                        if not isinstance(parsed, dict):
-                            continue
+        except Exception as api_error:
+            print(f"OpenAI API error: {api_error}")
+            return jsonify({"error": f"OpenAI API error: {str(api_error)}"}), 500
 
-                        category = next(
-                            (
-                                c
-                                for c in categories
-                                if c.name.lower() == parsed.get("category", "").lower()
-                            ),
-                            None,
-                        )
-
-                        serbian_word = parsed.get(
-                            "serbian_infinitive", parsed.get("original", "")
-                        )
-                        original_word = parsed.get("original", serbian_word)
-
-                        if serbian_word and serbian_word not in seen_infinitives:
-                            seen_infinitives.add(serbian_word)
-                            processed_words.append(
-                                {
-                                    "serbian_word": serbian_word,
-                                    "english_translation": parsed.get(
-                                        "translation", "Translation failed"
-                                    ),
-                                    "category_id": category.id if category else 1,
-                                    "category_name": category.name
-                                    if category
-                                    else "Common Words",
-                                    "original_form": original_word
-                                    if original_word != serbian_word
-                                    else None,
-                                }
-                            )
-
-                except json.JSONDecodeError as json_err:
-                    print(f"JSON decode error for batch {batch_words}: {json_err}")
-                    # Fallback: process individual words in this batch
-                    for word in batch_words:
-                        if word not in seen_infinitives:
-                            seen_infinitives.add(word)
-                            processed_words.append(
-                                {
-                                    "serbian_word": word,
-                                    "english_translation": "Translation failed",
-                                    "category_id": 1,
-                                    "category_name": "Common Words",
-                                }
-                            )
-
-            except Exception as e:
-                print(f"Error translating batch {batch_words}: {e}")
-                # Fallback: add all words in batch as failed translations
-                for word in batch_words:
-                    if word not in seen_infinitives:
-                        seen_infinitives.add(word)
-                        processed_words.append(
-                            {
-                                "serbian_word": word,
-                                "english_translation": "Translation failed",
-                                "category_id": 1,
-                                "category_name": "Common Words",
-                            }
-                        )
-
-        # For user isolation, we don't check if words already exist
-        # Each user can have their own copy of the same word
-        # This ensures complete vocabulary isolation between users
-
-        return jsonify(
-            {
-                "total_words": len(unique_words),
-                "existing_words": 0,  # Always 0 since we're not checking for existing words
-                "new_words": len(processed_words),
-                "translations": processed_words,
-            }
-        )
     except Exception as e:
         print(f"Error processing text: {e}")
         return jsonify({"error": "Failed to process text"}), 500
