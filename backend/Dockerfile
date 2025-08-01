@@ -28,4 +28,4 @@ COPY . .
 
 EXPOSE 3001
 
-CMD ["gunicorn", "-b", "0.0.0.0:3001", "--timeout", "10", "--workers", "1", "app:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:3001", "--timeout", "120", "--workers", "1", "--keep-alive", "2", "app:app"]

@@ -423,78 +423,109 @@ def process_text():
         seen_infinitives = set()
 
         # Limit words per request using config
-        for word in unique_words[: config.MAX_WORDS_PER_REQUEST]:
+        words_to_process = unique_words[: config.MAX_WORDS_PER_REQUEST]
+
+        # Process words in batches to improve efficiency
+        batch_size = 5
+        for i in range(0, len(words_to_process), batch_size):
+            batch_words = words_to_process[i : i + batch_size]
+
             try:
+                # Create a batch prompt for multiple words
+                words_text = ", ".join(f'"{word}"' for word in batch_words)
+
                 completion = openai.ChatCompletion.create(
                     api_key=api_key,
                     model=config.OPENAI_MODEL,
                     messages=[
                         {
                             "role": "system",
-                            "content": f"""You are a Serbian-English translator and linguist. For the given Serbian word:
+                            "content": f"""You are a Serbian-English translator and linguist. For each given Serbian word:
 1. If it's a verb, convert it to infinitive form (e.g., "радим" → "радити", "идем" → "ићи")
 2. Convert to lowercase UNLESS it's a proper noun (names of people, places, etc.)
 3. Translate it to English
 4. Categorize it into one of these categories: {category_names}
 
-Respond in JSON format: {{"serbian_infinitive": "word in infinitive/base form", "translation": "english word", "category": "category name", "is_proper_noun": true/false}}""",
+Respond with a JSON array where each object has this format: {{"original": "original word", "serbian_infinitive": "word in infinitive/base form", "translation": "english word", "category": "category name", "is_proper_noun": true/false}}""",
                         },
-                        {"role": "user", "content": f'Serbian word: "{word}"'},
+                        {"role": "user", "content": f"Serbian words: {words_text}"},
                     ],
                     temperature=config.OPENAI_TEMPERATURE,
-                    max_tokens=config.OPENAI_MAX_TOKENS,
+                    max_tokens=config.OPENAI_MAX_TOKENS
+                    * 2,  # More tokens for batch processing
                 )
 
                 response = completion.choices[0].message["content"].strip()
                 try:
-                    parsed = json.loads(response)
-                    category = next(
-                        (
-                            c
-                            for c in categories
-                            if c.name.lower() == parsed["category"].lower()
-                        ),
-                        None,
-                    )
+                    parsed_results = json.loads(response)
+                    if not isinstance(parsed_results, list):
+                        parsed_results = [parsed_results]
 
-                    serbian_word = parsed.get("serbian_infinitive", word)
+                    for parsed in parsed_results:
+                        if not isinstance(parsed, dict):
+                            continue
 
-                    if serbian_word not in seen_infinitives:
-                        seen_infinitives.add(serbian_word)
-                        processed_words.append(
-                            {
-                                "serbian_word": serbian_word,
-                                "english_translation": parsed["translation"],
-                                "category_id": category.id if category else 1,
-                                "category_name": category.name
-                                if category
-                                else "Common Words",
-                                "original_form": word,
-                            }
+                        category = next(
+                            (
+                                c
+                                for c in categories
+                                if c.name.lower() == parsed.get("category", "").lower()
+                            ),
+                            None,
                         )
-                except json.JSONDecodeError:
+
+                        serbian_word = parsed.get(
+                            "serbian_infinitive", parsed.get("original", "")
+                        )
+                        original_word = parsed.get("original", serbian_word)
+
+                        if serbian_word and serbian_word not in seen_infinitives:
+                            seen_infinitives.add(serbian_word)
+                            processed_words.append(
+                                {
+                                    "serbian_word": serbian_word,
+                                    "english_translation": parsed.get(
+                                        "translation", "Translation failed"
+                                    ),
+                                    "category_id": category.id if category else 1,
+                                    "category_name": category.name
+                                    if category
+                                    else "Common Words",
+                                    "original_form": original_word
+                                    if original_word != serbian_word
+                                    else None,
+                                }
+                            )
+
+                except json.JSONDecodeError as json_err:
+                    print(f"JSON decode error for batch {batch_words}: {json_err}")
+                    # Fallback: process individual words in this batch
+                    for word in batch_words:
+                        if word not in seen_infinitives:
+                            seen_infinitives.add(word)
+                            processed_words.append(
+                                {
+                                    "serbian_word": word,
+                                    "english_translation": "Translation failed",
+                                    "category_id": 1,
+                                    "category_name": "Common Words",
+                                }
+                            )
+
+            except Exception as e:
+                print(f"Error translating batch {batch_words}: {e}")
+                # Fallback: add all words in batch as failed translations
+                for word in batch_words:
                     if word not in seen_infinitives:
                         seen_infinitives.add(word)
                         processed_words.append(
                             {
                                 "serbian_word": word,
-                                "english_translation": response,
+                                "english_translation": "Translation failed",
                                 "category_id": 1,
                                 "category_name": "Common Words",
                             }
                         )
-            except Exception as e:
-                print(f'Error translating word "{word}": {e}')
-                if word not in seen_infinitives:
-                    seen_infinitives.add(word)
-                    processed_words.append(
-                        {
-                            "serbian_word": word,
-                            "english_translation": "Translation failed",
-                            "category_id": 1,
-                            "category_name": "Common Words",
-                        }
-                    )
 
         # For user isolation, we don't check if words already exist
         # Each user can have their own copy of the same word
