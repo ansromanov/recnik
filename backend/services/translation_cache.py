@@ -239,7 +239,14 @@ class TranslationCache:
             Dictionary with cache statistics
         """
         try:
-            stats = self.redis.hgetall("translation_cache_stats")
+            stats_raw = self.redis.hgetall("translation_cache_stats")
+
+            # Convert bytes keys/values to strings if needed (for fakeredis compatibility)
+            stats = {}
+            for k, v in stats_raw.items():
+                key = k.decode() if isinstance(k, bytes) else k
+                value = v.decode() if isinstance(v, bytes) else v
+                stats[key] = value
 
             # Convert string values to integers
             for key in [
