@@ -1,17 +1,47 @@
 #!/usr/bin/env python3
 """
-Test script for the new LLM prompt-based text processing
+Test script for the improved LLM prompt-based text processing with infinitive conversion
 """
 
 import requests
 import json
+import os
 
-# Test data
-test_text = """
-Danas sam bio u gradu i kupio sam hleb, mleko i jabuke. Prodavac je bio vrlo ljubazan. 
-Pošao sam kući autobusom koji vozi svakih 15 minuta. U parku sam video decu kako se igraju.
-Takođe sam prošao pored biblioteke i video sam da imaju nove knjige.
-"""
+# Enhanced test data with various verb forms to test infinitive conversion
+test_texts = {
+    "basic_verbs": """
+    Danas radim u gradu. Jučer sam radio ceo dan. Sutra ću raditi još više.
+    Kupujem hranu na pijaci. Kupio sam hleb i mleko. Kupovala je voće.
+    Čitam zanimljivu knjigu. Pročitao sam tri poglavlja. Čitaće celu noć.
+    """,
+    "mixed_content": """
+    Jutros sam ustao rano i pošao u grad. Video sam prijatelje na kafi.
+    Razgovarali smo o filmu koji smo gledali sinoć. Prodavci su bili ljubazni.
+    Kupovali smo hranu na pijaci. Vraćamo se kući autobusom.
+    """,
+    "news_style": """
+    Predsednik je juče najavio nove mere. Građani su reagovali pozitivno.
+    Ekonomisti smatraju da će se situacija poboljšati. Mere se primenjuju od sledeće nedelje.
+    Ministri su održali konferenciju za novinare. Opozicija kritikuje vladine odluke.
+    """,
+}
+
+# Expected infinitive conversions for verification
+expected_conversions = {
+    "radim": "raditi",
+    "radio": "raditi",
+    "kupujem": "kupovati",
+    "kupio": "kupovati",
+    "čitam": "čitati",
+    "pročitao": "čitati",
+    "ustao": "ustati",
+    "pošao": "poći",
+    "video": "videti",
+    "razgovarali": "razgovarati",
+    "gledali": "gledati",
+    "kupovali": "kupovati",
+    "vraćamo": "vraćati",
+}
 
 
 def test_process_text():
@@ -76,52 +106,77 @@ def test_process_text():
     except Exception as e:
         print(f"⚠️  Settings error: {e}")
 
-    # Test the new text processing
-    print(f"\n🧠 Testing LLM-based text processing...")
-    print(f"📄 Input text: {test_text[:100]}...")
+    # Test the new text processing with multiple test cases
+    print(f"\n🧠 Testing LLM-based text processing with infinitive conversion...")
 
-    try:
-        process_response = requests.post(
-            "http://localhost:3001/api/process-text",
-            json={"text": test_text},
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=60,  # Longer timeout for LLM processing
-        )
+    for test_name, test_text in test_texts.items():
+        print(f"\n📄 Testing {test_name}:")
+        print(f"   Input: {test_text[:100]}...")
 
-        if process_response.status_code == 200:
-            result = process_response.json()
-            print("✅ Text processing successful!")
-            print(f"📊 Results:")
-            print(f"   • Total words: {result.get('total_words', 0)}")
-            print(f"   • New words: {result.get('new_words', 0)}")
-            print(f"   • Filtering summary: {result.get('filtering_summary', {})}")
+        try:
+            process_response = requests.post(
+                "http://localhost:3001/api/process-text",
+                json={"text": test_text},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=60,  # Longer timeout for LLM processing
+            )
 
-            translations = result.get("translations", [])
-            if translations:
-                print(f"\n🎯 Sample processed words:")
-                for i, word in enumerate(translations[:5]):  # Show first 5
-                    print(
-                        f"   {i + 1}. {word['serbian_word']} → {word['english_translation']} ({word['category_name']})"
-                    )
-                    if word.get("original_form"):
-                        print(f"      Original form: {word['original_form']}")
+            if process_response.status_code == 200:
+                result = process_response.json()
+                print(f"   ✅ Processing successful!")
+                print(f"   📊 Results: {result.get('new_words', 0)} words extracted")
 
-        elif process_response.status_code == 400:
-            error_data = process_response.json()
-            if "OpenAI API key" in error_data.get("error", ""):
-                print(
-                    "⚠️  OpenAI API key required - please set a valid key in the script"
-                )
-                print(
-                    "📝 The LLM prompt-based processing is working, but needs API key"
-                )
+                translations = result.get("translations", [])
+                if translations:
+                    print(f"   🎯 Sample words (showing infinitive conversion):")
+                    for i, word in enumerate(translations[:5]):  # Show first 5
+                        original = word.get("original_form", "")
+                        base = word["serbian_word"]
+                        translation = word["english_translation"]
+
+                        if original and original != base:
+                            print(f"      {i + 1}. {original} → {base} ({translation})")
+                        else:
+                            print(f"      {i + 1}. {base} ({translation})")
+
+                    # Verify some expected conversions
+                    found_conversions = {}
+                    for word in translations:
+                        original = word.get("original_form", "")
+                        base = word["serbian_word"]
+                        if original and original in expected_conversions:
+                            found_conversions[original] = base
+
+                    if found_conversions:
+                        print(f"   ✅ Verified conversions:")
+                        for orig, converted in found_conversions.items():
+                            expected = expected_conversions.get(orig, "unknown")
+                            status = "✅" if converted == expected else "❌"
+                            print(
+                                f"      {status} {orig} → {converted} (expected: {expected})"
+                            )
+
+            elif process_response.status_code == 400:
+                error_data = process_response.json()
+                if "OpenAI API key" in error_data.get("error", ""):
+                    print(f"   ⚠️  OpenAI API key required for {test_name}")
+                else:
+                    print(f"   ❌ Processing failed for {test_name}: {error_data}")
             else:
-                print(f"❌ Processing failed: {error_data}")
-        else:
-            print(f"❌ Processing failed: {process_response.text}")
+                print(
+                    f"   ❌ Processing failed for {test_name}: {process_response.text}"
+                )
 
-    except Exception as e:
-        print(f"❌ Processing error: {e}")
+        except Exception as e:
+            print(f"   ❌ Processing error for {test_name}: {e}")
+
+    # Summary
+    print(f"\n📝 Summary:")
+    print(f"   • Tested {len(test_texts)} different text types")
+    print(f"   • Expected infinitive conversions: {len(expected_conversions)}")
+    print(
+        f"   • To test with real API key, replace 'your-openai-api-key-here' with actual key"
+    )
 
 
 if __name__ == "__main__":

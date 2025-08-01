@@ -383,9 +383,11 @@ def get_words():
         return jsonify({"error": "Failed to fetch words"}), 500
 
 
-@app.route("/api/process-text", methods=["POST"])
+@app.route("/api/process-text", methods=["POST", "OPTIONS"])
 @jwt_required()
 def process_text():
+    if request.method == "OPTIONS":
+        return "", 200
     try:
         # Get user's OpenAI API key
         user_id = get_jwt_identity()
@@ -406,7 +408,7 @@ def process_text():
         categories = Category.query.all()
         category_names = ", ".join([c.name for c in categories])
 
-        # Use a comprehensive LLM prompt to handle all filtering and processing
+        # Use a comprehensive LLM prompt to handle all filtering and processing with proper infinitive conversion
         try:
             completion = openai.ChatCompletion.create(
                 api_key=api_key,
@@ -414,55 +416,70 @@ def process_text():
                 messages=[
                     {
                         "role": "system",
-                        "content": f"""You are an expert Serbian linguist and vocabulary teacher. Your task is to extract meaningful Serbian words from the given text for vocabulary learning.
+                        "content": f"""You are an expert Serbian linguist and vocabulary teacher. Your primary task is to extract meaningful Serbian words from text and convert them to their proper base forms (infinitive for verbs, nominative singular for nouns, etc.).
+
+CRITICAL REQUIREMENT - INFINITIVE CONVERSION:
+For verbs, you MUST convert all forms to infinitive:
+- Present tense forms: "radim, radiš, radi, radimo, radite, rade" → "raditi"
+- Past tense forms: "radio, radila, radilo" → "raditi" 
+- Aorist forms: "radih, radi, radismo" → "raditi"
+- Imperative forms: "radi, radite" → "raditi"
+- Common verb endings to convert:
+  * -m, -š, -mo, -te endings → find infinitive (-ti, -ći, -ši)
+  * -ao, -ala, -alo → infinitive
+  * Past participle forms → infinitive
+
+For nouns, convert to nominative singular:
+- "kuće, kućama, kućama" → "kuća"
+- "automobila, automobilom" → "automobil" 
+- "gradova, gradovima" → "grad"
+
+For adjectives, convert to masculine nominative singular:
+- "velika, veliko, velikog" → "velik"
+- "lepa, lepo, lepom" → "lep"
 
 FILTERING RULES:
-- ONLY include words written in Latin Serbian script (a-z and čćžšđ)
-- EXCLUDE all Cyrillic words completely
-- EXCLUDE English words, URLs, email addresses, technical terms
-- EXCLUDE proper names (people, places) EXCEPT major Serbian cities (Beograd, Novi Sad, Niš, Kragujevac, etc.)
-- EXCLUDE acronyms and all-caps words
-- EXCLUDE words containing numbers or special characters
-- EXCLUDE very common words that aren't useful for learning: je, su, da, ne, i, u, na, za, od, do, se, će, bi, mi, ti, vi, oni, ono, što, kako, kada, gde, koji, koja, koje
-- EXCLUDE words shorter than 3 characters
-- EXCLUDE foreign language words mixed in the text
+- ONLY Latin Serbian script (a-z, č, ć, ž, š, đ)
+- EXCLUDE Cyrillic, English, URLs, numbers, special characters
+- EXCLUDE proper names except major cities (Beograd, Novi Sad, Niš, etc.)
+- EXCLUDE common function words: je, su, da, ne, i, u, na, za, od, do, se, će, bi, što, kako, kada, gde, koji, koja, koje, mi, ti, vi, oni, ono
+- EXCLUDE words shorter than 3 characters after processing
+- LIMIT to 20 BEST vocabulary words
 
-WORD PROCESSING:
-- Convert verbs to infinitive form (e.g., "radim" → "raditi", "idem" → "ići")
-- Convert nouns to nominative singular (e.g., "kuće" → "kuća", "automobila" → "automobil")
-- Convert adjectives to masculine nominative singular (e.g., "velika" → "velik", "crvenog" → "crven")
-- Remove common Serbian suffixes from inflected words: -ama, -ima, -ova, -ati, -eti, -iti, -uje, -ava, -eva
-- Keep only meaningful word roots (minimum 3 characters after processing)
-- LIMIT OUTPUT TO MAXIMUM 20 WORDS to ensure complete response
+EXAMPLES OF PROPER CONVERSION:
+Input: "kupujem, kupuje, kupovao" → Output: "kupovati" (to buy)
+Input: "ide, idem, išao" → Output: "ići" (to go)  
+Input: "voli, volim, voleo" → Output: "voleti" (to love)
+Input: "kuće, kućama" → Output: "kuća" (house)
+Input: "gradovi, gradova" → Output: "grad" (city)
 
-OUTPUT FORMAT:
-Return a JSON object with this structure:
+OUTPUT FORMAT (JSON):
 {{
   "processed_words": [
     {{
-      "serbian_word": "base form of the word",
-      "english_translation": "english translation",
-      "category": "category name from: {category_names}",
-      "original_form": "original form if different from base form"
+      "serbian_word": "INFINITIVE or base form",
+      "english_translation": "english translation of base form",
+      "category": "category from: {category_names}",
+      "original_form": "original inflected form from text"
     }}
   ],
   "filtering_summary": {{
     "total_raw_words": number,
-    "filtered_out": number,
+    "filtered_out": number, 
     "processed_words": number,
-    "exclusion_reasons": ["list of main reasons words were excluded"]
+    "exclusion_reasons": ["reasons for filtering"]
   }}
 }}
 
-Process the text and extract only the TOP 20 high-quality Serbian vocabulary words suitable for language learning.""",
+IMPORTANT: Always convert to proper base forms. This is critical for vocabulary learning!""",
                     },
                     {
                         "role": "user",
-                        "content": f"Please extract and process Serbian vocabulary words from the following text (limit to 20 best words):\n\n{text[:2000]}",
+                        "content": f"Extract and convert to infinitive/base forms from this Serbian text:\n\n{text[:2500]}",
                     },
                 ],
                 temperature=config.OPENAI_TEMPERATURE,
-                max_tokens=1500,  # Increased token limit to ensure complete response
+                max_tokens=2000,  # Increased for more detailed processing
             )
 
             response = completion.choices[0].message["content"].strip()
