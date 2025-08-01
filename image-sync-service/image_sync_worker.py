@@ -66,6 +66,7 @@ class ImageSyncService:
 
         # Background processing
         self.background_queue_key = "image_queue"
+        self.priority_queue_key = "image_queue_priority"
         self.processing_lock_key = "image_processing_lock"
 
         # Statistics
@@ -417,8 +418,18 @@ class ImageSyncService:
         self.logger.info(f"⏱️  Processed '{serbian_word}' in {processing_time:.2f}s")
 
     def get_queue_item(self):
-        """Get next item from processing queue"""
+        """Get next item from processing queue - priority queue first"""
         try:
+            # First check priority queue
+            queue_item_json = self.redis_client.rpop(self.priority_queue_key)
+            if queue_item_json:
+                queue_item = json.loads(queue_item_json)
+                self.logger.info(
+                    f"🔥 Processing HIGH PRIORITY item: {queue_item.get('serbian_word')}"
+                )
+                return queue_item
+
+            # If no priority items, check regular queue
             queue_item_json = self.redis_client.rpop(self.background_queue_key)
             if not queue_item_json:
                 return None
@@ -430,12 +441,18 @@ class ImageSyncService:
             return None
 
     def get_queue_length(self):
-        """Get current queue length"""
+        """Get current queue lengths"""
         try:
-            return self.redis_client.llen(self.background_queue_key)
+            regular_length = self.redis_client.llen(self.background_queue_key)
+            priority_length = self.redis_client.llen(self.priority_queue_key)
+            return {
+                "regular": regular_length,
+                "priority": priority_length,
+                "total": regular_length + priority_length,
+            }
         except Exception as e:
             self.logger.error(f"Error getting queue length: {e}")
-            return 0
+            return {"regular": 0, "priority": 0, "total": 0}
 
     def acquire_processing_lock(self, timeout=300):
         """Acquire distributed processing lock"""
@@ -517,11 +534,11 @@ class ImageSyncService:
 
                 if not queue_item:
                     queue_length = self.get_queue_length()
-                    if queue_length == 0:
+                    if queue_length["total"] == 0:
                         self.logger.info("📭 Queue empty, waiting for new items...")
                     else:
                         self.logger.warning(
-                            f"Failed to get item from queue (length: {queue_length})"
+                            f"Failed to get item from queue (priority: {queue_length['priority']}, regular: {queue_length['regular']})"
                         )
 
                     self.release_processing_lock()

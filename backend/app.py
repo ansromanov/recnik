@@ -936,6 +936,9 @@ def get_practice_words():
         user_id = int(get_jwt_identity())
         limit = int(request.args.get("limit", 10))
         difficulty = request.args.get("difficulty")
+        game_mode = request.args.get(
+            "mode", "translation"
+        )  # translation, reverse, letters
 
         # First, let's check if the user has any vocabulary at all
         user_vocab_count = UserVocabulary.query.filter_by(user_id=user_id).count()
@@ -971,7 +974,19 @@ def get_practice_words():
         words = query.all()
         print(f"Query returned {len(words)} words for practice")
 
-        # For each word, get 3 random incorrect options
+        # Helper function to scramble letters
+        def scramble_word(word):
+            letters = list(word)
+            random.shuffle(letters)
+            # Make sure it's actually scrambled (not the same as original)
+            max_attempts = 10
+            attempts = 0
+            while "".join(letters) == word and attempts < max_attempts:
+                random.shuffle(letters)
+                attempts += 1
+            return "".join(letters)
+
+        # For each word, create appropriate options based on game mode
         practice_words = []
         for word in words:
             # Get user-specific vocabulary data
@@ -979,28 +994,80 @@ def get_practice_words():
                 user_id=user_id, word_id=word.id
             ).first()
 
-            # Get random incorrect options
-            incorrect_words = (
-                Word.query.filter(Word.id != word.id)
-                .order_by(func.random())
-                .limit(3)
-                .all()
-            )
-
-            incorrect_options = [w.english_translation for w in incorrect_words]
-            all_options = [word.english_translation] + incorrect_options
-
-            # Shuffle options
-            random.shuffle(all_options)
-
             word_dict = word.to_dict()
             if user_vocab:
                 word_dict["mastery_level"] = user_vocab.mastery_level
                 word_dict["times_practiced"] = user_vocab.times_practiced
 
-            word_dict.update(
-                {"options": all_options, "correct_answer": word.english_translation}
-            )
+            word_dict["game_mode"] = game_mode
+
+            if game_mode == "translation":
+                # Serbian → English (existing functionality)
+                incorrect_words = (
+                    Word.query.filter(Word.id != word.id)
+                    .order_by(func.random())
+                    .limit(3)
+                    .all()
+                )
+                incorrect_options = [w.english_translation for w in incorrect_words]
+                all_options = [word.english_translation] + incorrect_options
+                random.shuffle(all_options)
+
+                word_dict.update(
+                    {
+                        "question": word.serbian_word,
+                        "question_type": "serbian_word",
+                        "options": all_options,
+                        "correct_answer": word.english_translation,
+                    }
+                )
+
+            elif game_mode == "reverse":
+                # English → Serbian
+                incorrect_words = (
+                    Word.query.filter(Word.id != word.id)
+                    .order_by(func.random())
+                    .limit(3)
+                    .all()
+                )
+                incorrect_options = [w.serbian_word for w in incorrect_words]
+                all_options = [word.serbian_word] + incorrect_options
+                random.shuffle(all_options)
+
+                word_dict.update(
+                    {
+                        "question": word.english_translation,
+                        "question_type": "english_word",
+                        "options": all_options,
+                        "correct_answer": word.serbian_word,
+                    }
+                )
+
+            elif game_mode == "letters":
+                # Interactive letter clicking → Serbian word
+                target_word = word.serbian_word
+                letters = list(target_word)
+                random.shuffle(letters)
+
+                # Make sure it's actually scrambled (not the same as original)
+                max_attempts = 10
+                attempts = 0
+                while "".join(letters) == target_word and attempts < max_attempts:
+                    random.shuffle(letters)
+                    attempts += 1
+
+                word_dict.update(
+                    {
+                        "question": "Click the letters to form the word",
+                        "question_type": "letter_clicking",
+                        "letters": letters,  # Array of individual letters to click
+                        "correct_answer": target_word,
+                        "hint": word.english_translation,  # Provide English translation as hint
+                        "target_length": len(
+                            target_word
+                        ),  # Help users know how long the word should be
+                    }
+                )
 
             practice_words.append(word_dict)
 

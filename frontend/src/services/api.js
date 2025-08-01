@@ -55,8 +55,8 @@ export const apiService = {
     processText: (text) => api.post('/process-text', { text }),
 
     // Practice
-    getPracticeWords: (limit = 10, difficulty) => {
-        const params = { limit };
+    getPracticeWords: (limit = 10, difficulty, mode = 'translation') => {
+        const params = { limit, mode };
         if (difficulty) params.difficulty = difficulty;
         return api.get('/practice/words', { params });
     },

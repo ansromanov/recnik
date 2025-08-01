@@ -74,6 +74,318 @@
     text-decoration: underline;
 }
 
+/* Game mode selection cards */
+.game-mode-card {
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.game-mode-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.game-mode-card:active {
+    transform: translateY(0);
+}
+
+/* Game mode badge styling */
+.game-mode-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 25px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+/* Scrambled letters styling for letters game mode */
+.scrambled-letters {
+    font-family: 'Courier New', monospace;
+    font-size: 28px;
+    letter-spacing: 4px;
+    color: #495057;
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    padding: 15px 25px;
+    border-radius: 12px;
+    display: inline-block;
+    border: 2px dashed #ff6b6b;
+    margin: 10px 0;
+}
+
+/* Hint box styling */
+.hint-box {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border: 1px solid #d39e00;
+    border-radius: 10px;
+    padding: 12px 20px;
+    margin: 15px 0;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.hint-box .hint-icon {
+    font-size: 18px;
+    margin-right: 8px;
+}
+
+.hint-box .hint-text {
+    font-size: 16px;
+    color: #856404;
+    font-weight: 500;
+}
+
+/* Letter clicking game styles */
+.letters-game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.user-word-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.word-progress {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.letter-slot {
+    width: 50px;
+    height: 50px;
+    border: 3px solid #ddd;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.letter-slot.filled {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+    color: #1976d2;
+    transform: scale(1.05);
+}
+
+.letter-slot.filled::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 3px;
+    background-color: #007bff;
+    border-radius: 2px;
+}
+
+.word-length-indicator {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+    padding: 5px 15px;
+    background-color: #f0f0f0;
+    border-radius: 20px;
+}
+
+.available-letters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    max-width: 500px;
+}
+
+.letter-btn {
+    width: 60px;
+    height: 60px;
+    border: 2px solid #007bff;
+    border-radius: 12px;
+    background-color: #fff;
+    color: #007bff;
+    font-size: 24px;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.letter-btn:hover:not(:disabled) {
+    background-color: #007bff;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.letter-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 123, 255, 0.3);
+}
+
+.letter-btn.used {
+    background-color: #e9ecef;
+    color: #6c757d;
+    border-color: #dee2e6;
+    cursor: not-allowed;
+    opacity: 0.5;
+    transform: scale(0.95);
+}
+
+.letter-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.letter-game-actions {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.letter-game-actions .btn {
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.letter-game-actions .btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.letter-game-actions .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.letter-game-actions .btn-warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.letter-game-actions .btn-warning:hover:not(:disabled) {
+    background-color: #e0a800;
+}
+
+.letter-game-actions .btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.letter-game-actions .btn-secondary:hover:not(:disabled) {
+    background-color: #5a6268;
+}
+
+.letter-game-actions .btn-primary {
+    background-color: #28a745;
+    color: white;
+    animation: pulse 1.5s infinite;
+}
+
+.letter-game-actions .btn-primary:hover:not(:disabled) {
+    background-color: #218838;
+    animation: none;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+    }
+}
+
+/* Success/Error animations for letter game */
+.letters-game-container.correct {
+    animation: successShake 0.6s ease-in-out;
+}
+
+.letters-game-container.incorrect {
+    animation: errorShake 0.6s ease-in-out;
+}
+
+@keyframes successShake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-2px);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(2px);
+    }
+}
+
+@keyframes errorShake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-5px);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(5px);
+    }
+}
+
 /* Mobile responsive */
 @media (max-width: 768px) {
     .word-with-image {
@@ -84,5 +396,73 @@
     .word-image-preview {
         width: 60px;
         height: 60px;
+    }
+
+    .game-mode-card {
+        padding: 20px !important;
+    }
+
+    .game-mode-card h3 {
+        font-size: 18px !important;
+    }
+
+    .scrambled-letters {
+        font-size: 22px;
+        letter-spacing: 2px;
+        padding: 12px 20px;
+    }
+
+    /* Mobile letter game adjustments */
+    .letter-slot {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+    }
+
+    .letter-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+
+    .available-letters {
+        gap: 8px;
+        max-width: 100%;
+    }
+
+    .letter-game-actions {
+        gap: 10px;
+    }
+
+    .letter-game-actions .btn {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+
+    .letters-game-container {
+        gap: 20px;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+    .letter-slot {
+        width: 35px;
+        height: 35px;
+        font-size: 18px;
+    }
+
+    .letter-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+    }
+
+    .available-letters {
+        gap: 6px;
+    }
+
+    .word-progress {
+        gap: 6px;
     }
 }
