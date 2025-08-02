@@ -57,6 +57,9 @@ from services.xp_service import xp_service
 # Import sentence cache service
 from services.sentence_cache import SentenceCacheService
 
+# Import avatar service
+from services.avatar_service import avatar_service
+
 # Try to import feedparser, but don't crash if not available
 try:
     import feedparser
@@ -3917,6 +3920,307 @@ def check_achievements():
     except Exception as e:
         print(f"Error checking achievements: {e}")
         return jsonify({"error": "Failed to check achievements"}), 500
+
+
+# Avatar endpoints
+@app.route("/api/avatar/generate", methods=["POST"])
+@jwt_required()
+def generate_avatar():
+    """Generate a new AI avatar for the current user"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        data = request.get_json() or {}
+        style = data.get("style")  # Optional specific style
+
+        # Generate new avatar
+        avatar_data = avatar_service.create_user_avatar(user.username, style)
+
+        # Update user's avatar information
+        user.avatar_url = avatar_data["avatar_url"]
+        user.avatar_type = avatar_data["avatar_type"]
+        user.avatar_seed = avatar_data["avatar_seed"]
+
+        db.session.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "Avatar generated successfully",
+                "avatar": {
+                    "avatar_url": user.avatar_url,
+                    "avatar_type": user.avatar_type,
+                    "avatar_seed": user.avatar_seed,
+                    "style": avatar_data.get("avatar_style"),
+                },
+            }
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error generating avatar: {e}")
+        return jsonify({"error": "Failed to generate avatar"}), 500
+
+
+@app.route("/api/avatar/regenerate", methods=["POST"])
+@jwt_required()
+def regenerate_avatar():
+    """Regenerate avatar for the current user"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        data = request.get_json() or {}
+        style = data.get("style")
+        keep_seed = data.get("keep_seed", False)
+
+        # Regenerate avatar
+        avatar_data = avatar_service.regenerate_avatar(
+            user.username,
+            style=style,
+            keep_seed=keep_seed,
+            current_seed=user.avatar_seed,
+        )
+
+        # Update user's avatar information
+        user.avatar_url = avatar_data["avatar_url"]
+        user.avatar_type = avatar_data["avatar_type"]
+        user.avatar_seed = avatar_data["avatar_seed"]
+
+        db.session.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "Avatar regenerated successfully",
+                "avatar": {
+                    "avatar_url": user.avatar_url,
+                    "avatar_type": user.avatar_type,
+                    "avatar_seed": user.avatar_seed,
+                    "style": avatar_data.get("avatar_style"),
+                },
+            }
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error regenerating avatar: {e}")
+        return jsonify({"error": "Failed to regenerate avatar"}), 500
+
+
+@app.route("/api/avatar/variations")
+@jwt_required()
+def get_avatar_variations():
+    """Get avatar variations for the current user"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        # Use existing seed or generate one if user doesn't have avatar
+        seed = user.avatar_seed or avatar_service.generate_avatar_seed(user.username)
+        count = int(request.args.get("count", 6))
+
+        variations = avatar_service.get_avatar_variations(seed, count)
+
+        return jsonify(
+            {"success": True, "variations": variations, "current_seed": seed}
+        )
+
+    except Exception as e:
+        print(f"Error getting avatar variations: {e}")
+        return jsonify({"error": "Failed to get avatar variations"}), 500
+
+
+@app.route("/api/avatar/styles")
+@jwt_required(optional=True)
+def get_avatar_styles():
+    """Get available avatar styles"""
+    try:
+        styles = []
+        for style in avatar_service.avatar_styles:
+            styles.append(
+                {
+                    "id": style,
+                    "name": style.replace("-", " ").title(),
+                    "preview_url": avatar_service.get_avatar_url("preview", style, 64),
+                }
+            )
+
+        return jsonify(
+            {
+                "success": True,
+                "styles": styles,
+                "default_style": avatar_service.default_style,
+            }
+        )
+
+    except Exception as e:
+        print(f"Error getting avatar styles: {e}")
+        return jsonify({"error": "Failed to get avatar styles"}), 500
+
+
+@app.route("/api/avatar/upload", methods=["POST"])
+@jwt_required()
+def upload_avatar():
+    """Upload custom avatar for the current user"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        # Check if file was uploaded
+        if "avatar" not in request.files:
+            return jsonify({"error": "No avatar file provided"}), 400
+
+        file = request.files["avatar"]
+        if file.filename == "":
+            return jsonify({"error": "No file selected"}), 400
+
+        # Read file data
+        file_data = file.read()
+        content_type = file.content_type
+
+        # Validate uploaded file
+        validation_result = avatar_service.validate_uploaded_avatar(
+            file_data, content_type
+        )
+
+        if not validation_result["valid"]:
+            return jsonify({"error": validation_result["error"]}), 400
+
+        # TODO: In a real implementation, you would:
+        # 1. Save the file to a storage service (AWS S3, Google Cloud Storage, etc.)
+        # 2. Generate a public URL for the uploaded image
+        # 3. Optionally resize/optimize the image
+
+        # For now, we'll simulate this with a placeholder
+        # In production, replace this with actual file storage logic
+        upload_url = f"https://example.com/uploads/avatars/{user_id}_{int(datetime.utcnow().timestamp())}.jpg"
+
+        # Update user's avatar information
+        user.avatar_url = upload_url
+        user.avatar_type = "uploaded"
+        user.avatar_seed = None  # Clear seed for uploaded avatars
+
+        db.session.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "Avatar uploaded successfully",
+                "avatar": {
+                    "avatar_url": user.avatar_url,
+                    "avatar_type": user.avatar_type,
+                    "avatar_seed": user.avatar_seed,
+                    "file_size": validation_result["size"],
+                },
+            }
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error uploading avatar: {e}")
+        return jsonify({"error": "Failed to upload avatar"}), 500
+
+
+@app.route("/api/avatar/current")
+@jwt_required()
+def get_current_avatar():
+    """Get current user's avatar information"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        # If user doesn't have an avatar, generate a default one
+        if not user.avatar_url:
+            avatar_data = avatar_service.get_default_avatar(user.username)
+            user.avatar_url = avatar_data["avatar_url"]
+            user.avatar_type = avatar_data["avatar_type"]
+            user.avatar_seed = avatar_data["avatar_seed"]
+            db.session.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "avatar": {
+                    "avatar_url": user.avatar_url,
+                    "avatar_type": user.avatar_type,
+                    "avatar_seed": user.avatar_seed,
+                },
+            }
+        )
+
+    except Exception as e:
+        print(f"Error getting current avatar: {e}")
+        return jsonify({"error": "Failed to get current avatar"}), 500
+
+
+@app.route("/api/avatar/select", methods=["POST"])
+@jwt_required()
+def select_avatar():
+    """Select a specific avatar style for the current user"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        data = request.get_json()
+        style = data.get("style")
+        seed = data.get("seed")
+
+        if not style:
+            return jsonify({"error": "Style is required"}), 400
+
+        # Use provided seed or current user seed or generate new one
+        if not seed:
+            seed = user.avatar_seed or avatar_service.generate_avatar_seed(
+                user.username
+            )
+
+        # Generate avatar URL with selected style
+        avatar_url = avatar_service.get_avatar_url(seed, style)
+
+        # Update user's avatar information
+        user.avatar_url = avatar_url
+        user.avatar_type = "ai_generated"
+        user.avatar_seed = seed
+
+        db.session.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Avatar style '{style}' selected successfully",
+                "avatar": {
+                    "avatar_url": user.avatar_url,
+                    "avatar_type": user.avatar_type,
+                    "avatar_seed": user.avatar_seed,
+                    "style": style,
+                },
+            }
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error selecting avatar: {e}")
+        return jsonify({"error": "Failed to select avatar"}), 500
 
 
 if __name__ == "__main__":

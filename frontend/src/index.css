@@ -81,6 +81,112 @@ code {
     font-size: 2.5rem;
 }
 
+/* Rouge Script font class */
+.rouge-script-regular {
+    font-family: "Rouge Script", cursive;
+    font-weight: 400;
+    font-style: normal;
+}
+
+/* Google Sans Code font class */
+.google-sans-code {
+    font-family: "Google Sans Code", monospace;
+    font-optical-sizing: auto;
+    font-style: normal;
+}
+
+/* App header with branding */
+.app-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+/* Welcome section with avatar */
+.welcome-section {
+    margin-bottom: 30px;
+}
+
+.user-welcome {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 20px 30px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.user-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    background: white;
+    object-fit: cover;
+}
+
+.user-avatar:hover {
+    transform: scale(1.05);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
+}
+
+.welcome-text h2 {
+    font-size: 2.2rem;
+    color: white;
+    margin: 0 0 8px 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    font-weight: 600;
+    background: linear-gradient(135deg, #ffffff, #f8f8f8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.welcome-subtitle {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+    font-weight: 400;
+}
+
+.app-title-section {
+    text-align: center;
+}
+
+.app-title-section h1 {
+    font-family: "Rouge Script", cursive;
+    font-size: 5.5rem;
+    font-weight: 400;
+    color: white;
+    margin-bottom: 15px;
+    text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.5);
+    background: linear-gradient(135deg, #ffffff, #f8f8f8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+}
+
+.app-tagline {
+    font-family: "Google Sans Code", monospace;
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 300;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+    margin: 0;
+    opacity: 0.95;
+    letter-spacing: 0.02em;
+}
+
 /* Enhanced button styles */
 .btn {
     background: linear-gradient(135deg, #4CAF50, #45a049);
@@ -282,6 +388,25 @@ code {
     transition: all 0.3s ease;
     /* Remove backdrop-filter for better performance */
     border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    background: white;
+    object-fit: cover;
+}
+
+.nav-user-avatar:hover {
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
 }
 
 .user-dropdown-toggle:hover {
@@ -812,5 +937,40 @@ code {
     .btn {
         width: 100%;
         max-width: 300px;
+    }
+
+    /* Mobile responsive for app header */
+    .app-header h1 {
+        font-size: 3rem;
+        margin-bottom: 8px;
+    }
+
+    .app-tagline {
+        font-size: 1.1rem;
+    }
+
+    /* Mobile responsive for welcome section */
+    .user-welcome {
+        flex-direction: column;
+        gap: 15px;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .user-avatar {
+        width: 70px;
+        height: 70px;
+    }
+
+    .welcome-text h2 {
+        font-size: 1.8rem;
+    }
+
+    .welcome-subtitle {
+        font-size: 1rem;
+    }
+
+    .app-title-section h1 {
+        font-size: 3.5rem;
     }
 }

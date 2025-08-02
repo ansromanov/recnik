@@ -16,9 +16,18 @@ function SettingsPage() {
     const [selectedSources, setSelectedSources] = useState([]);
     const [sourcesLoading, setSourcesLoading] = useState(false);
 
+    // Avatar-related state
+    const [currentAvatar, setCurrentAvatar] = useState(null);
+    const [avatarStyles, setAvatarStyles] = useState([]);
+    const [avatarVariations, setAvatarVariations] = useState([]);
+    const [avatarLoading, setAvatarLoading] = useState(false);
+    const [showAvatarVariations, setShowAvatarVariations] = useState(false);
+
     useEffect(() => {
         loadSettings();
         loadContentSources();
+        loadCurrentAvatar();
+        loadAvatarStyles();
     }, []);
 
     const loadSettings = async () => {
@@ -59,6 +68,112 @@ function SettingsPage() {
             console.error('Error loading content sources:', error);
         } finally {
             setSourcesLoading(false);
+        }
+    };
+
+    const loadCurrentAvatar = async () => {
+        try {
+            const response = await apiService.getCurrentAvatar();
+            setCurrentAvatar(response.data.avatar);
+        } catch (error) {
+            console.error('Error loading current avatar:', error);
+        }
+    };
+
+    const loadAvatarStyles = async () => {
+        try {
+            const response = await apiService.getAvatarStyles();
+            setAvatarStyles(response.data.styles);
+        } catch (error) {
+            console.error('Error loading avatar styles:', error);
+        }
+    };
+
+    const loadAvatarVariations = async () => {
+        try {
+            setAvatarLoading(true);
+            const response = await apiService.getAvatarVariations(6);
+            setAvatarVariations(response.data.variations);
+            setShowAvatarVariations(true);
+        } catch (error) {
+            console.error('Error loading avatar variations:', error);
+            setMessage({ type: 'error', text: 'Failed to load avatar variations' });
+        } finally {
+            setAvatarLoading(false);
+        }
+    };
+
+    const handleGenerateNewAvatar = async () => {
+        try {
+            setAvatarLoading(true);
+            const response = await apiService.generateAvatar();
+            setCurrentAvatar(response.data.avatar);
+            setMessage({ type: 'success', text: 'New avatar generated successfully!' });
+
+            // Clear success message after 3 seconds
+            setTimeout(() => {
+                setMessage({ type: '', text: '' });
+            }, 3000);
+        } catch (error) {
+            console.error('Error generating avatar:', error);
+            setMessage({ type: 'error', text: 'Failed to generate new avatar' });
+        } finally {
+            setAvatarLoading(false);
+        }
+    };
+
+    const handleSelectAvatarStyle = async (style, seed) => {
+        try {
+            setAvatarLoading(true);
+            const response = await apiService.selectAvatar(style, seed);
+            setCurrentAvatar(response.data.avatar);
+            setShowAvatarVariations(false);
+            setMessage({ type: 'success', text: `Avatar style "${style}" selected successfully!` });
+
+            // Clear success message after 3 seconds
+            setTimeout(() => {
+                setMessage({ type: '', text: '' });
+            }, 3000);
+        } catch (error) {
+            console.error('Error selecting avatar style:', error);
+            setMessage({ type: 'error', text: 'Failed to select avatar style' });
+        } finally {
+            setAvatarLoading(false);
+        }
+    };
+
+    const handleAvatarUpload = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            setMessage({ type: 'error', text: 'File size too large. Maximum allowed size is 5MB.' });
+            return;
+        }
+
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            setMessage({ type: 'error', text: 'Invalid file type. Allowed types: JPEG, PNG, GIF, WebP' });
+            return;
+        }
+
+        try {
+            setAvatarLoading(true);
+            const response = await apiService.uploadAvatar(file);
+            setCurrentAvatar(response.data.avatar);
+            setMessage({ type: 'success', text: 'Avatar uploaded successfully!' });
+
+            // Clear success message after 3 seconds
+            setTimeout(() => {
+                setMessage({ type: '', text: '' });
+            }, 3000);
+        } catch (error) {
+            console.error('Error uploading avatar:', error);
+            setMessage({ type: 'error', text: error.response?.data?.error || 'Failed to upload avatar' });
+        } finally {
+            setAvatarLoading(false);
         }
     };
 
@@ -265,6 +380,107 @@ function SettingsPage() {
                             How many correct answers are needed to consider a word mastered. Lower values make it easier to master words.
                         </p>
                     </div>
+                </div>
+            </div>
+
+            <div className="settings-section">
+                <h2>Avatar Settings</h2>
+                <p className="settings-description">
+                    Customize your profile avatar. Choose from AI-generated avatars or upload your own image.
+                </p>
+
+                <div className="avatar-settings-section">
+                    <div className="current-avatar-section">
+                        <h3>Current Avatar</h3>
+                        <div className="avatar-display">
+                            {currentAvatar ? (
+                                <img
+                                    src={currentAvatar.avatar_url}
+                                    alt="Current Avatar"
+                                    className="current-avatar-image"
+                                    onError={(e) => {
+                                        console.error('Avatar failed to load:', currentAvatar.avatar_url);
+                                        e.target.style.display = 'none';
+                                    }}
+                                />
+                            ) : (
+                                <div className="avatar-placeholder">No Avatar</div>
+                            )}
+                            <div className="avatar-info">
+                                {currentAvatar && (
+                                    <div>
+                                        <p><strong>Type:</strong> {currentAvatar.avatar_type === 'ai_generated' ? 'AI Generated' : 'Uploaded'}</p>
+                                        {currentAvatar.avatar_type === 'ai_generated' && currentAvatar.avatar_seed && (
+                                            <p><strong>Style ID:</strong> {currentAvatar.avatar_seed.substring(0, 8)}...</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="avatar-actions">
+                        <h3>Change Avatar</h3>
+                        <div className="avatar-buttons">
+                            <button
+                                onClick={handleGenerateNewAvatar}
+                                disabled={avatarLoading}
+                                className="btn btn-secondary"
+                            >
+                                {avatarLoading ? 'Generating...' : '🎲 Generate New Avatar'}
+                            </button>
+
+                            <button
+                                onClick={loadAvatarVariations}
+                                disabled={avatarLoading}
+                                className="btn btn-secondary"
+                            >
+                                {avatarLoading ? 'Loading...' : '🎨 Browse Styles'}
+                            </button>
+
+                            <div className="avatar-upload-section">
+                                <label htmlFor="avatar-upload" className="btn btn-secondary">
+                                    📁 Upload Custom Avatar
+                                </label>
+                                <input
+                                    id="avatar-upload"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleAvatarUpload}
+                                    style={{ display: 'none' }}
+                                />
+                                <p className="upload-info">
+                                    Max size: 5MB. Supported: JPEG, PNG, GIF, WebP
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {showAvatarVariations && (
+                        <div className="avatar-variations">
+                            <h3>Choose a Style</h3>
+                            <div className="avatar-grid">
+                                {avatarVariations.map((variation, index) => (
+                                    <div key={index} className="avatar-option">
+                                        <img
+                                            src={variation.avatar_url}
+                                            alt={variation.style_name}
+                                            className="variation-avatar"
+                                            onClick={() => handleSelectAvatarStyle(variation.style, avatarVariations[0]?.seed || currentAvatar?.avatar_seed)}
+                                        />
+                                        <p className="variation-name">{variation.style_name}</p>
+                                    </div>
+                                ))}
+                            </div>
+                            <button
+                                onClick={() => setShowAvatarVariations(false)}
+                                className="btn btn-secondary"
+                                style={{ marginTop: '20px' }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 

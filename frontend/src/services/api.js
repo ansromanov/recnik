@@ -179,6 +179,29 @@ export const apiService = {
     // Achievements
     getUserAchievements: () => api.get('/achievements'),
     checkAchievements: () => api.post('/achievements/check'),
+
+    // Authentication
+    getCurrentUser: () => api.get('/auth/me'),
+
+    // Avatar System
+    getCurrentAvatar: () => api.get('/avatar/current'),
+    generateAvatar: (style) => api.post('/avatar/generate', { style }),
+    regenerateAvatar: (style, keepSeed = false) =>
+        api.post('/avatar/regenerate', { style, keep_seed: keepSeed }),
+    getAvatarVariations: (count = 6) =>
+        api.get('/avatar/variations', { params: { count } }),
+    getAvatarStyles: () => api.get('/avatar/styles'),
+    selectAvatar: (style, seed) =>
+        api.post('/avatar/select', { style, seed }),
+    uploadAvatar: (file) => {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        return api.post('/avatar/upload', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+    },
 };
 
 // fetchWithAuth function for components that need it

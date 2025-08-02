@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import apiService from './services/api';
 import HomePage from './pages/HomePage';
 import TextProcessorPage from './pages/TextProcessorPage';
 import VocabularyPage from './pages/VocabularyPage';
@@ -14,6 +15,7 @@ import AchievementsPage from './pages/AchievementsPage';
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState(null);
+    const [avatar, setAvatar] = useState(null);
     const [loading, setLoading] = useState(true);
     const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -25,6 +27,7 @@ function App() {
         if (token && savedUser) {
             setIsAuthenticated(true);
             setUser(JSON.parse(savedUser));
+            fetchCurrentAvatar();
         }
         setLoading(false);
     }, []);
@@ -43,9 +46,26 @@ function App() {
         };
     }, [dropdownOpen]);
 
+    const fetchCurrentAvatar = async () => {
+        try {
+            const response = await apiService.getCurrentAvatar();
+            setAvatar(response.data.avatar);
+        } catch (err) {
+            console.error('Error fetching current avatar:', err);
+            // If no avatar exists, generate a default one
+            try {
+                const generateResponse = await apiService.generateAvatar();
+                setAvatar(generateResponse.data.avatar);
+            } catch (generateErr) {
+                console.error('Error generating default avatar:', generateErr);
+            }
+        }
+    };
+
     const handleLogin = (token, userData) => {
         setIsAuthenticated(true);
         setUser(userData);
+        fetchCurrentAvatar();
     };
 
     const handleLogout = () => {
@@ -53,6 +73,7 @@ function App() {
         localStorage.removeItem('user');
         setIsAuthenticated(false);
         setUser(null);
+        setAvatar(null);
     };
 
     if (loading) {
@@ -90,6 +111,17 @@ function App() {
                                     className="user-dropdown-toggle"
                                     onClick={() => setDropdownOpen(!dropdownOpen)}
                                 >
+                                    {avatar && (
+                                        <img
+                                            src={avatar.avatar_url}
+                                            alt="User Avatar"
+                                            className="nav-user-avatar"
+                                            onError={(e) => {
+                                                console.error('Avatar failed to load:', avatar.avatar_url);
+                                                e.target.style.display = 'none';
+                                            }}
+                                        />
+                                    )}
                                     Welcome, {user?.username} ▼
                                 </button>
                                 {dropdownOpen && (

@@ -13,6 +13,11 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
+    avatar_url = db.Column(db.String(500))  # URL to avatar image
+    avatar_type = db.Column(
+        db.String(20), default="ai_generated"
+    )  # 'ai_generated', 'uploaded', 'default'
+    avatar_seed = db.Column(db.String(100))  # Seed for AI avatar generation
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
@@ -36,6 +41,9 @@ class User(db.Model):
         return {
             "id": self.id,
             "username": self.username,
+            "avatar_url": self.avatar_url,
+            "avatar_type": self.avatar_type,
+            "avatar_seed": self.avatar_seed,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

@@ -33,6 +33,7 @@ function HomePage() {
         }
     };
 
+
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('en-US', {
             month: 'short',
@@ -47,7 +48,12 @@ function HomePage() {
 
     return (
         <div className="container">
-            <h1>Serbian Vocabulary Learning</h1>
+            <div className="app-header">
+                <div className="app-title-section">
+                    <h1>Recnik</h1>
+                    <p className="app-tagline">Serbian vocabulary learning tool</p>
+                </div>
+            </div>
 
             <div className="stats-grid">
                 <div className="stat-card">
