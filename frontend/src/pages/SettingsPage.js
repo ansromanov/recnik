@@ -8,6 +8,7 @@ function SettingsPage() {
     const [autoAdvanceEnabled, setAutoAdvanceEnabled] = useState(false);
     const [autoAdvanceTimeout, setAutoAdvanceTimeout] = useState(3);
     const [masteryThreshold, setMasteryThreshold] = useState(5);
+    const [practiceRoundCount, setPracticeRoundCount] = useState(10);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
@@ -32,6 +33,7 @@ function SettingsPage() {
                 setAutoAdvanceEnabled(settings.auto_advance_enabled || false);
                 setAutoAdvanceTimeout(settings.auto_advance_timeout || 3);
                 setMasteryThreshold(settings.mastery_threshold || 5);
+                setPracticeRoundCount(settings.practice_round_count || 10);
 
                 // Load selected sources from settings
                 if (settings.preferred_content_sources) {
@@ -78,6 +80,7 @@ function SettingsPage() {
                 auto_advance_enabled: autoAdvanceEnabled,
                 auto_advance_timeout: autoAdvanceTimeout,
                 mastery_threshold: masteryThreshold,
+                practice_round_count: practiceRoundCount,
                 preferred_content_sources: selectedSources
             });
             setMessage({ type: 'success', text: 'Settings saved successfully!' });
@@ -224,6 +227,25 @@ function SettingsPage() {
                             </p>
                         </div>
                     )}
+
+                    <div className="setting-item">
+                        <label htmlFor="practice-round-count">Practice round count (words per session):</label>
+                        <div className="timeout-input-group">
+                            <input
+                                id="practice-round-count"
+                                type="range"
+                                min="5"
+                                max="30"
+                                value={practiceRoundCount}
+                                onChange={(e) => setPracticeRoundCount(parseInt(e.target.value))}
+                                className="timeout-slider"
+                            />
+                            <span className="timeout-value">{practiceRoundCount}</span>
+                        </div>
+                        <p className="setting-description">
+                            How many words to include in each practice session. Higher values provide longer practice sessions.
+                        </p>
+                    </div>
 
                     <div className="setting-item">
                         <label htmlFor="mastery-threshold">Mastery threshold (correct answers needed):</label>

@@ -466,6 +466,19 @@ def update_settings():
                     }
                 ), 400
 
+        # Update practice round count if provided
+        if "practice_round_count" in data:
+            round_count = int(data["practice_round_count"])
+            # Validate round count range (5-30 words per session)
+            if 5 <= round_count <= 30:
+                user.settings.practice_round_count = round_count
+            else:
+                return jsonify(
+                    {
+                        "error": "Practice round count must be between 5 and 30 words per session"
+                    }
+                ), 400
+
         db.session.commit()
 
         return jsonify(

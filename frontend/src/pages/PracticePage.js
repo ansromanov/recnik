@@ -197,7 +197,8 @@ function PracticePage() {
             setSessionStartTime(Date.now());
 
             // Get practice words with multiple choice options for selected game mode
-            const wordsResponse = await apiService.getPracticeWords(10, null, selectedGameMode);
+            const roundCount = userSettings?.practice_round_count || 10;
+            const wordsResponse = await apiService.getPracticeWords(roundCount, null, selectedGameMode);
             if (wordsResponse.data.length === 0) {
                 setError('No words available for practice. Please add some words to your vocabulary first.');
                 setLoading(false);
