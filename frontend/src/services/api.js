@@ -154,6 +154,16 @@ export const apiService = {
     removeFromExcludedWords: (excludedWordId) => api.delete(`/excluded-words/${excludedWordId}`),
     bulkExcludeWords: (words, reason = 'news_parser_skip') =>
         api.post('/excluded-words/bulk', { words, reason }),
+
+    // Streaks
+    getUserStreaks: () => api.get('/streaks'),
+    recordStreakActivity: (activityType, activityCount = 1) =>
+        api.post('/streaks/activity', {
+            activity_type: activityType,
+            activity_count: activityCount
+        }),
+    getStreakLeaderboard: (streakType = 'daily', limit = 10) =>
+        api.get('/streaks/leaderboard', { params: { type: streakType, limit } }),
 };
 
 // Export individual functions for components that use them

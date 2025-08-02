@@ -48,6 +48,9 @@ from services.optimized_text_processor import OptimizedSerbianTextProcessor
 # Import translation caching service
 from services.translation_cache import TranslationCache
 
+# Import streak service
+from services.streak_service import streak_service
+
 # Try to import feedparser, but don't crash if not available
 try:
     import feedparser
@@ -2796,6 +2799,66 @@ def get_recent_content():
     limit = int(request.args.get("limit", 10))
 
     return jsonify({"content": [], "total": 0, "content_type": content_type})
+
+
+# Streak endpoints
+@app.route("/api/streaks")
+@jwt_required()
+def get_user_streaks():
+    """Get all streaks for the current user"""
+    try:
+        user_id = int(get_jwt_identity())
+        streaks_data = streak_service.get_user_streaks(user_id)
+
+        if "error" in streaks_data:
+            return jsonify({"error": streaks_data["error"]}), 500
+
+        return jsonify(streaks_data)
+    except Exception as e:
+        print(f"Error getting user streaks: {e}")
+        return jsonify({"error": "Failed to get streaks"}), 500
+
+
+@app.route("/api/streaks/activity", methods=["POST"])
+@jwt_required()
+def record_streak_activity():
+    """Record a streak activity for the current user"""
+    try:
+        user_id = int(get_jwt_identity())
+        data = request.get_json()
+
+        activity_type = data.get("activity_type")
+        activity_count = data.get("activity_count", 1)
+
+        if not activity_type:
+            return jsonify({"error": "activity_type is required"}), 400
+
+        result = streak_service.record_activity(
+            user_id=user_id, activity_type=activity_type, activity_count=activity_count
+        )
+
+        if not result["success"]:
+            return jsonify({"error": result["error"]}), 500
+
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error recording streak activity: {e}")
+        return jsonify({"error": "Failed to record activity"}), 500
+
+
+@app.route("/api/streaks/leaderboard")
+@jwt_required(optional=True)
+def get_streak_leaderboard():
+    """Get streak leaderboard"""
+    try:
+        streak_type = request.args.get("type", "daily")
+        limit = int(request.args.get("limit", 10))
+
+        leaderboard = streak_service.get_streak_leaderboard(streak_type, limit)
+        return jsonify({"leaderboard": leaderboard, "streak_type": streak_type})
+    except Exception as e:
+        print(f"Error getting streak leaderboard: {e}")
+        return jsonify({"error": "Failed to get leaderboard"}), 500
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
+import StreakWidget from '../components/StreakWidget';
 
 function HomePage() {
     const [stats, setStats] = useState({
@@ -67,6 +68,10 @@ function HomePage() {
                             : 0}%
                     </div>
                 </div>
+            </div>
+
+            <div className="card">
+                <StreakWidget />
             </div>
 
             <div className="card">

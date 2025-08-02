@@ -174,13 +174,14 @@ code {
     background: linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(51, 51, 51, 0.9));
     backdrop-filter: blur(10px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    overflow: hidden;
+    overflow: visible;
     margin-bottom: 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     position: relative;
+    z-index: 1000;
 }
 
 .nav::before {
@@ -240,11 +241,105 @@ code {
     display: none;
 }
 
+.nav-left {
+    display: flex;
+    align-items: center;
+    flex: 1;
+}
+
 .nav-right {
     display: flex;
     align-items: center;
     gap: 20px;
     padding-right: 20px;
+    position: relative;
+}
+
+.user-dropdown {
+    position: relative;
+    z-index: 1001;
+}
+
+.user-dropdown-toggle {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    border: none;
+    padding: 12px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.user-dropdown-toggle:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.user-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(51, 51, 51, 0.95));
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    margin-top: 8px;
+    min-width: 200px;
+    z-index: 10000;
+    overflow: hidden;
+}
+
+.dropdown-item {
+    display: block;
+    padding: 12px 16px;
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.logout-item {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    color: #ff6b6b;
+}
+
+.logout-item:hover {
+    background: rgba(244, 67, 54, 0.2);
+    color: #ff4444;
+}
+
+.dropdown-section {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-section:last-child {
+    border-bottom: none;
+}
+
+.dropdown-section-title {
+    padding: 8px 16px 4px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .user-info {
@@ -614,6 +709,40 @@ code {
 
     .container h1 {
         font-size: 2rem;
+    }
+
+    .nav {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 10px;
+    }
+
+    .nav-left {
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .nav-right {
+        justify-content: center;
+        padding-right: 0;
+    }
+
+    .nav a {
+        margin: 2px 0;
+        padding: 12px 16px;
+        text-align: center;
+    }
+
+    .user-dropdown-toggle {
+        padding: 10px 14px;
+        font-size: 13px;
+    }
+
+    .user-dropdown-menu {
+        right: 50%;
+        transform: translateX(50%);
+        min-width: 140px;
     }
 
     .word-card {

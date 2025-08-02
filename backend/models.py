@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
 from sqlalchemy.sql import func
@@ -306,7 +306,103 @@ class ExcludedWord(db.Model):
         }
 
 
+class UserStreak(db.Model):
+    __tablename__ = "user_streaks"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    streak_type = db.Column(
+        db.String(20), nullable=False
+    )  # 'daily', 'weekly', 'monthly'
+    current_streak = db.Column(db.Integer, default=0, nullable=False)
+    longest_streak = db.Column(db.Integer, default=0, nullable=False)
+    last_activity_date = db.Column(db.Date, nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    # Constraints
+    __table_args__ = (
+        db.UniqueConstraint(
+            "user_id", "streak_type", name="user_streaks_user_type_unique"
+        ),
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "streak_type": self.streak_type,
+            "current_streak": self.current_streak,
+            "longest_streak": self.longest_streak,
+            "last_activity_date": self.last_activity_date.isoformat()
+            if self.last_activity_date
+            else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class StreakActivity(db.Model):
+    __tablename__ = "streak_activities"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    activity_date = db.Column(db.Date, nullable=False)
+    activity_type = db.Column(
+        db.String(50), nullable=False
+    )  # 'practice_session', 'vocabulary_added', 'login'
+    activity_count = db.Column(db.Integer, default=1, nullable=False)
+    streak_qualifying = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Constraints
+    __table_args__ = (
+        db.UniqueConstraint(
+            "user_id", "activity_date", name="streak_activities_user_date_unique"
+        ),
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "activity_date": self.activity_date.isoformat()
+            if self.activity_date
+            else None,
+            "activity_type": self.activity_type,
+            "activity_count": self.activity_count,
+            "streak_qualifying": self.streak_qualifying,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+# Add streak relationships to User model
+User.streaks = db.relationship(
+    "UserStreak", backref="user", lazy="dynamic", cascade="all, delete-orphan"
+)
+User.streak_activities = db.relationship(
+    "StreakActivity", backref="user", lazy="dynamic", cascade="all, delete-orphan"
+)
+
+
 # Event listener to update the updated_at timestamp
 @event.listens_for(Word, "before_update")
 def update_word_timestamp(mapper, connection, target):
+    target.updated_at = datetime.now(timezone.utc)
+
+
+@event.listens_for(UserStreak, "before_update")
+def update_streak_timestamp(mapper, connection, target):
     target.updated_at = datetime.now(timezone.utc)

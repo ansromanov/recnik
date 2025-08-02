@@ -1,0 +1,366 @@
+.streak-widget {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+    transition: all 0.3s ease;
+    max-width: 400px;
+}
+
+.streak-widget:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.streak-widget.compact {
+    padding: 1rem;
+    max-width: 300px;
+}
+
+/* Widget Header */
+.streak-widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.streak-widget-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #333;
+}
+
+.view-all-link {
+    color: #667eea;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.view-all-link:hover {
+    color: #5a6fd8;
+    text-decoration: underline;
+}
+
+/* Streak Items */
+.streak-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+.streak-item {
+    display: flex;
+    flex-direction: column;
+    padding: 0.8rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border-left: 4px solid #4CAF50;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.streak-item:hover {
+    background: #f0f4ff;
+    transform: translateX(2px);
+}
+
+.streak-item.inactive {
+    opacity: 0.6;
+    border-left-color: #ccc;
+}
+
+.streak-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.streak-item-icon {
+    font-size: 1.2rem;
+    margin-right: 0.5rem;
+}
+
+.streak-item-type {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9rem;
+    flex-grow: 1;
+}
+
+.active-indicator {
+    color: #4CAF50;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+/* Streak Item Content */
+.streak-item-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Mini Progress Ring */
+.mini-progress-ring {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.mini-progress-ring svg {
+    transform: rotate(-90deg);
+}
+
+.mini-progress-ring-progress {
+    transition: stroke-dasharray 0.6s ease-in-out;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+.mini-progress-text {
+    position: absolute;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #333;
+    text-align: center;
+}
+
+/* Streak Item Details */
+.streak-item-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    flex-grow: 1;
+}
+
+.current-streak {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #333;
+}
+
+.best-streak {
+    font-size: 0.8rem;
+    color: #666;
+    font-weight: 500;
+}
+
+/* Today Activity */
+.today-activity {
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.activity-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #4CAF50, #45A049);
+    color: white;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+}
+
+/* Widget Footer */
+.streak-widget-footer {
+    border-top: 1px solid #e0e0e0;
+    padding-top: 0.8rem;
+    text-align: center;
+}
+
+.full-view-button {
+    color: #667eea;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    transition: all 0.3s ease;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    border: 1px solid transparent;
+}
+
+.full-view-button:hover {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+    text-decoration: none;
+}
+
+/* Loading States */
+.loading-streaks,
+.error-streaks {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 2rem;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.loading-spinner-small {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e0e0e0;
+    border-top: 2px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.retry-mini {
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: #666;
+    transition: all 0.3s ease;
+}
+
+.retry-mini:hover {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .streak-widget {
+        max-width: 100%;
+        margin: 0 auto;
+    }
+
+    .streak-widget.compact {
+        max-width: 100%;
+    }
+
+    .streak-item-content {
+        gap: 0.8rem;
+    }
+
+    .mini-progress-text {
+        font-size: 0.7rem;
+    }
+
+    .current-streak {
+        font-size: 1rem;
+    }
+
+    .best-streak {
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .streak-widget {
+        padding: 1rem;
+    }
+
+    .streak-widget.compact {
+        padding: 0.8rem;
+    }
+
+    .streak-widget-header h3 {
+        font-size: 1rem;
+    }
+
+    .view-all-link {
+        font-size: 0.8rem;
+    }
+
+    .streak-item {
+        padding: 0.6rem;
+    }
+
+    .streak-item-header {
+        margin-bottom: 0.4rem;
+    }
+
+    .streak-item-icon {
+        font-size: 1rem;
+    }
+
+    .streak-item-type {
+        font-size: 0.85rem;
+    }
+
+    .current-streak {
+        font-size: 0.95rem;
+    }
+
+    .best-streak {
+        font-size: 0.7rem;
+    }
+
+    .activity-badge {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.6rem;
+    }
+
+    .full-view-button {
+        font-size: 0.8rem;
+    }
+}
+
+/* Animation for progress rings */
+@keyframes miniProgressFill {
+    from {
+        stroke-dasharray: 0 1000;
+    }
+}
+
+.mini-progress-ring-progress {
+    animation: miniProgressFill 1s ease-in-out;
+}
+
+/* Hover effects */
+.streak-item:hover .mini-progress-ring-progress {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+/* Color variations for different streak types */
+.streak-item:nth-child(1) {
+    border-left-color: #FF6B35;
+}
+
+.streak-item:nth-child(2) {
+    border-left-color: #4ECDC4;
+}
+
+.streak-item:nth-child(3) {
+    border-left-color: #45B7D1;
+}
+
+/* Focus states for accessibility */
+.view-all-link:focus,
+.full-view-button:focus,
+.retry-mini:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
