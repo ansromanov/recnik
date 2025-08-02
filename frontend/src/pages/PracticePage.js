@@ -113,11 +113,11 @@ function PracticePage() {
                         currentWord.english_translation
                     );
 
-                    if (imageResponse.data && imageResponse.data.image_data) {
+                    if (imageResponse.data && imageResponse.data.success && imageResponse.data.image) {
                         setWordImage({
-                            data: imageResponse.data.image_data,
-                            photographer: imageResponse.data.photographer,
-                            unsplash_id: imageResponse.data.unsplash_id
+                            data: imageResponse.data.image.image_data,
+                            photographer: imageResponse.data.image.photographer,
+                            unsplash_id: imageResponse.data.image.unsplash_id
                         });
                     }
                 } catch (err) {
