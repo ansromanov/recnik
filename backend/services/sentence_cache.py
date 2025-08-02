@@ -3,7 +3,7 @@ import redis
 import openai
 from typing import List, Optional, Dict
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 class SentenceCacheService:
@@ -23,15 +23,22 @@ class SentenceCacheService:
 
     def get_cached_sentences(
         self, serbian_word: str, english_translation: str
-    ) -> Optional[List[str]]:
-        """Get cached sentences for a word"""
+    ) -> Optional[List[Dict]]:
+        """Get cached sentences for a word (returns list of {serbian, english} pairs)"""
         try:
             cache_key = self._get_cache_key(serbian_word, english_translation)
             cached_data = self.redis.get(cache_key)
 
             if cached_data:
                 data = json.loads(cached_data)
-                return data.get("sentences", [])
+                sentences = data.get("sentences", [])
+
+                # Handle backward compatibility - convert old format to new format
+                if sentences and isinstance(sentences[0], str):
+                    # Old format: list of Serbian strings
+                    sentences = [{"serbian": s, "english": ""} for s in sentences]
+
+                return sentences
 
             return None
         except Exception as e:
@@ -40,22 +47,22 @@ class SentenceCacheService:
 
     def get_random_sentence(
         self, serbian_word: str, english_translation: str
-    ) -> Optional[str]:
-        """Get a random cached sentence for a word"""
+    ) -> Optional[Dict]:
+        """Get a random cached sentence pair for a word"""
         sentences = self.get_cached_sentences(serbian_word, english_translation)
         if sentences:
             return random.choice(sentences)
         return None
 
     def cache_sentences(
-        self, serbian_word: str, english_translation: str, sentences: List[str]
+        self, serbian_word: str, english_translation: str, sentences: List[Dict]
     ) -> bool:
-        """Cache sentences for a word"""
+        """Cache sentence pairs for a word (each sentence is {serbian, english})"""
         try:
             cache_key = self._get_cache_key(serbian_word, english_translation)
             cache_data = {
                 "sentences": sentences,
-                "cached_at": datetime.utcnow().isoformat(),
+                "cached_at": datetime.now(timezone.utc).isoformat(),
                 "serbian_word": serbian_word,
                 "english_translation": english_translation,
             }
@@ -74,24 +81,34 @@ class SentenceCacheService:
         english_translation: str,
         api_key: str,
         category_name: str = None,
-    ) -> List[str]:
-        """Generate and cache sentences for a word using OpenAI"""
+    ) -> List[Dict]:
+        """Generate and cache sentence pairs (Serbian + English) for a word using OpenAI"""
         try:
-            # Create prompt for generating multiple sentences
+            # Create prompt for generating sentence pairs
             category_context = f" (category: {category_name})" if category_name else ""
 
-            prompt = f"""Generate {self.sentences_per_word} different Serbian example sentences using the word "{serbian_word}" ({english_translation}){category_context}.
+            prompt = f"""Generate {self.sentences_per_word} different example sentences using the Serbian word "{serbian_word}" ({english_translation}){category_context}.
+
+For each sentence, provide BOTH the Serbian version AND its English translation.
+
+Format your response EXACTLY like this:
+Serbian: [Serbian sentence]
+English: [English translation]
+
+Serbian: [Serbian sentence]
+English: [English translation]
 
 Requirements:
-- Each sentence should be simple and educational for Serbian learners
+- Each Serbian sentence should be simple and educational for Serbian learners
 - Use natural, conversational Serbian
 - Make the word's meaning clear from context
 - Vary sentence structures and contexts
 - Each sentence should be 6-15 words long
-- Return only the sentences, one per line, without numbering
+- English translations should be natural and accurate
+- Do not number the sentences
 
 Word: {serbian_word} ({english_translation})
-Generate {self.sentences_per_word} example sentences:"""
+Generate {self.sentences_per_word} sentence pairs:"""
 
             completion = openai.ChatCompletion.create(
                 api_key=api_key,
@@ -99,66 +116,83 @@ Generate {self.sentences_per_word} example sentences:"""
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a Serbian language teacher creating example sentences for vocabulary learning. Generate natural, educational sentences that help students understand word usage.",
+                        "content": "You are a Serbian language teacher creating example sentences with English translations for vocabulary learning. Generate natural, educational sentence pairs that help students understand word usage in both languages.",
                     },
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.7,
-                max_tokens=300,
+                max_tokens=500,
             )
 
             response = completion.choices[0].message["content"].strip()
 
-            # Parse sentences from response
-            sentences = []
-            for line in response.split("\n"):
-                line = line.strip()
-                # Remove numbering if present
-                if line and not line.startswith("#"):
-                    # Remove common prefixes like "1.", "2.", "-", etc.
-                    cleaned_line = line
-                    if (
-                        line[0:2]
-                        .replace(".", "")
-                        .replace(")", "")
-                        .replace("-", "")
-                        .replace("•", "")
-                        .strip()
-                        .isdigit()
-                    ):
-                        cleaned_line = line[2:].strip()
-                    elif (
-                        line[0:3]
-                        .replace(".", "")
-                        .replace(")", "")
-                        .replace("-", "")
-                        .replace("•", "")
-                        .strip()
-                        .isdigit()
-                    ):
-                        cleaned_line = line[3:].strip()
+            # Parse sentence pairs from response
+            sentence_pairs = []
+            lines = response.split("\n")
 
-                    if (
-                        cleaned_line and len(cleaned_line) > 10
-                    ):  # Reasonable minimum length
-                        sentences.append(cleaned_line)
+            i = 0
+            while i < len(lines) and len(sentence_pairs) < self.sentences_per_word:
+                serbian_line = lines[i].strip()
 
-            # Ensure we have at least one sentence
-            if not sentences:
-                sentences = [f"{serbian_word} је важна реч у српском језику."]
+                # Look for Serbian sentence
+                if serbian_line.lower().startswith("serbian:"):
+                    serbian_sentence = serbian_line[
+                        8:
+                    ].strip()  # Remove "Serbian:" prefix
 
-            # Limit to desired number of sentences
-            sentences = sentences[: self.sentences_per_word]
+                    # Look for corresponding English translation
+                    if i + 1 < len(lines):
+                        english_line = lines[i + 1].strip()
+                        if english_line.lower().startswith("english:"):
+                            english_sentence = english_line[
+                                8:
+                            ].strip()  # Remove "English:" prefix
 
-            # Cache the sentences
-            self.cache_sentences(serbian_word, english_translation, sentences)
+                            # Validate sentences
+                            if (
+                                serbian_sentence
+                                and len(serbian_sentence) > 10
+                                and english_sentence
+                                and len(english_sentence) > 5
+                            ):
+                                sentence_pairs.append(
+                                    {
+                                        "serbian": serbian_sentence,
+                                        "english": english_sentence,
+                                    }
+                                )
 
-            return sentences
+                            i += 2  # Skip both lines
+                            continue
+
+                i += 1
+
+            # Ensure we have at least one sentence pair
+            if not sentence_pairs:
+                sentence_pairs = [
+                    {
+                        "serbian": f"{serbian_word} је важна реч у српском језику.",
+                        "english": f"{serbian_word} is an important word in Serbian language.",
+                    }
+                ]
+
+            # Limit to desired number of sentence pairs
+            sentence_pairs = sentence_pairs[: self.sentences_per_word]
+
+            # Cache the sentence pairs
+            self.cache_sentences(serbian_word, english_translation, sentence_pairs)
+
+            return sentence_pairs
 
         except Exception as e:
             print(f"Error generating sentences for {serbian_word}: {e}")
-            # Return a fallback sentence
-            return [f"Ово је пример реченице са речју {serbian_word}."]
+            # Return a fallback sentence pair
+            return [
+                {
+                    "serbian": f"Ово је пример реченице са речју {serbian_word}.",
+                    "english": f"This is an example sentence with the word {serbian_word}.",
+                }
+            ]
 
     def warm_cache_for_words(
         self, words_data: List[Dict], api_key: str, batch_size: int = 5
@@ -182,12 +216,14 @@ Generate {self.sentences_per_word} example sentences:"""
                     continue
 
                 try:
-                    sentences = self.generate_and_cache_sentences(
+                    sentence_pairs = self.generate_and_cache_sentences(
                         serbian_word, english_translation, api_key, category_name
                     )
-                    if sentences:
+                    if sentence_pairs:
                         cached_count += 1
-                        print(f"Cached {len(sentences)} sentences for: {serbian_word}")
+                        print(
+                            f"Cached {len(sentence_pairs)} sentence pairs for: {serbian_word}"
+                        )
                 except Exception as e:
                     print(f"Error caching sentences for {serbian_word}: {e}")
                     continue

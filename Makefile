@@ -1,7 +1,7 @@
 # Serbian Vocabulary App - Common Tasks
 # Usage: make <task>
 
-.PHONY: help up down restart logs build rebuild-frontend rebuild-grafana rebuild-all clean migrate test
+.PHONY: help up down restart logs build rebuild-backend rebuild-frontend rebuild-grafana rebuild-all clean migrate test
 
 # Default target
 help:
@@ -16,6 +16,7 @@ help:
 	@echo ""
 	@echo "Building:"
 	@echo "  build           - Build all images"
+	@echo "  rebuild-backend - Rebuild only backend"
 	@echo "  rebuild-frontend - Rebuild only frontend"
 	@echo "  rebuild-grafana - Rebuild only Grafana"
 	@echo "  rebuild-all     - Rebuild all services"
@@ -53,6 +54,13 @@ logs-follow:
 # Building commands
 build:
 	docker-compose build
+
+rebuild-backend:
+	@echo "🔨 Rebuilding backend..."
+	docker-compose stop backend
+	docker-compose build --no-cache backend
+	docker-compose up -d backend
+	@echo "✅ Backend rebuilt successfully!"
 
 rebuild-frontend:
 	@echo "🔨 Rebuilding frontend..."

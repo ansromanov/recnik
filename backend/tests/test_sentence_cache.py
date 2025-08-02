@@ -22,7 +22,7 @@ class TestSentenceCache:
         mock_response = Mock()
         mock_response.choices = [Mock()]
         mock_response.choices[0].message = {
-            "content": "Pas trči kroz park.\nMoj pas voli da igra.\nVeliki pas laje glasno."
+            "content": "Serbian: Pas trči kroz park.\nEnglish: The dog runs through the park.\n\nSerbian: Moj pas voli da igra.\nEnglish: My dog loves to play.\n\nSerbian: Veliki pas laje glasno.\nEnglish: The big dog barks loudly."
         }
         return mock_response
 
@@ -30,15 +30,21 @@ class TestSentenceCache:
         """Test basic sentence caching and retrieval"""
         serbian_word = "pas"
         english_translation = "dog"
-        test_sentences = [
-            "Pas trči kroz park.",
-            "Moj pas voli da igra.",
-            "Veliki pas laje glasno.",
+        test_sentence_pairs = [
+            {
+                "serbian": "Pas trči kroz park.",
+                "english": "The dog runs through the park.",
+            },
+            {"serbian": "Moj pas voli da igra.", "english": "My dog loves to play."},
+            {
+                "serbian": "Veliki pas laje glasno.",
+                "english": "The big dog barks loudly.",
+            },
         ]
 
         # Cache sentences
         success = sentence_cache_service.cache_sentences(
-            serbian_word, english_translation, test_sentences
+            serbian_word, english_translation, test_sentence_pairs
         )
         assert success
 
@@ -46,13 +52,15 @@ class TestSentenceCache:
         cached_sentences = sentence_cache_service.get_cached_sentences(
             serbian_word, english_translation
         )
-        assert cached_sentences == test_sentences
+        assert cached_sentences == test_sentence_pairs
 
         # Get random sentence
         random_sentence = sentence_cache_service.get_random_sentence(
             serbian_word, english_translation
         )
-        assert random_sentence in test_sentences
+        assert random_sentence in test_sentence_pairs
+        assert "serbian" in random_sentence
+        assert "english" in random_sentence
 
     def test_cache_miss(self, sentence_cache_service):
         """Test behavior when no cached sentences exist"""
@@ -78,19 +86,20 @@ class TestSentenceCache:
         api_key = "test-api-key"
 
         # Generate and cache sentences
-        sentences = sentence_cache_service.generate_and_cache_sentences(
+        sentence_pairs = sentence_cache_service.generate_and_cache_sentences(
             serbian_word, english_translation, api_key
         )
 
-        # Verify sentences were generated
-        assert len(sentences) > 0
-        assert all(isinstance(s, str) for s in sentences)
+        # Verify sentence pairs were generated
+        assert len(sentence_pairs) > 0
+        assert all(isinstance(s, dict) for s in sentence_pairs)
+        assert all("serbian" in s and "english" in s for s in sentence_pairs)
 
         # Verify sentences were cached
         cached_sentences = sentence_cache_service.get_cached_sentences(
             serbian_word, english_translation
         )
-        assert cached_sentences == sentences
+        assert cached_sentences == sentence_pairs
 
         # Verify OpenAI was called
         mock_openai.assert_called_once()
@@ -103,9 +112,18 @@ class TestSentenceCache:
 
         # Add some cached sentences
         sentence_cache_service.cache_sentences(
-            "pas", "dog", ["Test sentence 1", "Test sentence 2"]
+            "pas",
+            "dog",
+            [
+                {"serbian": "Test sentence 1", "english": "Test sentence 1 eng"},
+                {"serbian": "Test sentence 2", "english": "Test sentence 2 eng"},
+            ],
         )
-        sentence_cache_service.cache_sentences("mačka", "cat", ["Test sentence 3"])
+        sentence_cache_service.cache_sentences(
+            "mačka",
+            "cat",
+            [{"serbian": "Test sentence 3", "english": "Test sentence 3 eng"}],
+        )
 
         # Check updated stats
         stats = sentence_cache_service.get_cache_stats()
@@ -114,8 +132,14 @@ class TestSentenceCache:
     def test_clear_cache(self, sentence_cache_service):
         """Test cache clearing"""
         # Add some cached sentences
-        sentence_cache_service.cache_sentences("pas", "dog", ["Test sentence"])
-        sentence_cache_service.cache_sentences("mačka", "cat", ["Test sentence"])
+        sentence_cache_service.cache_sentences(
+            "pas", "dog", [{"serbian": "Test sentence", "english": "Test sentence eng"}]
+        )
+        sentence_cache_service.cache_sentences(
+            "mačka",
+            "cat",
+            [{"serbian": "Test sentence", "english": "Test sentence eng"}],
+        )
 
         # Verify cache has content
         stats = sentence_cache_service.get_cache_stats()
@@ -155,7 +179,7 @@ class TestSentenceCacheIntegration:
             mock_response = Mock()
             mock_response.choices = [Mock()]
             mock_response.choices[0].message = {
-                "content": "Test sentence 1.\nTest sentence 2."
+                "content": "Serbian: Test sentence 1.\nEnglish: Test sentence 1 eng.\n\nSerbian: Test sentence 2.\nEnglish: Test sentence 2 eng."
             }
             mock_openai.return_value = mock_response
 
@@ -179,7 +203,11 @@ class TestSentenceCacheIntegration:
         service = SentenceCacheService(fake_redis)
 
         # Pre-cache one word
-        service.cache_sentences("pas", "dog", ["Cached sentence"])
+        service.cache_sentences(
+            "pas",
+            "dog",
+            [{"serbian": "Cached sentence", "english": "Cached sentence eng"}],
+        )
 
         words_data = [
             {"serbian_word": "pas", "english_translation": "dog"},
@@ -189,7 +217,9 @@ class TestSentenceCacheIntegration:
         with patch("openai.ChatCompletion.create") as mock_openai:
             mock_response = Mock()
             mock_response.choices = [Mock()]
-            mock_response.choices[0].message = {"content": "Generated sentence"}
+            mock_response.choices[0].message = {
+                "content": "Serbian: Generated sentence.\nEnglish: Generated sentence eng."
+            }
             mock_openai.return_value = mock_response
 
             result = service.populate_user_vocabulary_cache(words_data, "test-api-key")
@@ -212,3 +242,45 @@ class TestSentenceCacheIntegration:
         # All should be the same (lowercase)
         assert key1 == key2 == key3
         assert "sentence_cache:pas:dog" in key1
+
+    def test_backward_compatibility_old_format(self, fake_redis):
+        """Test backward compatibility with old sentence format (strings only)"""
+        service = SentenceCacheService(fake_redis)
+
+        # Manually cache sentences in old format (strings only)
+        cache_key = service._get_cache_key("kuća", "house")
+        old_format_data = {
+            "sentences": [
+                "Kuća je velika.",
+                "Moja kuća je plava.",
+                "Stara kuća je lepa.",
+            ],
+            "cached_at": "2024-01-01T12:00:00",
+            "serbian_word": "kuća",
+            "english_translation": "house",
+        }
+        fake_redis.setex(
+            cache_key, 86400, json.dumps(old_format_data, ensure_ascii=False)
+        )
+
+        # Retrieve cached sentences - should be converted to new format
+        cached_sentences = service.get_cached_sentences("kuća", "house")
+
+        # Should convert old format to new format automatically
+        assert cached_sentences is not None
+        assert len(cached_sentences) == 3
+        assert all(isinstance(s, dict) for s in cached_sentences)
+        assert all("serbian" in s and "english" in s for s in cached_sentences)
+
+        # Check conversion
+        assert cached_sentences[0]["serbian"] == "Kuća je velika."
+        assert cached_sentences[0]["english"] == ""  # Empty English for old format
+        assert cached_sentences[1]["serbian"] == "Moja kuća je plava."
+        assert cached_sentences[1]["english"] == ""
+
+        # Random sentence should also work
+        random_sentence = service.get_random_sentence("kuća", "house")
+        assert random_sentence is not None
+        assert "serbian" in random_sentence
+        assert "english" in random_sentence
+        assert random_sentence["english"] == ""  # Empty for old format
