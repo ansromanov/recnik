@@ -101,14 +101,14 @@ function App() {
                                                 className="dropdown-item"
                                                 onClick={() => setDropdownOpen(false)}
                                             >
-                                                🏆 Achievements
+                                                Achievements
                                             </NavLink>
                                             <NavLink
                                                 to="/streaks"
                                                 className="dropdown-item"
                                                 onClick={() => setDropdownOpen(false)}
                                             >
-                                                🔥 Streaks
+                                                Streaks
                                             </NavLink>
                                         </div>
                                         <div className="dropdown-section">

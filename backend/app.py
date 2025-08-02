@@ -54,6 +54,9 @@ from services.streak_service import streak_service
 # Import XP service
 from services.xp_service import xp_service
 
+# Import sentence cache service
+from services.sentence_cache import SentenceCacheService
+
 # Try to import feedparser, but don't crash if not available
 try:
     import feedparser
@@ -137,6 +140,9 @@ db.init_app(app)
 
 # Initialize ImageServiceClient (lightweight client for separate image sync service)
 image_service = ImageServiceClient(redis_client)
+
+# Initialize sentence cache service
+sentence_cache_service = SentenceCacheService(redis_client)
 
 # Test database connection
 with app.app_context():
@@ -1070,6 +1076,141 @@ def get_practice_words():
                 attempts += 1
             return "".join(letters)
 
+        # Enhanced pre-population of sentence cache for practice words
+        try:
+            api_key = get_user_openai_key(user_id)
+            if api_key:
+                # Prepare words for caching (only those without cached sentences)
+                words_to_cache = []
+                cache_hit_count = 0
+
+                for word in words:
+                    if sentence_cache_service.get_cached_sentences(
+                        word.serbian_word, word.english_translation
+                    ):
+                        cache_hit_count += 1
+                    else:
+                        words_to_cache.append(
+                            {
+                                "serbian_word": word.serbian_word,
+                                "english_translation": word.english_translation,
+                                "category_name": word.category.name
+                                if word.category
+                                else "Common Words",
+                            }
+                        )
+
+                print(
+                    f"Sentence cache status: {cache_hit_count}/{len(words)} words already cached"
+                )
+
+                # ENHANCED aggressive caching strategy for maximum performance improvement
+                if words_to_cache:
+                    # Cache ALL practice words + additional words for comprehensive coverage
+                    immediate_batch = words_to_cache[:limit]  # All practice words
+                    extended_batch = words_to_cache[
+                        limit : limit + 10
+                    ]  # Next 10 for future sessions
+
+                    try:
+                        # Phase 1: Cache sentences for immediate practice words (highest priority)
+                        immediate_cached = sentence_cache_service.warm_cache_for_words(
+                            immediate_batch,
+                            api_key,
+                            batch_size=3,  # Optimized batch size
+                        )
+                        print(
+                            f"Phase 1: Pre-cached sentences for {immediate_cached}/{len(immediate_batch)} immediate practice words"
+                        )
+
+                        # Phase 2: Background pre-cache extended batch for future sessions
+                        if extended_batch:
+                            try:
+                                extended_cached = (
+                                    sentence_cache_service.warm_cache_for_words(
+                                        extended_batch, api_key, batch_size=2
+                                    )
+                                )
+                                print(
+                                    f"Phase 2: Background pre-cached {extended_cached}/{len(extended_batch)} future practice words"
+                                )
+                            except Exception as bg_error:
+                                print(
+                                    f"Phase 2 background caching failed (non-critical): {bg_error}"
+                                )
+
+                        # Phase 3: Super-aggressive mode - cache words from same categories
+                        try:
+                            if (
+                                immediate_cached > 0
+                            ):  # Only if immediate caching succeeded
+                                # Get category IDs from successfully cached words
+                                cached_categories = set()
+                                for word in words[:immediate_cached]:
+                                    if word.category_id:
+                                        cached_categories.add(word.category_id)
+
+                                # Find similar words from same categories for pre-caching
+                                if cached_categories:
+                                    similar_words = (
+                                        db.session.query(Word)
+                                        .join(UserVocabulary)
+                                        .filter(
+                                            UserVocabulary.user_id == user_id,
+                                            Word.category_id.in_(cached_categories),
+                                            ~Word.id.in_(
+                                                [w.id for w in words[: limit + 10]]
+                                            ),  # Avoid duplicates
+                                        )
+                                        .limit(
+                                            5
+                                        )  # Additional 5 words for super coverage
+                                        .all()
+                                    )
+
+                                    if similar_words:
+                                        similar_words_data = []
+                                        for word in similar_words:
+                                            if not sentence_cache_service.get_cached_sentences(
+                                                word.serbian_word,
+                                                word.english_translation,
+                                            ):
+                                                similar_words_data.append(
+                                                    {
+                                                        "serbian_word": word.serbian_word,
+                                                        "english_translation": word.english_translation,
+                                                        "category_name": word.category.name
+                                                        if word.category
+                                                        else "Common Words",
+                                                    }
+                                                )
+
+                                        if similar_words_data:
+                                            similar_cached = sentence_cache_service.warm_cache_for_words(
+                                                similar_words_data,
+                                                api_key,
+                                                batch_size=1,
+                                            )
+                                            print(
+                                                f"Phase 3: Super-cached {similar_cached} similar category words for maximum coverage"
+                                            )
+                        except Exception as super_error:
+                            print(
+                                f"Phase 3 super-caching failed (non-critical): {super_error}"
+                            )
+
+                    except Exception as cache_error:
+                        print(f"Sentence caching failed: {cache_error}")
+                        # Don't fail the practice session if caching fails
+                else:
+                    print(
+                        "All practice words already have cached sentences - MAXIMUM PERFORMANCE ACHIEVED!"
+                    )
+
+        except Exception as e:
+            print(f"Error in sentence pre-caching: {e}")
+            # Continue with practice session even if caching fails
+
         # For each word, create appropriate options based on game mode
         practice_words = []
         for word in words:
@@ -1084,6 +1225,13 @@ def get_practice_words():
                 word_dict["times_practiced"] = user_vocab.times_practiced
 
             word_dict["game_mode"] = game_mode
+
+            # Add cache status for frontend info
+            word_dict["has_cached_sentences"] = bool(
+                sentence_cache_service.get_cached_sentences(
+                    word.serbian_word, word.english_translation
+                )
+            )
 
             if game_mode == "translation":
                 # Serbian → English (existing functionality)
@@ -1178,25 +1326,141 @@ def generate_example_sentence():
         serbian_word = data.get("serbian_word")
         english_translation = data.get("english_translation")
 
-        completion = openai.ChatCompletion.create(
-            api_key=api_key,
-            model="gpt-3.5-turbo",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a Serbian language teacher. Create a simple Serbian sentence using the given word. The sentence should be easy to understand and help reinforce the word's meaning.",
-                },
-                {
-                    "role": "user",
-                    "content": f'Create a Serbian sentence using the word "{serbian_word}" ({english_translation}). Keep it simple and educational.',
-                },
-            ],
-            temperature=0.7,
-            max_tokens=100,
+        if not serbian_word or not english_translation:
+            return jsonify(
+                {"error": "Serbian word and English translation are required"}
+            ), 400
+
+        # PRIMARY PATH: Try to get cached sentence first - this dramatically reduces API calls
+        cached_sentence = sentence_cache_service.get_random_sentence(
+            serbian_word, english_translation
         )
 
-        sentence = completion.choices[0].message["content"].strip()
-        return jsonify({"sentence": sentence})
+        if cached_sentence:
+            return jsonify(
+                {
+                    "sentence": cached_sentence,
+                    "from_cache": True,
+                    "cache_hit": True,
+                    "performance": "instant",
+                    "openai_request": False,
+                }
+            )
+
+        # SECONDARY PATH: No cached sentence - generate and cache for future use
+        try:
+            # Get word's category for better context generation
+            word = Word.query.filter_by(
+                serbian_word=serbian_word, english_translation=english_translation
+            ).first()
+
+            category_name = word.category.name if word and word.category else None
+
+            # Generate and cache multiple sentences (2-3) for maximum future efficiency
+            sentences = sentence_cache_service.generate_and_cache_sentences(
+                serbian_word=serbian_word,
+                english_translation=english_translation,
+                api_key=api_key,
+                category_name=category_name,
+            )
+
+            if sentences:
+                # Return a random sentence from the newly generated ones
+                import random
+
+                selected_sentence = random.choice(sentences)
+
+                # Background task: Pre-cache sentences for similar words to reduce future API calls
+                try:
+                    if word and word.category_id:
+                        similar_words = (
+                            db.session.query(Word)
+                            .join(UserVocabulary)
+                            .filter(
+                                UserVocabulary.user_id == int(user_id),
+                                Word.category_id == word.category_id,
+                                Word.id != word.id,
+                            )
+                            .limit(2)  # Pre-cache 2 similar words for performance boost
+                            .all()
+                        )
+
+                        similar_words_data = []
+                        for similar_word in similar_words:
+                            if not sentence_cache_service.get_cached_sentences(
+                                similar_word.serbian_word,
+                                similar_word.english_translation,
+                            ):
+                                similar_words_data.append(
+                                    {
+                                        "serbian_word": similar_word.serbian_word,
+                                        "english_translation": similar_word.english_translation,
+                                        "category_name": category_name,
+                                    }
+                                )
+
+                        if similar_words_data:
+                            # Background pre-caching (non-blocking)
+                            sentence_cache_service.warm_cache_for_words(
+                                similar_words_data, api_key, batch_size=1
+                            )
+                            print(
+                                f"Background pre-cached {len(similar_words_data)} similar words"
+                            )
+
+                except Exception as bg_error:
+                    print(f"Background caching failed (non-critical): {bg_error}")
+
+                return jsonify(
+                    {
+                        "sentence": selected_sentence,
+                        "from_cache": False,
+                        "cache_hit": False,
+                        "sentences_cached": len(sentences),
+                        "performance": "generated_and_cached",
+                        "openai_request": True,
+                        "future_requests_avoided": len(sentences) - 1,
+                    }
+                )
+            else:
+                return jsonify({"error": "Failed to generate sentences"}), 500
+
+        except Exception as cache_error:
+            print(
+                f"Error with sentence caching, falling back to direct generation: {cache_error}"
+            )
+
+            # FALLBACK PATH: Direct generation without caching (least preferred)
+            completion = openai.ChatCompletion.create(
+                api_key=api_key,
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a Serbian language teacher. Create a simple Serbian sentence using the given word. The sentence should be easy to understand and help reinforce the word's meaning.",
+                    },
+                    {
+                        "role": "user",
+                        "content": f'Create a Serbian sentence using the word "{serbian_word}" ({english_translation}). Keep it simple and educational.',
+                    },
+                ],
+                temperature=0.7,
+                max_tokens=100,
+            )
+
+            sentence = completion.choices[0].message["content"].strip()
+            return jsonify(
+                {
+                    "sentence": sentence,
+                    "from_cache": False,
+                    "cache_hit": False,
+                    "fallback": True,
+                    "performance": "fallback_direct",
+                    "openai_request": True,
+                    "cache_miss_reason": "caching_service_error",
+                }
+            )
+
     except Exception as e:
         print(f"Error generating example sentence: {e}")
         return jsonify({"error": "Failed to generate example sentence"}), 500
@@ -2510,6 +2774,597 @@ def clear_translation_cache():
     except Exception as e:
         print(f"Error clearing translation cache: {e}")
         return jsonify({"error": "Failed to clear translation cache"}), 500
+
+
+# Sentence cache management endpoints
+@app.route("/api/sentence-cache/stats")
+@jwt_required()
+def get_sentence_cache_stats():
+    """Get sentence cache statistics"""
+    try:
+        stats = sentence_cache_service.get_cache_stats()
+        return jsonify(stats)
+
+    except Exception as e:
+        print(f"Error getting sentence cache stats: {e}")
+        return jsonify({"error": "Failed to get sentence cache stats"}), 500
+
+
+@app.route("/api/sentence-cache/populate", methods=["POST"])
+@jwt_required()
+def populate_sentence_cache():
+    """Populate sentence cache for user's vocabulary words"""
+    try:
+        user_id = int(get_jwt_identity())
+        api_key = get_user_openai_key(user_id)
+
+        if not api_key:
+            return jsonify(
+                {"error": "Please configure your OpenAI API key in settings"}
+            ), 400
+
+        data = request.get_json() or {}
+        batch_size = data.get("batch_size", 5)  # Process 5 words at a time
+        force_refresh = data.get("force_refresh", False)  # Re-cache existing entries
+
+        # Get user's vocabulary words
+        user_words = (
+            db.session.query(Word)
+            .join(UserVocabulary)
+            .filter(UserVocabulary.user_id == user_id)
+            .options(joinedload(Word.category))
+            .all()
+        )
+
+        # Convert to format expected by sentence cache service
+        words_data = []
+        for word in user_words:
+            # Skip words that already have cached sentences unless force_refresh is True
+            if not force_refresh and sentence_cache_service.get_cached_sentences(
+                word.serbian_word, word.english_translation
+            ):
+                continue
+
+            words_data.append(
+                {
+                    "serbian_word": word.serbian_word,
+                    "english_translation": word.english_translation,
+                    "category_name": word.category.name
+                    if word.category
+                    else "Common Words",
+                }
+            )
+
+        if not words_data:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "All vocabulary words already have cached sentences",
+                    "total_vocabulary": len(user_words),
+                    "already_cached": len(user_words),
+                    "newly_cached": 0,
+                }
+            )
+
+        # Populate cache
+        result = sentence_cache_service.populate_user_vocabulary_cache(
+            words_data, api_key
+        )
+
+        return jsonify(
+            {
+                "success": result["success"],
+                "message": f"Cache population completed. {result['newly_cached']} words processed.",
+                "total_vocabulary": len(user_words),
+                "words_to_process": len(words_data),
+                "already_cached": result["already_cached"],
+                "newly_cached": result["newly_cached"],
+                "batch_size": batch_size,
+            }
+        )
+
+    except Exception as e:
+        print(f"Error populating sentence cache: {e}")
+        return jsonify({"error": "Failed to populate sentence cache"}), 500
+
+
+@app.route("/api/sentence-cache/clear", methods=["POST"])
+@jwt_required()
+def clear_sentence_cache():
+    """Clear sentence cache"""
+    try:
+        data = request.get_json() or {}
+        word_pattern = data.get("word_pattern")  # Optional: clear specific pattern
+
+        cleared_count = sentence_cache_service.clear_cache(word_pattern)
+
+        message = (
+            f"Cleared {cleared_count} sentence cache entries"
+            if not word_pattern
+            else f"Cleared {cleared_count} sentence cache entries matching pattern '{word_pattern}'"
+        )
+
+        return jsonify(
+            {
+                "success": True,
+                "message": message,
+                "cleared_count": cleared_count,
+            }
+        )
+
+    except Exception as e:
+        print(f"Error clearing sentence cache: {e}")
+        return jsonify({"error": "Failed to clear sentence cache"}), 500
+
+
+@app.route("/api/sentence-cache/warm", methods=["POST"])
+@jwt_required()
+def warm_sentence_cache():
+    """Warm sentence cache with high-priority words (recently practiced, low mastery)"""
+    try:
+        user_id = int(get_jwt_identity())
+        api_key = get_user_openai_key(user_id)
+
+        if not api_key:
+            return jsonify(
+                {"error": "Please configure your OpenAI API key in settings"}
+            ), 400
+
+        data = request.get_json() or {}
+        max_words = data.get("max_words", 20)  # Limit to avoid too many API calls
+
+        # Get high-priority words (recently practiced, low mastery, no cached sentences)
+        priority_words = (
+            db.session.query(Word)
+            .join(UserVocabulary)
+            .filter(
+                UserVocabulary.user_id == user_id,
+                UserVocabulary.mastery_level < 50,  # Low mastery
+            )
+            .options(joinedload(Word.category))
+            .order_by(
+                UserVocabulary.last_practiced.desc().nulls_last(),  # Recently practiced first
+                UserVocabulary.mastery_level.asc(),  # Low mastery first
+            )
+            .limit(max_words * 2)  # Get more to filter out already cached
+            .all()
+        )
+
+        # Filter out words that already have cached sentences
+        words_to_cache = []
+        for word in priority_words:
+            if not sentence_cache_service.get_cached_sentences(
+                word.serbian_word, word.english_translation
+            ):
+                words_to_cache.append(
+                    {
+                        "serbian_word": word.serbian_word,
+                        "english_translation": word.english_translation,
+                        "category_name": word.category.name
+                        if word.category
+                        else "Common Words",
+                    }
+                )
+
+                if len(words_to_cache) >= max_words:
+                    break
+
+        if not words_to_cache:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "All priority words already have cached sentences",
+                    "priority_words_checked": len(priority_words),
+                    "words_cached": 0,
+                }
+            )
+
+        # Cache sentences for priority words
+        cached_count = sentence_cache_service.warm_cache_for_words(
+            words_to_cache, api_key, batch_size=3
+        )
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Warmed cache for {cached_count} priority words",
+                "priority_words_checked": len(priority_words),
+                "words_identified": len(words_to_cache),
+                "words_cached": cached_count,
+            }
+        )
+
+    except Exception as e:
+        print(f"Error warming sentence cache: {e}")
+        return jsonify({"error": "Failed to warm sentence cache"}), 500
+
+
+@app.route("/api/sentence-cache/word/<int:word_id>")
+@jwt_required()
+def get_word_cached_sentences(word_id):
+    """Get all cached sentences for a specific word"""
+    try:
+        user_id = int(get_jwt_identity())
+
+        # Verify the word belongs to the user's vocabulary
+        user_vocab = UserVocabulary.query.filter_by(
+            user_id=user_id, word_id=word_id
+        ).first()
+
+        if not user_vocab:
+            return jsonify({"error": "Word not found in your vocabulary"}), 404
+
+        # Get the word details
+        word = Word.query.get(word_id)
+        if not word:
+            return jsonify({"error": "Word not found"}), 404
+
+        # Get cached sentences
+        sentences = sentence_cache_service.get_cached_sentences(
+            word.serbian_word, word.english_translation
+        )
+
+        if sentences:
+            return jsonify(
+                {
+                    "success": True,
+                    "word": {
+                        "id": word.id,
+                        "serbian_word": word.serbian_word,
+                        "english_translation": word.english_translation,
+                    },
+                    "sentences": sentences,
+                    "sentence_count": len(sentences),
+                    "cached": True,
+                }
+            )
+        else:
+            return jsonify(
+                {
+                    "success": True,
+                    "word": {
+                        "id": word.id,
+                        "serbian_word": word.serbian_word,
+                        "english_translation": word.english_translation,
+                    },
+                    "sentences": [],
+                    "sentence_count": 0,
+                    "cached": False,
+                    "message": "No cached sentences found for this word",
+                }
+            )
+
+    except Exception as e:
+        print(f"Error getting cached sentences: {e}")
+        return jsonify({"error": "Failed to get cached sentences"}), 500
+
+
+@app.route("/api/sentence-cache/bulk-populate", methods=["POST"])
+@jwt_required()
+def bulk_populate_sentence_cache():
+    """Bulk populate sentence cache for maximum performance improvement"""
+    try:
+        user_id = int(get_jwt_identity())
+        api_key = get_user_openai_key(user_id)
+
+        if not api_key:
+            return jsonify(
+                {"error": "Please configure your OpenAI API key in settings"}
+            ), 400
+
+        data = request.get_json() or {}
+        max_words = data.get("max_words", 50)  # Process up to 50 words at once
+        priority_mode = data.get("priority_mode", True)  # Focus on uncached words first
+        batch_size = data.get("batch_size", 3)  # API calls per batch
+
+        # Get user's vocabulary words prioritized by practice frequency and mastery
+        query = (
+            db.session.query(Word)
+            .join(UserVocabulary)
+            .filter(UserVocabulary.user_id == user_id)
+            .options(joinedload(Word.category))
+        )
+
+        if priority_mode:
+            # Prioritize words by last practiced and low mastery (most likely to be used)
+            query = query.order_by(
+                UserVocabulary.last_practiced.desc().nulls_last(),
+                UserVocabulary.mastery_level.asc(),  # Lower mastery = higher priority
+                UserVocabulary.times_practiced.desc(),  # More practiced = higher priority
+            )
+        else:
+            # Random order for diversity
+            query = query.order_by(func.random())
+
+        words = query.limit(max_words * 2).all()  # Get extra to filter out cached ones
+
+        # Separate cached and uncached words
+        cached_words = []
+        uncached_words = []
+
+        for word in words:
+            if sentence_cache_service.get_cached_sentences(
+                word.serbian_word, word.english_translation
+            ):
+                cached_words.append(word)
+            else:
+                uncached_words.append(word)
+
+        # Focus on uncached words first, then cached (for refresh)
+        words_to_process = uncached_words[:max_words]
+        if len(words_to_process) < max_words and not priority_mode:
+            # Add some cached words for refresh if not in priority mode
+            words_to_process.extend(cached_words[: max_words - len(words_to_process)])
+
+        if not words_to_process:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "All vocabulary words already have cached sentences",
+                    "processed": 0,
+                    "cached_count": len(cached_words),
+                    "total_vocabulary": len(words),
+                }
+            )
+
+        # Convert to format expected by sentence cache service
+        words_data = []
+        for word in words_to_process:
+            words_data.append(
+                {
+                    "serbian_word": word.serbian_word,
+                    "english_translation": word.english_translation,
+                    "category_name": word.category.name
+                    if word.category
+                    else "Common Words",
+                }
+            )
+
+        # Process in batches for better performance
+        total_processed = 0
+        batch_results = []
+
+        for i in range(0, len(words_data), batch_size):
+            batch = words_data[i : i + batch_size]
+            try:
+                batch_processed = sentence_cache_service.warm_cache_for_words(
+                    batch, api_key, batch_size=1
+                )
+                total_processed += batch_processed
+                batch_results.append(
+                    {"batch": i // batch_size + 1, "processed": batch_processed}
+                )
+                print(
+                    f"Bulk cache: Processed batch {i // batch_size + 1}/{(len(words_data) + batch_size - 1) // batch_size}, {batch_processed}/{len(batch)} words"
+                )
+            except Exception as batch_error:
+                print(f"Batch {i // batch_size + 1} failed: {batch_error}")
+                batch_results.append(
+                    {
+                        "batch": i // batch_size + 1,
+                        "processed": 0,
+                        "error": str(batch_error),
+                    }
+                )
+
+        # Calculate cache coverage after processing
+        final_cached_count = 0
+        for word in words[:max_words]:
+            if sentence_cache_service.get_cached_sentences(
+                word.serbian_word, word.english_translation
+            ):
+                final_cached_count += 1
+
+        cache_coverage = (final_cached_count / min(len(words), max_words)) * 100
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Bulk cache population completed - {total_processed} words processed",
+                "processed": total_processed,
+                "attempted": len(words_data),
+                "cache_coverage_percent": round(cache_coverage, 1),
+                "initial_cached": len(cached_words),
+                "final_cached": final_cached_count,
+                "total_vocabulary": len(words),
+                "batch_results": batch_results,
+                "performance_improvement": "Significant reduction in OpenAI requests during practice sessions expected",
+            }
+        )
+
+    except Exception as e:
+        print(f"Error in bulk sentence cache population: {e}")
+        return jsonify({"error": "Failed to bulk populate sentence cache"}), 500
+
+
+@app.route("/api/sentence-cache/supercharge", methods=["POST"])
+@jwt_required()
+def supercharge_sentence_cache():
+    """Ultimate sentence cache population for maximum performance - processes user's entire vocabulary"""
+    try:
+        user_id = int(get_jwt_identity())
+        api_key = get_user_openai_key(user_id)
+
+        if not api_key:
+            return jsonify(
+                {"error": "Please configure your OpenAI API key in settings"}
+            ), 400
+
+        data = request.get_json() or {}
+        force_refresh = data.get("force_refresh", False)  # Re-cache existing entries
+        conservative_mode = data.get("conservative_mode", False)  # Smaller batches
+
+        # Get ALL user's vocabulary words
+        all_user_words = (
+            db.session.query(Word)
+            .join(UserVocabulary)
+            .filter(UserVocabulary.user_id == user_id)
+            .options(joinedload(Word.category))
+            .order_by(
+                # Prioritize by usage patterns for maximum impact
+                UserVocabulary.times_practiced.desc(),
+                UserVocabulary.mastery_level.asc(),  # Lower mastery = higher priority
+                UserVocabulary.last_practiced.desc().nulls_last(),
+            )
+            .all()
+        )
+
+        if not all_user_words:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "No vocabulary words found to cache",
+                    "total_vocabulary": 0,
+                    "processed": 0,
+                }
+            )
+
+        # Separate words that need caching
+        words_needing_cache = []
+        already_cached_count = 0
+
+        for word in all_user_words:
+            has_cache = sentence_cache_service.get_cached_sentences(
+                word.serbian_word, word.english_translation
+            )
+
+            if has_cache and not force_refresh:
+                already_cached_count += 1
+            else:
+                words_needing_cache.append(
+                    {
+                        "serbian_word": word.serbian_word,
+                        "english_translation": word.english_translation,
+                        "category_name": word.category.name
+                        if word.category
+                        else "Common Words",
+                        "priority_score": (word.user_vocabulary[0].times_practiced * 2)
+                        + (
+                            100 - word.user_vocabulary[0].mastery_level
+                        ),  # Higher score = higher priority
+                    }
+                )
+
+        # Sort by priority for optimal processing order
+        words_needing_cache.sort(key=lambda x: x.get("priority_score", 0), reverse=True)
+
+        if not words_needing_cache:
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "All vocabulary words already have cached sentences!",
+                    "total_vocabulary": len(all_user_words),
+                    "already_cached": already_cached_count,
+                    "processed": 0,
+                    "cache_coverage_percent": 100.0,
+                    "performance_status": "MAXIMUM_PERFORMANCE_ACHIEVED",
+                }
+            )
+
+        # Determine processing strategy
+        batch_size = 2 if conservative_mode else 3
+        total_batches = (len(words_needing_cache) + batch_size - 1) // batch_size
+
+        print(
+            f"SUPERCHARGE MODE: Processing {len(words_needing_cache)} words in {total_batches} batches"
+        )
+
+        # Process all words in optimized batches
+        total_processed = 0
+        batch_results = []
+        processing_start_time = datetime.utcnow()
+
+        for i in range(0, len(words_needing_cache), batch_size):
+            batch = words_needing_cache[i : i + batch_size]
+            batch_num = (i // batch_size) + 1
+
+            try:
+                batch_processed = sentence_cache_service.warm_cache_for_words(
+                    batch,
+                    api_key,
+                    batch_size=1,  # Conservative API usage
+                )
+                total_processed += batch_processed
+
+                batch_results.append(
+                    {
+                        "batch": batch_num,
+                        "processed": batch_processed,
+                        "words": [w["serbian_word"] for w in batch[:batch_processed]],
+                    }
+                )
+
+                print(
+                    f"SUPERCHARGE: Completed batch {batch_num}/{total_batches} - {batch_processed}/{len(batch)} words cached"
+                )
+
+                # Progress tracking for large vocabularies
+                if batch_num % 10 == 0:
+                    progress_percent = (batch_num / total_batches) * 100
+                    print(
+                        f"SUPERCHARGE: Progress {progress_percent:.1f}% - {total_processed} words processed"
+                    )
+
+            except Exception as batch_error:
+                print(f"SUPERCHARGE: Batch {batch_num} failed: {batch_error}")
+                batch_results.append(
+                    {
+                        "batch": batch_num,
+                        "processed": 0,
+                        "error": str(batch_error),
+                        "words": [w["serbian_word"] for w in batch],
+                    }
+                )
+
+        processing_end_time = datetime.utcnow()
+        processing_duration = (
+            processing_end_time - processing_start_time
+        ).total_seconds()
+
+        # Calculate final statistics
+        final_cached_count = already_cached_count + total_processed
+        cache_coverage = (final_cached_count / len(all_user_words)) * 100
+
+        # Estimate performance improvement
+        estimated_api_savings = (
+            total_processed * 2.5
+        )  # Average sentences per word * future usage
+        performance_rating = (
+            "MAXIMUM"
+            if cache_coverage >= 95
+            else "HIGH"
+            if cache_coverage >= 80
+            else "GOOD"
+        )
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"🚀 SUPERCHARGE COMPLETE! Cached {total_processed} words in {processing_duration:.1f}s",
+                "total_vocabulary": len(all_user_words),
+                "initially_cached": already_cached_count,
+                "newly_processed": total_processed,
+                "words_attempted": len(words_needing_cache),
+                "final_cached_count": final_cached_count,
+                "cache_coverage_percent": round(cache_coverage, 1),
+                "processing_time_seconds": round(processing_duration, 1),
+                "batches_processed": len(
+                    [b for b in batch_results if b.get("processed", 0) > 0]
+                ),
+                "total_batches": total_batches,
+                "batch_results": batch_results,
+                "performance_rating": performance_rating,
+                "estimated_api_calls_saved": int(estimated_api_savings),
+                "performance_improvement": f"{performance_rating} performance - Practice sessions will be significantly faster!",
+                "next_steps": "Your vocabulary is now optimized for maximum practice speed. Enjoy lightning-fast sentence generation!"
+                if cache_coverage >= 90
+                else f"Consider running supercharge again to reach 100% coverage ({100 - cache_coverage:.1f}% remaining)",
+            }
+        )
+
+    except Exception as e:
+        print(f"Error in supercharge sentence cache: {e}")
+        return jsonify({"error": "Failed to supercharge sentence cache"}), 500
 
 
 # Content generation endpoints (from news-service)

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
 import { Link } from 'react-router-dom';
+import CustomModal from '../components/CustomModal';
 import './PracticePage.css';
 
 function PracticePage() {
@@ -27,6 +28,7 @@ function PracticePage() {
     const [autoAdvanceTimer, setAutoAdvanceTimer] = useState(null);
     const [gameMode, setGameMode] = useState('translation');
     const [showGameSelection, setShowGameSelection] = useState(true);
+    const [showEndSessionModal, setShowEndSessionModal] = useState(false);
 
     // State for letter clicking game
     const [userWord, setUserWord] = useState('');
@@ -41,6 +43,49 @@ function PracticePage() {
         // Don't auto-start session on initial load, show game selection instead
         setLoading(false);
     }, []);
+
+    // Keyboard shortcuts for translation and reverse translation games
+    useEffect(() => {
+        const handleKeyPress = (event) => {
+            // Only handle keyboard shortcuts when we're in a game (not game selection, not completed, not loading)
+            if (showGameSelection || sessionComplete || loading || error) return;
+
+            // Only handle keyboard shortcuts for translation and reverse modes, not letters mode
+            if (!practiceWords.length || currentWordIndex >= practiceWords.length) return;
+            const currentWord = practiceWords[currentWordIndex];
+            if (!currentWord || currentWord.game_mode === 'letters') return;
+
+            // Don't handle shortcuts if modal is open
+            if (showEndSessionModal) return;
+
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                setShowEndSessionModal(true);
+            } else if (['1', '2', '3', '4'].includes(event.key)) {
+                event.preventDefault();
+                const optionIndex = parseInt(event.key) - 1;
+
+                // Only proceed if we have options and the index is valid
+                if (currentWord.options && optionIndex < currentWord.options.length && !showResult) {
+                    handleAnswerSelect(currentWord.options[optionIndex]);
+                }
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyPress);
+        return () => {
+            document.removeEventListener('keydown', handleKeyPress);
+        };
+    }, [showGameSelection, sessionComplete, loading, error, practiceWords, currentWordIndex, showResult, showEndSessionModal]);
+
+    const handleEndSession = () => {
+        setShowEndSessionModal(false);
+        completeSession();
+    };
+
+    const handleCancelEndSession = () => {
+        setShowEndSessionModal(false);
+    };
 
     // Load user settings
     const loadUserSettings = async () => {
@@ -677,39 +722,74 @@ function PracticePage() {
                         </div>
                     ) : (
                         /* Regular multiple choice interface for translation/reverse modes */
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
-                            {currentWord.options && currentWord.options.map((option, index) => (
-                                <button
-                                    key={index}
-                                    className={`btn ${showResult && option === currentWord.correct_answer
-                                        ? 'btn-success'
-                                        : showResult && option === selectedAnswer && !isCorrect
-                                            ? 'btn-danger'
-                                            : selectedAnswer === option && !showResult
-                                                ? 'btn-secondary'
-                                                : ''
-                                        }`}
-                                    onClick={() => handleAnswerSelect(option)}
-                                    disabled={showResult}
-                                    style={{
-                                        padding: '15px 20px',
-                                        fontSize: '16px',
-                                        textAlign: 'center',
-                                        backgroundColor: showResult && option === currentWord.correct_answer
-                                            ? '#4CAF50'
+                        <div>
+                            {/* Keyboard shortcuts hint */}
+                            {!showResult && (
+                                <div style={{
+                                    textAlign: 'center',
+                                    marginBottom: '15px',
+                                    padding: '8px 15px',
+                                    backgroundColor: '#e3f2fd',
+                                    borderRadius: '20px',
+                                    fontSize: '14px',
+                                    color: '#1976d2',
+                                    display: 'inline-block',
+                                    width: '100%'
+                                }}>
+                                    💡 Use keyboard shortcuts: Press 1-{currentWord.options ? currentWord.options.length : 4} to select answers, Esc to end session
+                                </div>
+                            )}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
+                                {currentWord.options && currentWord.options.map((option, index) => (
+                                    <button
+                                        key={index}
+                                        className={`btn ${showResult && option === currentWord.correct_answer
+                                            ? 'btn-success'
                                             : showResult && option === selectedAnswer && !isCorrect
-                                                ? '#f44336'
+                                                ? 'btn-danger'
                                                 : selectedAnswer === option && !showResult
-                                                    ? '#008CBA'
-                                                    : '',
-                                        color: (showResult && (option === currentWord.correct_answer || (option === selectedAnswer && !isCorrect))) || (selectedAnswer === option && !showResult)
-                                            ? 'white'
-                                            : ''
-                                    }}
-                                >
-                                    {option}
-                                </button>
-                            ))}
+                                                    ? 'btn-secondary'
+                                                    : ''
+                                            }`}
+                                        onClick={() => handleAnswerSelect(option)}
+                                        disabled={showResult}
+                                        style={{
+                                            padding: '15px 20px',
+                                            fontSize: '16px',
+                                            textAlign: 'center',
+                                            position: 'relative',
+                                            backgroundColor: showResult && option === currentWord.correct_answer
+                                                ? '#4CAF50'
+                                                : showResult && option === selectedAnswer && !isCorrect
+                                                    ? '#f44336'
+                                                    : selectedAnswer === option && !showResult
+                                                        ? '#008CBA'
+                                                        : '',
+                                            color: (showResult && (option === currentWord.correct_answer || (option === selectedAnswer && !isCorrect))) || (selectedAnswer === option && !showResult)
+                                                ? 'white'
+                                                : ''
+                                        }}
+                                    >
+                                        {/* Keyboard shortcut indicator */}
+                                        {!showResult && (
+                                            <span style={{
+                                                position: 'absolute',
+                                                top: '5px',
+                                                left: '8px',
+                                                fontSize: '12px',
+                                                backgroundColor: 'rgba(0,0,0,0.1)',
+                                                color: '#666',
+                                                padding: '2px 6px',
+                                                borderRadius: '3px',
+                                                fontWeight: 'bold'
+                                            }}>
+                                                {index + 1}
+                                            </span>
+                                        )}
+                                        {option}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     )}
 
@@ -769,11 +849,7 @@ function PracticePage() {
 
                         <button
                             className="btn btn-secondary"
-                            onClick={() => {
-                                if (window.confirm('Are you sure you want to end this session?')) {
-                                    completeSession();
-                                }
-                            }}
+                            onClick={() => setShowEndSessionModal(true)}
                         >
                             End Session
                         </button>
@@ -791,7 +867,8 @@ function PracticePage() {
                 <div className="card">
                     <h3>Practice Tips:</h3>
                     <ul style={{ marginLeft: '20px', lineHeight: '1.8' }}>
-                        <li>Click on the answer you think is correct</li>
+                        <li>Click on the answer you think is correct or use keyboard shortcuts (1-4)</li>
+                        <li>Press Escape to end your practice session early</li>
                         <li>Correct answers will show an example sentence</li>
                         <li>The Serbian word is highlighted in green in the example</li>
                         <li>Words with lower mastery levels appear more frequently</li>
@@ -800,6 +877,16 @@ function PracticePage() {
                     </ul>
                 </div>
             </div>
+
+            {/* End Session Modal */}
+            <CustomModal
+                isOpen={showEndSessionModal}
+                onClose={handleCancelEndSession}
+                onConfirm={handleEndSession}
+                title="End Practice Session"
+                message="Are you sure you want to end this practice session? Your progress will be saved."
+                type="confirm"
+            />
         </div>
     );
 }
