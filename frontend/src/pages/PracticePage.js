@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import apiService from '../services/api';
 import { Link } from 'react-router-dom';
 import CustomModal from '../components/CustomModal';
@@ -38,6 +38,52 @@ function PracticePage() {
     const [mistakeCount, setMistakeCount] = useState(0);
     const [maxMistakes] = useState(3);
 
+    // Load user settings
+    const loadUserSettings = async () => {
+        try {
+            const response = await apiService.getSettings();
+            if (response.data.settings) {
+                setUserSettings(response.data.settings);
+            }
+        } catch (error) {
+            console.error('Failed to load user settings:', error);
+        }
+    };
+
+    const completeSession = useCallback(async () => {
+        try {
+            const duration = Math.floor((Date.now() - sessionStartTime) / 1000);
+            const response = await apiService.completePracticeSession(sessionId, duration);
+
+            setSessionStats({
+                total: response.data.total_questions,
+                correct: response.data.correct_answers,
+                accuracy: response.data.accuracy
+            });
+            setSessionComplete(true);
+        } catch (err) {
+            console.error('Error completing session:', err);
+        }
+    }, [sessionStartTime, sessionId]);
+
+    const handleNextWord = useCallback(() => {
+        // Clear auto-advance timer if it exists
+        if (autoAdvanceTimer) {
+            clearTimeout(autoAdvanceTimer);
+            setAutoAdvanceTimer(null);
+        }
+
+        if (currentWordIndex < practiceWords.length - 1) {
+            setCurrentWordIndex(prev => prev + 1);
+            setSelectedAnswer('');
+            setShowResult(false);
+            setExampleSentence('');
+            setQuestionStartTime(Date.now());
+        } else {
+            completeSession();
+        }
+    }, [autoAdvanceTimer, currentWordIndex, practiceWords.length, completeSession]);
+
     useEffect(() => {
         loadUserSettings();
         // Don't auto-start session on initial load, show game selection instead
@@ -61,6 +107,12 @@ function PracticePage() {
             if (event.key === 'Escape') {
                 event.preventDefault();
                 setShowEndSessionModal(true);
+            } else if (event.key === ' ' || event.key === 'Spacebar') {
+                // Space key to go to next word (skip timeout)
+                event.preventDefault();
+                if (showResult) {
+                    handleNextWord();
+                }
             } else if (['1', '2', '3', '4'].includes(event.key)) {
                 event.preventDefault();
                 const optionIndex = parseInt(event.key) - 1;
@@ -76,7 +128,7 @@ function PracticePage() {
         return () => {
             document.removeEventListener('keydown', handleKeyPress);
         };
-    }, [showGameSelection, sessionComplete, loading, error, practiceWords, currentWordIndex, showResult, showEndSessionModal]);
+    }, [showGameSelection, sessionComplete, loading, error, practiceWords, currentWordIndex, showResult, showEndSessionModal, handleNextWord]);
 
     const handleEndSession = () => {
         setShowEndSessionModal(false);
@@ -85,18 +137,6 @@ function PracticePage() {
 
     const handleCancelEndSession = () => {
         setShowEndSessionModal(false);
-    };
-
-    // Load user settings
-    const loadUserSettings = async () => {
-        try {
-            const response = await apiService.getSettings();
-            if (response.data.settings) {
-                setUserSettings(response.data.settings);
-            }
-        } catch (error) {
-            console.error('Failed to load user settings:', error);
-        }
     };
 
     // Fetch word image when current word changes
@@ -279,40 +319,6 @@ function PracticePage() {
                 handleNextWord();
             }, timeout);
             setAutoAdvanceTimer(timer);
-        }
-    };
-
-    const handleNextWord = () => {
-        // Clear auto-advance timer if it exists
-        if (autoAdvanceTimer) {
-            clearTimeout(autoAdvanceTimer);
-            setAutoAdvanceTimer(null);
-        }
-
-        if (currentWordIndex < practiceWords.length - 1) {
-            setCurrentWordIndex(prev => prev + 1);
-            setSelectedAnswer('');
-            setShowResult(false);
-            setExampleSentence('');
-            setQuestionStartTime(Date.now());
-        } else {
-            completeSession();
-        }
-    };
-
-    const completeSession = async () => {
-        try {
-            const duration = Math.floor((Date.now() - sessionStartTime) / 1000);
-            const response = await apiService.completePracticeSession(sessionId, duration);
-
-            setSessionStats({
-                total: response.data.total_questions,
-                correct: response.data.correct_answers,
-                accuracy: response.data.accuracy
-            });
-            setSessionComplete(true);
-        } catch (err) {
-            console.error('Error completing session:', err);
         }
     };
 
@@ -765,6 +771,22 @@ function PracticePage() {
                                     width: '100%'
                                 }}>
                                     💡 Use keyboard shortcuts: Press 1-{currentWord.options ? currentWord.options.length : 4} to select answers, Esc to end session
+                                </div>
+                            )}
+                            {/* Space key hint when result is shown */}
+                            {showResult && (
+                                <div style={{
+                                    textAlign: 'center',
+                                    marginBottom: '15px',
+                                    padding: '8px 15px',
+                                    backgroundColor: '#e8f5e9',
+                                    borderRadius: '20px',
+                                    fontSize: '14px',
+                                    color: '#2e7d32',
+                                    display: 'inline-block',
+                                    width: '100%'
+                                }}>
+                                    ⚡ Press Space to go to next word (skip timeout)
                                 </div>
                             )}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
