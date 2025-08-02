@@ -67,6 +67,9 @@ class Settings(db.Model):
     practice_round_count = db.Column(
         db.Integer, default=10, nullable=False
     )  # words per practice session
+    sounds_enabled = db.Column(
+        db.Boolean, default=True, nullable=False
+    )  # enable/disable practice sounds
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -82,6 +85,7 @@ class Settings(db.Model):
             "auto_advance_timeout": self.auto_advance_timeout,
             "mastery_threshold": self.mastery_threshold,
             "practice_round_count": self.practice_round_count,
+            "sounds_enabled": self.sounds_enabled,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

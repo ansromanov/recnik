@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiService from '../services/api';
+import soundService from '../services/soundService';
 import { Link } from 'react-router-dom';
 import CustomModal from '../components/CustomModal';
 import './PracticePage.css';
@@ -44,6 +45,10 @@ function PracticePage() {
             const response = await apiService.getSettings();
             if (response.data.settings) {
                 setUserSettings(response.data.settings);
+                // Update sound service based on user settings
+                const soundsEnabled = response.data.settings.sounds_enabled !== undefined ?
+                    response.data.settings.sounds_enabled : true;
+                soundService.setEnabled(soundsEnabled);
             }
         } catch (error) {
             console.error('Failed to load user settings:', error);
@@ -86,6 +91,8 @@ function PracticePage() {
 
     useEffect(() => {
         loadUserSettings();
+        // Initialize sound service on first user interaction
+        soundService.initializeOnUserInteraction();
         // Don't auto-start session on initial load, show game selection instead
         setLoading(false);
     }, []);
@@ -263,6 +270,13 @@ function PracticePage() {
 
         setIsCorrect(correct);
         setShowResult(true);
+
+        // Play sound effect
+        if (correct) {
+            soundService.playCorrect();
+        } else {
+            soundService.playIncorrect();
+        }
 
         // If correct, fetch example sentence
         if (correct) {

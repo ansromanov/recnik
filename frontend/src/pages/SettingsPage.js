@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
+import soundService from '../services/soundService';
 import './SettingsPage.css';
 
 function SettingsPage() {
@@ -9,6 +10,7 @@ function SettingsPage() {
     const [autoAdvanceTimeout, setAutoAdvanceTimeout] = useState(3);
     const [masteryThreshold, setMasteryThreshold] = useState(5);
     const [practiceRoundCount, setPracticeRoundCount] = useState(10);
+    const [soundsEnabled, setSoundsEnabled] = useState(true);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
@@ -43,6 +45,7 @@ function SettingsPage() {
                 setAutoAdvanceTimeout(settings.auto_advance_timeout || 3);
                 setMasteryThreshold(settings.mastery_threshold || 5);
                 setPracticeRoundCount(settings.practice_round_count || 10);
+                setSoundsEnabled(settings.sounds_enabled !== undefined ? settings.sounds_enabled : true);
 
                 // Load selected sources from settings
                 if (settings.preferred_content_sources) {
@@ -196,8 +199,12 @@ function SettingsPage() {
                 auto_advance_timeout: autoAdvanceTimeout,
                 mastery_threshold: masteryThreshold,
                 practice_round_count: practiceRoundCount,
+                sounds_enabled: soundsEnabled,
                 preferred_content_sources: selectedSources
             });
+
+            // Update sound service state
+            soundService.setEnabled(soundsEnabled);
             setMessage({ type: 'success', text: 'Settings saved successfully!' });
 
             // Clear success message after 3 seconds
@@ -379,6 +386,44 @@ function SettingsPage() {
                         <p className="setting-description">
                             How many correct answers are needed to consider a word mastered. Lower values make it easier to master words.
                         </p>
+                    </div>
+
+                    <div className="setting-item">
+                        <label className="checkbox-label">
+                            <input
+                                type="checkbox"
+                                checked={soundsEnabled}
+                                onChange={(e) => setSoundsEnabled(e.target.checked)}
+                                className="checkbox-input"
+                            />
+                            <span className="checkbox-text">
+                                Enable practice sounds
+                            </span>
+                        </label>
+                        <p className="setting-description">
+                            Play sound effects when you answer questions correctly or incorrectly during practice.
+                        </p>
+
+                        {soundsEnabled && (
+                            <div className="sound-test-buttons" style={{ marginTop: '10px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => soundService.testCorrectSound()}
+                                    className="btn btn-sm btn-success"
+                                    style={{ marginRight: '10px', fontSize: '14px', padding: '6px 12px' }}
+                                >
+                                    🔊 Test Correct Sound
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => soundService.testIncorrectSound()}
+                                    className="btn btn-sm btn-danger"
+                                    style={{ fontSize: '14px', padding: '6px 12px' }}
+                                >
+                                    🔊 Test Incorrect Sound
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
