@@ -369,7 +369,6 @@ def save_results_to_json(
     from datetime import datetime
 
     output = {
-        "timestamp": datetime.now().isoformat(),
         "total": total_results,
         "production": prod_results,
         "tests": test_results,
@@ -411,7 +410,6 @@ def show_diff(current_results, previous_results):
     print("\n" + "=" * 65)
     print("📊 Diff: Current vs Previous Analysis")
     print("=" * 65)
-    print(f"📅 Previous analysis: {previous_results.get('timestamp', 'Unknown')}")
     print()
 
     # Compare totals
@@ -513,7 +511,6 @@ def main():
     if args.diff:
         previous_results = load_previous_results(args.output)
         current_results = {
-            "timestamp": "",  # Will be set by save_results_to_json if needed
             "total": total_results,
             "production": prod_results,
             "tests": test_results,

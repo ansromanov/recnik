@@ -705,6 +705,12 @@
     color: #155724;
 }
 
+.reason-badge.mastered {
+    background: rgba(212, 237, 218, 0.9);
+    color: #155724;
+    font-weight: 700;
+}
+
 .table-actions {
     display: flex;
     gap: 8px;

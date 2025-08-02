@@ -1059,6 +1059,12 @@ def get_practice_words():
             "mode", "translation"
         )  # translation, reverse, letters
 
+        # Get user's mastery threshold setting
+        user = User.query.get(user_id)
+        mastery_threshold = (
+            user.settings.mastery_threshold if user and user.settings else 5
+        )
+
         # First, let's check if the user has any vocabulary at all
         user_vocab_count = UserVocabulary.query.filter_by(user_id=user_id).count()
         print(f"User {user_id} has {user_vocab_count} words in vocabulary")
@@ -1068,13 +1074,14 @@ def get_practice_words():
             ew.word_id for ew in ExcludedWord.query.filter_by(user_id=user_id).all()
         )
 
-        # Build query for user's words - include all words in user's vocabulary for practice
-        # Exclude words that are in the excluded list
+        # Build query for user's words - EXCLUDE MASTERED WORDS from practice
+        # A word is mastered when mastery_level >= 100 (which means times_correct >= mastery_threshold)
         query = (
             db.session.query(Word)
             .join(UserVocabulary)
             .filter(
                 UserVocabulary.user_id == user_id,
+                UserVocabulary.mastery_level < 100,  # EXCLUDE mastered words
                 ~Word.id.in_(excluded_word_ids) if excluded_word_ids else True,
             )
             .options(joinedload(Word.category))
@@ -1088,9 +1095,23 @@ def get_practice_words():
         query = query.order_by(
             func.coalesce(UserVocabulary.last_practiced, datetime(1900, 1, 1)).asc(),
             UserVocabulary.mastery_level.asc(),
-        ).limit(limit)
+        )
 
-        words = query.all()
+        # Get all available words first to check count
+        available_words = query.all()
+        print(f"Available non-mastered words for practice: {len(available_words)}")
+
+        # If active words < requested limit, reduce limit to active words count
+        if len(available_words) < limit:
+            actual_limit = len(available_words)
+            print(
+                f"Reducing practice rounds from {limit} to {actual_limit} (available active words)"
+            )
+        else:
+            actual_limit = limit
+
+        # Apply the limit
+        words = available_words[:actual_limit]
         print(f"Query returned {len(words)} words for practice")
 
         # Helper function to scramble letters

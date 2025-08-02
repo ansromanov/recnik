@@ -7,6 +7,8 @@ import './VocabularyPage.css';
 function VocabularyPage() {
     const [words, setWords] = useState([]);
     const [filteredWords, setFilteredWords] = useState([]);
+    const [allUserWords, setAllUserWords] = useState([]); // Include mastered words for statistics
+    const [masteredWords, setMasteredWords] = useState([]);
     const [categories, setCategories] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -16,6 +18,7 @@ function VocabularyPage() {
     const [loadingImages, setLoadingImages] = useState({});
     const [excludedWords, setExcludedWords] = useState([]);
     const [showExcludedWords, setShowExcludedWords] = useState(false);
+    const [showMasteredWords, setShowMasteredWords] = useState(false);
     const [loadingExcluded, setLoadingExcluded] = useState(false);
     const [searchResults, setSearchResults] = useState(null);
     const [searchLoading, setSearchLoading] = useState(false);
@@ -62,9 +65,17 @@ function VocabularyPage() {
         try {
             setLoading(true);
             const response = await apiService.getWords();
-            // Filter to only show words that are in the user's vocabulary
-            const userWords = response.data.filter(word => word.is_in_vocabulary);
-            setWords(userWords);
+
+            // Get all user vocabulary words (including mastered)
+            const allVocabWords = response.data.filter(word => word.is_in_vocabulary);
+            setAllUserWords(allVocabWords);
+
+            // Separate active words (not mastered) from mastered words
+            const activeWords = allVocabWords.filter(word => word.mastery_level < 100);
+            const masteredWordsFiltered = allVocabWords.filter(word => word.mastery_level >= 100);
+
+            setWords(activeWords);
+            setMasteredWords(masteredWordsFiltered);
             setError(null);
         } catch (err) {
             setError('Failed to load vocabulary');
@@ -551,32 +562,121 @@ function VocabularyPage() {
             </header>
             <div className="stats-grid">
                 <div className="stat-card">
-                    <h3>Total Words</h3>
-                    <div className="stat-value">{words.length}</div>
+                    <h3>Total Vocabulary</h3>
+                    <div className="stat-value">{allUserWords.length}</div>
+                    <div className="stat-subtitle">All words in your vocabulary</div>
                 </div>
                 <div className="stat-card">
-                    <h3>Mastered (80%+)</h3>
+                    <h3>Active Words</h3>
+                    <div className="stat-value">{words.length}</div>
+                    <div className="stat-subtitle">Words available for practice</div>
+                </div>
+                <div className="stat-card">
+                    <h3>Mastered Words</h3>
+                    <div className="stat-value">{masteredWords.length}</div>
+                    <div className="stat-subtitle">Completed learning (100%)</div>
+                </div>
+                <div className="stat-card">
+                    <h3>Learning (80-99%)</h3>
                     <div className="stat-value">
-                        {words.filter(w => w.mastery_level >= 80).length}
+                        {words.filter(w => w.mastery_level >= 80 && w.mastery_level < 100).length}
                     </div>
+                    <div className="stat-subtitle">Almost mastered</div>
                 </div>
                 <div className="stat-card">
                     <h3>In Progress</h3>
                     <div className="stat-value">
                         {words.filter(w => w.mastery_level > 0 && w.mastery_level < 80).length}
                     </div>
+                    <div className="stat-subtitle">Actively learning</div>
                 </div>
                 <div className="stat-card">
                     <h3>Not Started</h3>
                     <div className="stat-value">
                         {words.filter(w => !w.mastery_level || w.mastery_level === 0).length}
                     </div>
+                    <div className="stat-subtitle">Never practiced</div>
                 </div>
                 <div className="stat-card">
                     <h3>Excluded Words</h3>
                     <div className="stat-value">{excludedWords.length}</div>
+                    <div className="stat-subtitle">Manually removed</div>
                 </div>
             </div>
+            <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#e8f5e9', borderRadius: '6px', fontSize: '14px', color: '#2e7d32' }}>
+                ℹ️ <strong>Note:</strong> Mastered words (100% mastery) are automatically hidden from your vocabulary and excluded from practice sessions.
+                Practice rounds are automatically reduced if you have fewer active words than your configured round count. Great job on mastering words!
+            </div>
+        </section>
+    );
+
+    const renderMasteredWords = () => (
+        <section className="mastered-words-section card">
+            <header className="excluded-words-header">
+                <h3>🏆 Mastered Words</h3>
+                <button
+                    className="toggle-excluded-btn btn"
+                    onClick={() => setShowMasteredWords(!showMasteredWords)}
+                    aria-expanded={showMasteredWords}
+                >
+                    {showMasteredWords ? 'Hide' : 'Show'} ({masteredWords.length})
+                </button>
+            </header>
+
+            {showMasteredWords && (
+                <div className="excluded-words-content">
+                    <p className="excluded-words-description">
+                        🎉 Congratulations! These words you have completely mastered (100% mastery). They are automatically excluded from practice sessions since you no longer need to practice them.
+                    </p>
+
+                    {masteredWords.length === 0 ? (
+                        <div className="empty-state">
+                            <p>No mastered words yet. Keep practicing to master your vocabulary! 💪</p>
+                        </div>
+                    ) : (
+                        <div className="excluded-words-table">
+                            <div className="table-header" role="row">
+                                <div className="table-cell" role="columnheader">Serbian Word</div>
+                                <div className="table-cell" role="columnheader">English Translation</div>
+                                <div className="table-cell" role="columnheader">Category</div>
+                                <div className="table-cell" role="columnheader">Mastery Status</div>
+                                <div className="table-cell" role="columnheader">Times Practiced</div>
+                                <div className="table-cell" role="columnheader">Achievement</div>
+                            </div>
+                            {masteredWords.map(word => (
+                                <div key={word.id} className="table-row" role="row">
+                                    <div className="table-cell" role="cell">
+                                        <strong>{word.serbian_word}</strong>
+                                    </div>
+                                    <div className="table-cell" role="cell">
+                                        {word.english_translation}
+                                    </div>
+                                    <div className="table-cell" role="cell">
+                                        <span className="category-badge">
+                                            {word.category_name || 'Unknown'}
+                                        </span>
+                                    </div>
+                                    <div className="table-cell" role="cell">
+                                        <span className="reason-badge mastered">
+                                            100% Mastered
+                                        </span>
+                                    </div>
+                                    <div className="table-cell" role="cell">
+                                        {word.times_practiced > 0 ? `${word.times_practiced} times` : 'Not practiced'}
+                                    </div>
+                                    <div className="table-cell" role="cell">
+                                        <div className="table-actions">
+                                            <span className="mastery-badge">
+                                                🏆 Completed
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </section>
     );
 
@@ -776,6 +876,7 @@ function VocabularyPage() {
                 {renderCategoryFilter()}
                 {renderWordGrid()}
                 {renderStatistics()}
+                {renderMasteredWords()}
                 {renderExcludedWords()}
             </div>
 
