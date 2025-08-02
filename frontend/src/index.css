@@ -398,6 +398,22 @@ code {
     color: #333;
 }
 
+/* Gamification widgets layout */
+.gamification-widgets {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+@media (max-width: 768px) {
+    .gamification-widgets {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+}
+
 /* Themed word grid */
 .word-grid {
     display: grid;

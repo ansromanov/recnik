@@ -51,6 +51,9 @@ from services.translation_cache import TranslationCache
 # Import streak service
 from services.streak_service import streak_service
 
+# Import XP service
+from services.xp_service import xp_service
+
 # Try to import feedparser, but don't crash if not available
 try:
     import feedparser
@@ -962,6 +965,13 @@ def add_words():
         # Commit all changes at once
         db.session.commit()
 
+        # Award XP for adding vocabulary words
+        xp_result = None
+        if added_to_vocabulary:
+            xp_result = xp_service.record_vocabulary_addition_xp(
+                user_id=user_id, words_added=len(added_to_vocabulary)
+            )
+
         # Queue words for image processing if any were added
         if added_to_vocabulary:
             try:
@@ -977,17 +987,26 @@ def add_words():
                 print(f"Error queuing images: {img_error}")
                 # Don't fail the request if image queuing fails
 
-        return jsonify(
-            {
-                "success": True,
-                "inserted": len(inserted_words),
-                "words": inserted_words,
-                "added_to_vocabulary": len(added_to_vocabulary),
-                "vocabulary_words": added_to_vocabulary,
-                "skipped": len(skipped_words),
-                "skipped_words": skipped_words,
-            }
-        )
+        response_data = {
+            "success": True,
+            "inserted": len(inserted_words),
+            "words": inserted_words,
+            "added_to_vocabulary": len(added_to_vocabulary),
+            "vocabulary_words": added_to_vocabulary,
+            "skipped": len(skipped_words),
+            "skipped_words": skipped_words,
+        }
+
+        # Add XP information to response
+        if xp_result and xp_result.get("success"):
+            response_data["xp_awarded"] = xp_result.get("xp_awarded", 0)
+            response_data["level_up_occurred"] = xp_result.get(
+                "level_up_occurred", False
+            )
+            response_data["new_level"] = xp_result.get("new_level")
+            response_data["new_achievements"] = xp_result.get("new_achievements", [])
+
+        return jsonify(response_data)
     except Exception as e:
         db.session.rollback()
         print(f"Error adding words: {e}")
@@ -1278,15 +1297,42 @@ def complete_practice_session():
 
         db.session.commit()
 
-        return jsonify(
-            {
-                "total_questions": total_questions,
-                "correct_answers": correct_answers,
-                "accuracy": round((correct_answers / total_questions) * 100)
-                if total_questions > 0
-                else 0,
-            }
+        # Award XP for completing the practice session
+        xp_result = xp_service.record_practice_session_xp(
+            user_id=user_id,
+            total_questions=total_questions,
+            correct_answers=correct_answers,
+            session_duration=duration_seconds,
         )
+
+        # Record streak activity for practice session
+        streak_result = streak_service.record_activity(
+            user_id=user_id, activity_type="practice_session"
+        )
+
+        response_data = {
+            "total_questions": total_questions,
+            "correct_answers": correct_answers,
+            "accuracy": round((correct_answers / total_questions) * 100)
+            if total_questions > 0
+            else 0,
+        }
+
+        # Add XP information to response
+        if xp_result.get("success"):
+            response_data["xp_awarded"] = xp_result.get("xp_awarded", 0)
+            response_data["level_up_occurred"] = xp_result.get(
+                "level_up_occurred", False
+            )
+            response_data["new_level"] = xp_result.get("new_level")
+            response_data["new_achievements"] = xp_result.get("new_achievements", [])
+
+        # Add streak information to response
+        if streak_result.get("success"):
+            response_data["streak_updated"] = True
+            response_data["daily_streak"] = streak_result.get("daily_streak", {})
+
+        return jsonify(response_data)
     except Exception as e:
         db.session.rollback()
         print(f"Error completing practice session: {e}")
@@ -2859,6 +2905,105 @@ def get_streak_leaderboard():
     except Exception as e:
         print(f"Error getting streak leaderboard: {e}")
         return jsonify({"error": "Failed to get leaderboard"}), 500
+
+
+# XP and Achievement endpoints
+@app.route("/api/xp")
+@jwt_required()
+def get_user_xp():
+    """Get comprehensive XP information for the current user"""
+    try:
+        user_id = int(get_jwt_identity())
+        xp_info = xp_service.get_user_xp_info(user_id)
+
+        if "error" in xp_info:
+            return jsonify({"error": xp_info["error"]}), 500
+
+        return jsonify(xp_info)
+    except Exception as e:
+        print(f"Error getting user XP: {e}")
+        return jsonify({"error": "Failed to get XP information"}), 500
+
+
+@app.route("/api/xp/award", methods=["POST"])
+@jwt_required()
+def award_xp():
+    """Award XP to the current user (for testing/admin purposes)"""
+    try:
+        user_id = int(get_jwt_identity())
+        data = request.get_json()
+
+        activity_type = data.get("activity_type")
+        xp_amount = data.get("xp_amount")
+        activity_details = data.get("activity_details", {})
+
+        if not activity_type:
+            return jsonify({"error": "activity_type is required"}), 400
+
+        result = xp_service.award_xp(
+            user_id=user_id,
+            activity_type=activity_type,
+            xp_amount=xp_amount,
+            activity_details=activity_details,
+        )
+
+        if not result["success"]:
+            return jsonify({"error": result["error"]}), 500
+
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error awarding XP: {e}")
+        return jsonify({"error": "Failed to award XP"}), 500
+
+
+@app.route("/api/xp/leaderboard")
+@jwt_required(optional=True)
+def get_xp_leaderboard():
+    """Get XP leaderboard"""
+    try:
+        limit = int(request.args.get("limit", 10))
+        leaderboard = xp_service.get_xp_leaderboard(limit)
+        return jsonify({"leaderboard": leaderboard})
+    except Exception as e:
+        print(f"Error getting XP leaderboard: {e}")
+        return jsonify({"error": "Failed to get XP leaderboard"}), 500
+
+
+@app.route("/api/achievements")
+@jwt_required()
+def get_user_achievements():
+    """Get user's achievements and progress"""
+    try:
+        user_id = int(get_jwt_identity())
+        achievements_data = xp_service.get_user_achievements(user_id)
+
+        if "error" in achievements_data:
+            return jsonify({"error": achievements_data["error"]}), 500
+
+        return jsonify(achievements_data)
+    except Exception as e:
+        print(f"Error getting user achievements: {e}")
+        return jsonify({"error": "Failed to get achievements"}), 500
+
+
+@app.route("/api/achievements/check", methods=["POST"])
+@jwt_required()
+def check_achievements():
+    """Manually check and unlock achievements for the current user"""
+    try:
+        user_id = int(get_jwt_identity())
+        new_achievements = xp_service.check_and_unlock_achievements(user_id)
+
+        return jsonify(
+            {
+                "success": True,
+                "new_achievements": new_achievements,
+                "count": len(new_achievements),
+            }
+        )
+    except Exception as e:
+        print(f"Error checking achievements: {e}")
+        return jsonify({"error": "Failed to check achievements"}), 500
 
 
 if __name__ == "__main__":

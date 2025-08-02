@@ -164,6 +164,49 @@ export const apiService = {
         }),
     getStreakLeaderboard: (streakType = 'daily', limit = 10) =>
         api.get('/streaks/leaderboard', { params: { type: streakType, limit } }),
+
+    // XP System
+    getUserXP: () => api.get('/xp'),
+    awardXP: (activityType, xpAmount, activityDetails = {}) =>
+        api.post('/xp/award', {
+            activity_type: activityType,
+            xp_amount: xpAmount,
+            activity_details: activityDetails
+        }),
+    getXPLeaderboard: (limit = 10) =>
+        api.get('/xp/leaderboard', { params: { limit } }),
+
+    // Achievements
+    getUserAchievements: () => api.get('/achievements'),
+    checkAchievements: () => api.post('/achievements/check'),
+};
+
+// fetchWithAuth function for components that need it
+export const fetchWithAuth = async (url, options = {}) => {
+    const token = localStorage.getItem('token');
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+    };
+
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+        ...options,
+        headers,
+    });
+
+    if (response.status === 401) {
+        // Token is invalid or expired
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        throw new Error('Unauthorized');
+    }
+
+    return response;
 };
 
 // Export individual functions for components that use them

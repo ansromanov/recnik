@@ -388,12 +388,163 @@ class StreakActivity(db.Model):
         }
 
 
-# Add streak relationships to User model
+class UserXP(db.Model):
+    __tablename__ = "user_xp"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    current_xp = db.Column(db.Integer, default=0, nullable=False)
+    total_xp = db.Column(db.Integer, default=0, nullable=False)
+    current_level = db.Column(db.Integer, default=1, nullable=False)
+    xp_to_next_level = db.Column(db.Integer, default=100, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "current_xp": self.current_xp,
+            "total_xp": self.total_xp,
+            "current_level": self.current_level,
+            "xp_to_next_level": self.xp_to_next_level,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class XPActivity(db.Model):
+    __tablename__ = "xp_activities"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    activity_type = db.Column(db.String(50), nullable=False)
+    xp_earned = db.Column(db.Integer, default=0, nullable=False)
+    activity_date = db.Column(
+        db.Date, default=lambda: datetime.now(timezone.utc).date()
+    )
+    activity_details = db.Column(db.JSON)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "activity_type": self.activity_type,
+            "xp_earned": self.xp_earned,
+            "activity_date": self.activity_date.isoformat()
+            if self.activity_date
+            else None,
+            "activity_details": self.activity_details,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class Achievement(db.Model):
+    __tablename__ = "achievements"
+
+    id = db.Column(db.Integer, primary_key=True)
+    achievement_key = db.Column(db.String(100), nullable=False, unique=True)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    badge_icon = db.Column(db.String(10))
+    badge_color = db.Column(db.String(20), default="#3498db")
+    category = db.Column(db.String(50), default="general")
+    xp_reward = db.Column(db.Integer, default=0)
+    unlock_criteria = db.Column(db.JSON, nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Relationships
+    user_achievements = db.relationship(
+        "UserAchievement",
+        backref="achievement",
+        lazy="dynamic",
+        cascade="all, delete-orphan",
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "achievement_key": self.achievement_key,
+            "name": self.name,
+            "description": self.description,
+            "badge_icon": self.badge_icon,
+            "badge_color": self.badge_color,
+            "category": self.category,
+            "xp_reward": self.xp_reward,
+            "unlock_criteria": self.unlock_criteria,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class UserAchievement(db.Model):
+    __tablename__ = "user_achievements"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    achievement_id = db.Column(
+        db.Integer,
+        db.ForeignKey("achievements.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    earned_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    progress_data = db.Column(db.JSON)
+
+    # Constraints
+    __table_args__ = (
+        db.UniqueConstraint(
+            "user_id",
+            "achievement_id",
+            name="user_achievements_user_achievement_unique",
+        ),
+    )
+
+    def to_dict(self):
+        achievement_dict = self.achievement.to_dict() if self.achievement else None
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "achievement_id": self.achievement_id,
+            "earned_at": self.earned_at.isoformat() if self.earned_at else None,
+            "progress_data": self.progress_data,
+            "achievement": achievement_dict,
+        }
+
+
+# Add relationships to User model
 User.streaks = db.relationship(
     "UserStreak", backref="user", lazy="dynamic", cascade="all, delete-orphan"
 )
 User.streak_activities = db.relationship(
     "StreakActivity", backref="user", lazy="dynamic", cascade="all, delete-orphan"
+)
+User.xp = db.relationship(
+    "UserXP", backref="user", uselist=False, cascade="all, delete-orphan"
+)
+User.xp_activities = db.relationship(
+    "XPActivity", backref="user", lazy="dynamic", cascade="all, delete-orphan"
+)
+User.achievements = db.relationship(
+    "UserAchievement", backref="user", lazy="dynamic", cascade="all, delete-orphan"
 )
 
 
@@ -405,4 +556,9 @@ def update_word_timestamp(mapper, connection, target):
 
 @event.listens_for(UserStreak, "before_update")
 def update_streak_timestamp(mapper, connection, target):
+    target.updated_at = datetime.now(timezone.utc)
+
+
+@event.listens_for(UserXP, "before_update")
+def update_xp_timestamp(mapper, connection, target):
     target.updated_at = datetime.now(timezone.utc)

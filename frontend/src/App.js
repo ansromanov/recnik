@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage';
 import SettingsPage from './pages/SettingsPage';
 import Top100Page from './pages/Top100Page';
 import StreaksPage from './pages/StreaksPage';
+import AchievementsPage from './pages/AchievementsPage';
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -96,11 +97,18 @@ function App() {
                                         <div className="dropdown-section">
                                             <div className="dropdown-section-title">Profile</div>
                                             <NavLink
+                                                to="/achievements"
+                                                className="dropdown-item"
+                                                onClick={() => setDropdownOpen(false)}
+                                            >
+                                                🏆 Achievements
+                                            </NavLink>
+                                            <NavLink
                                                 to="/streaks"
                                                 className="dropdown-item"
                                                 onClick={() => setDropdownOpen(false)}
                                             >
-                                                View Full Streaks
+                                                🔥 Streaks
                                             </NavLink>
                                         </div>
                                         <div className="dropdown-section">
@@ -193,6 +201,14 @@ function App() {
                         element={
                             isAuthenticated ?
                                 <Navigate to="/content" replace /> :
+                                <Navigate to="/login" replace />
+                        }
+                    />
+                    <Route
+                        path="/achievements"
+                        element={
+                            isAuthenticated ?
+                                <AchievementsPage /> :
                                 <Navigate to="/login" replace />
                         }
                     />

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
 import StreakWidget from '../components/StreakWidget';
+import XPWidget from '../components/XPWidget';
+import AchievementsWidget from '../components/AchievementsWidget';
 
 function HomePage() {
     const [stats, setStats] = useState({
@@ -70,8 +72,10 @@ function HomePage() {
                 </div>
             </div>
 
-            <div className="card">
+            <div className="gamification-widgets">
+                <XPWidget />
                 <StreakWidget />
+                <AchievementsWidget compact={true} />
             </div>
 
             <div className="card">
