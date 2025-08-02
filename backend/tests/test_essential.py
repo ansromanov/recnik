@@ -14,6 +14,12 @@ def auth_headers(app):
     """Create authentication headers for test user"""
     with app.app_context():
         user = User.query.filter_by(username="testuser").first()
+        if not user:
+            # Create test user if it doesn't exist
+            user = User(username="testuser")
+            user.set_password("testpassword")
+            db.session.add(user)
+            db.session.commit()
         access_token = create_access_token(identity=str(user.id))
         return {"Authorization": f"Bearer {access_token}"}
 

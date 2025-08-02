@@ -35,11 +35,9 @@ class AvatarService:
 
     def generate_avatar_seed(self, username: str) -> str:
         """Generate a unique seed for avatar generation based on username"""
-        # Combine username with current timestamp for uniqueness
-        base_string = f"{username}_{datetime.utcnow().isoformat()}"
-
-        # Create a hash and take first 16 characters
-        seed = hashlib.md5(base_string.encode()).hexdigest()[:16]
+        # Use only username for deterministic seed generation
+        # This ensures same username always generates same seed
+        seed = hashlib.md5(username.encode()).hexdigest()[:16]
 
         return seed
 
@@ -98,9 +96,9 @@ class AvatarService:
         # Generate unique seed
         seed = self.generate_avatar_seed(username)
 
-        # Use provided style or select random one
+        # Use provided style or default style for consistency
         if not style:
-            style = self.get_random_avatar_style()
+            style = self.default_style
 
         # Generate avatar URL
         avatar_url = self.get_avatar_url(seed, style)
@@ -124,7 +122,11 @@ class AvatarService:
         if keep_seed and current_seed:
             seed = current_seed
         else:
-            seed = self.generate_avatar_seed(username)
+            # Generate a new random seed when not keeping the current one
+            import time
+
+            random_part = str(int(time.time() * 1000000))  # microsecond timestamp
+            seed = hashlib.md5((username + random_part).encode()).hexdigest()[:16]
 
         # Use provided style or select random one
         if not style:

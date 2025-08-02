@@ -63,12 +63,18 @@ class StreakService:
             if existing_activity:
                 # Update existing activity
                 existing_activity.activity_count += activity_count
-                if activity_type not in existing_activity.activity_type:
+
+                # Handle activity type properly - don't concatenate if it's the same type
+                existing_types = existing_activity.activity_type.split(",")
+                if activity_type not in existing_types:
                     existing_activity.activity_type += f",{activity_type}"
 
-                # Re-check if it now qualifies for streak
+                # Re-check if it now qualifies for streak using the primary activity type
+                primary_activity_type = existing_types[
+                    0
+                ]  # Use first (primary) activity type
                 existing_activity.streak_qualifying = self._is_qualifying_activity(
-                    existing_activity.activity_type, existing_activity.activity_count
+                    primary_activity_type, existing_activity.activity_count
                 )
 
                 activity_record = existing_activity

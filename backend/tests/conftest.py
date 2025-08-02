@@ -22,41 +22,37 @@ from services.text_processor import SerbianTextProcessor
 @pytest.fixture(scope="session")
 def app():
     """Create and configure a test Flask application"""
-    app = Flask(__name__)
+    from flask import Flask, request, jsonify
+    from flask_jwt_extended import (
+        JWTManager,
+        create_access_token,
+        jwt_required,
+        get_jwt_identity,
+    )
+    from models import db
 
-    # Use in-memory SQLite for testing
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["TESTING"] = True
-    app.config["SECRET_KEY"] = "test-secret-key"
-    app.config["JWT_SECRET_KEY"] = "test-jwt-secret"
+    # Create a fresh Flask app for testing
+    flask_app = Flask(__name__)
+
+    # Configure for testing
+    flask_app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    flask_app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    flask_app.config["TESTING"] = True
+    flask_app.config["SECRET_KEY"] = "test-secret-key"
+    flask_app.config["JWT_SECRET_KEY"] = "test-jwt-secret"
+    flask_app.config["WTF_CSRF_ENABLED"] = False
 
     # Initialize extensions
-    db.init_app(app)
-    jwt = JWTManager(app)
+    db.init_app(flask_app)
+    jwt = JWTManager(flask_app)
 
-    # Mock image service for tests
-    mock_image_service = Mock()
-    mock_image_service.populate_images_for_words.return_value = None
-
-    # Mock add_words endpoint manually
-    @app.route("/api/words", methods=["POST"])
+    # Add essential routes for tests
+    @flask_app.route("/api/words", methods=["POST"])
     @jwt_required()
     def add_words():
-        from flask import request, jsonify
-
         try:
             user_id = int(get_jwt_identity())
-
-            # Handle JSON parsing errors separately
-            try:
-                data = request.get_json(force=True)
-            except Exception as json_error:
-                return jsonify({"error": "Invalid JSON format"}), 400
-
-            if data is None:
-                return jsonify({"error": "Invalid JSON format"}), 400
-
+            data = request.get_json()
             words = data.get("words", [])
 
             if not words or not isinstance(words, list):
@@ -89,7 +85,6 @@ def app():
                         ).first()
 
                         if existing_vocab:
-                            # Already in vocabulary, skip
                             skipped_words.append(
                                 {
                                     "word": existing_word.to_dict(),
@@ -136,22 +131,6 @@ def app():
             # Commit all changes at once
             db.session.commit()
 
-            # Mock image service call
-            try:
-                if added_to_vocabulary:
-                    words_for_images = [
-                        {
-                            "serbian_word": word["serbian_word"],
-                            "english_translation": word["english_translation"],
-                        }
-                        for word in added_to_vocabulary
-                    ]
-                    mock_image_service.populate_images_for_words(
-                        words_for_images, priority=True
-                    )
-            except Exception:
-                pass  # Don't fail if image service fails
-
             return jsonify(
                 {
                     "success": True,
@@ -168,15 +147,12 @@ def app():
             print(f"Error adding words: {e}")
             return jsonify({"error": f"Failed to add words: {str(e)}"}), 500
 
-    with app.app_context():
+    with flask_app.app_context():
         # Create all tables
         db.create_all()
-
         # Seed test data
         _seed_test_data()
-
-        yield app
-
+        yield flask_app
         # Cleanup
         db.drop_all()
 
@@ -202,14 +178,22 @@ def db_session(app_context):
     # Clean up all data added during the test, but keep the seeded data
     # Delete in reverse dependency order to avoid foreign key constraint issues
     try:
-        # Clean up user vocabulary entries for the test user that might have been added during tests
-        db.session.query(UserVocabulary).filter(UserVocabulary.user_id == 1).delete()
+        # Get the test user ID
+        test_user = User.query.filter_by(username="testuser").first()
+        if test_user:
+            test_user_id = test_user.id
 
-        # Clean up any words added during tests (keep seeded ones with id 1-5)
-        db.session.query(Word).filter(Word.id > 5).delete()
+            # Clean up user vocabulary entries for the test user that might have been added during tests
+            db.session.query(UserVocabulary).filter(
+                UserVocabulary.user_id == test_user_id
+            ).delete()
 
-        # Clean up any additional users created during tests (keep test user with id 1)
-        db.session.query(User).filter(User.id != 1).delete()
+            # Clean up any additional users created during tests (keep test user)
+            db.session.query(User).filter(User.id != test_user_id).delete()
+
+        # Clean up any words added during tests that are not from our seed data
+        seeded_words = ["pas", "raditi", "velik", "čovek", "ići"]
+        db.session.query(Word).filter(~Word.serbian_word.in_(seeded_words)).delete()
 
         db.session.commit()
     except Exception as e:
@@ -254,36 +238,84 @@ def text_processor(mock_openai_client):
 
 def _seed_test_data():
     """Seed the test database with initial data"""
-    # Create test categories
-    categories = [
-        Category(id=1, name="Common Words", description="Frequently used words"),
-        Category(id=2, name="Verbs", description="Action words"),
-        Category(id=3, name="Nouns", description="Objects and concepts"),
-        Category(id=4, name="Adjectives", description="Descriptive words"),
+    # Check if data already exists to avoid duplicates
+    existing_user = User.query.filter_by(username="testuser").first()
+    if existing_user:
+        return  # Data already seeded
+
+    # Create test categories without explicit IDs (let database auto-increment)
+    categories_data = [
+        {"name": "Common Words", "description": "Frequently used words"},
+        {"name": "Verbs", "description": "Action words"},
+        {"name": "Nouns", "description": "Objects and concepts"},
+        {"name": "Adjectives", "description": "Descriptive words"},
     ]
 
-    for category in categories:
-        db.session.add(category)
+    categories = []
+    for cat_data in categories_data:
+        # Check if category already exists
+        existing_cat = Category.query.filter_by(name=cat_data["name"]).first()
+        if existing_cat:
+            categories.append(existing_cat)
+        else:
+            category = Category(
+                name=cat_data["name"], description=cat_data["description"]
+            )
+            db.session.add(category)
+            db.session.flush()  # Flush to get the ID
+            categories.append(category)
 
-    # Create test words (avoid conflicts with test cases)
-    words = [
-        Word(id=1, serbian_word="pas", english_translation="dog", category_id=3),
-        Word(id=2, serbian_word="raditi", english_translation="to work", category_id=2),
-        Word(id=3, serbian_word="velik", english_translation="big", category_id=4),
-        Word(id=4, serbian_word="čovek", english_translation="man", category_id=3),
-        Word(id=5, serbian_word="ići", english_translation="to go", category_id=2),
+    # Create test words without explicit IDs
+    words_data = [
+        {
+            "serbian_word": "pas",
+            "english_translation": "dog",
+            "category_idx": 2,
+        },  # Nouns
+        {
+            "serbian_word": "raditi",
+            "english_translation": "to work",
+            "category_idx": 1,
+        },  # Verbs
+        {
+            "serbian_word": "velik",
+            "english_translation": "big",
+            "category_idx": 3,
+        },  # Adjectives
+        {
+            "serbian_word": "čovek",
+            "english_translation": "man",
+            "category_idx": 2,
+        },  # Nouns
+        {
+            "serbian_word": "ići",
+            "english_translation": "to go",
+            "category_idx": 1,
+        },  # Verbs
     ]
 
-    for word in words:
-        db.session.add(word)
+    for word_data in words_data:
+        # Check if word already exists
+        existing_word = Word.query.filter_by(
+            serbian_word=word_data["serbian_word"],
+            english_translation=word_data["english_translation"],
+        ).first()
+        if not existing_word:
+            word = Word(
+                serbian_word=word_data["serbian_word"],
+                english_translation=word_data["english_translation"],
+                category_id=categories[word_data["category_idx"]].id,
+            )
+            db.session.add(word)
 
-    # Create test user
-    user = User(id=1, username="testuser")
+    # Create test user without explicit ID
+    user = User(username="testuser")
     user.set_password("testpassword")
     db.session.add(user)
+    db.session.flush()  # Flush to get the user ID
 
-    # Create user settings
-    settings = Settings(id=1, user_id=1, openai_api_key="test-key")
+    # Create user settings without explicit ID
+    settings = Settings(user_id=user.id, openai_api_key="test-key")
     db.session.add(settings)
 
     db.session.commit()
@@ -332,7 +364,9 @@ class UserVocabularyFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session_persistence = "commit"
 
     id = factory.Sequence(lambda n: n + 100)  # Start from 101 to avoid conflicts
-    user_id = 1
+    user_id = factory.LazyAttribute(
+        lambda obj: User.query.filter_by(username="testuser").first().id
+    )
     word_id = factory.Sequence(lambda n: n + 100)
     times_practiced = 0
     times_correct = 0
@@ -346,7 +380,9 @@ class ExcludedWordFactory(factory.alchemy.SQLAlchemyModelFactory):
         sqlalchemy_session_persistence = "commit"
 
     id = factory.Sequence(lambda n: n + 100)  # Start from 101 to avoid conflicts
-    user_id = 1
+    user_id = factory.LazyAttribute(
+        lambda obj: User.query.filter_by(username="testuser").first().id
+    )
     word_id = factory.Sequence(lambda n: n + 100)
     reason = "test_exclusion"
 

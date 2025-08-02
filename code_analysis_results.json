@@ -1,28 +1,28 @@
 {
   "total": {
-    "Python": 19767,
+    "Python": 21728,
     "JavaScript": 6289,
     "CSS": 7036,
     "JSON": 1428,
     "Markdown": 2026
   },
   "production": {
-    "Python": 17799,
+    "Python": 17807,
     "JavaScript": 6289,
     "CSS": 7036,
     "JSON": 1428,
     "Markdown": 2026
   },
   "tests": {
-    "Python": 1968,
+    "Python": 3921,
     "JavaScript": 0,
     "CSS": 0,
     "JSON": 0,
     "Markdown": 0
   },
   "summary": {
-    "total_lines": 36546,
-    "production_lines": 34578,
-    "test_lines": 1968
+    "total_lines": 38507,
+    "production_lines": 34586,
+    "test_lines": 3921
   }
 }
