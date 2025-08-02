@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
 from sqlalchemy.sql import func
@@ -13,7 +13,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     settings = db.relationship(
@@ -53,9 +53,11 @@ class Settings(db.Model):
     openai_api_key = db.Column(db.String(255))
     auto_advance_enabled = db.Column(db.Boolean, default=False, nullable=False)
     auto_advance_timeout = db.Column(db.Integer, default=3, nullable=False)  # seconds
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     def to_dict(self, include_sensitive=False):
@@ -80,7 +82,7 @@ class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
     description = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     words = db.relationship("Word", backref="category", lazy="dynamic")
@@ -107,9 +109,11 @@ class Word(db.Model):
     notes = db.Column(db.Text)
     difficulty_level = db.Column(db.Integer, default=1, nullable=False)
     is_top_100 = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
@@ -176,7 +180,7 @@ class UserVocabulary(db.Model):
     times_correct = db.Column(db.Integer, default=0)
     last_practiced = db.Column(db.DateTime)
     mastery_level = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Constraints
     __table_args__ = (
@@ -211,7 +215,7 @@ class PracticeSession(db.Model):
         db.ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    session_date = db.Column(db.DateTime, default=datetime.utcnow)
+    session_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     total_questions = db.Column(db.Integer, default=0)
     correct_answers = db.Column(db.Integer, default=0)
     duration_seconds = db.Column(db.Integer)
@@ -250,7 +254,7 @@ class PracticeResult(db.Model):
     )
     was_correct = db.Column(db.Boolean, nullable=False)
     response_time_seconds = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return {
@@ -278,7 +282,7 @@ class ExcludedWord(db.Model):
         nullable=False,
     )
     reason = db.Column(db.String(255))  # "manual_removal", "news_parser_skip", etc.
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     word = db.relationship("Word", backref="excluded_by_users")
@@ -305,4 +309,4 @@ class ExcludedWord(db.Model):
 # Event listener to update the updated_at timestamp
 @event.listens_for(Word, "before_update")
 def update_word_timestamp(mapper, connection, target):
-    target.updated_at = datetime.utcnow()
+    target.updated_at = datetime.now(timezone.utc)

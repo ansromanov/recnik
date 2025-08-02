@@ -87,13 +87,42 @@ export const apiService = {
     // Statistics
     getStats: () => api.get('/stats'),
 
-    // News
-    getNews: (queryParams) => {
+    // Content (formerly News)
+    getContent: (queryParams) => {
         const url = queryParams ? `/news?${queryParams}` : '/news';
         return api.get(url);
     },
 
+    getContentSources: () => api.get('/news/sources'),
+
+    // For backward compatibility
     getNewsSources: () => api.get('/news/sources'),
+
+    // Content Generation
+    generateDialogue: (topic, difficulty = 'intermediate', wordCount = 200) =>
+        api.post('/content/dialogue', {
+            topic,
+            difficulty,
+            word_count: wordCount
+        }),
+
+    generateSummary: (articleText, summaryType = 'brief') =>
+        api.post('/content/summary', {
+            article_text: articleText,
+            type: summaryType
+        }),
+
+    generateVocabularyContent: (topic, targetWords = [], contentType = 'story') =>
+        api.post('/content/vocabulary-context', {
+            topic,
+            target_words: targetWords,
+            content_type: contentType
+        }),
+
+    getContentTypes: () => api.get('/content/types'),
+
+    getRecentContent: (contentType = 'all', limit = 10) =>
+        api.get('/content/recent', { params: { type: contentType, limit } }),
 
     // Settings
     getSettings: () => api.get('/settings'),
@@ -141,10 +170,13 @@ export const processText = async (text) => {
     };
 };
 
-export const fetchNews = async (queryParams) => {
-    const response = await apiService.getNews(queryParams);
+export const fetchContent = async (queryParams) => {
+    const response = await apiService.getContent(queryParams);
     return response.data;
 };
+
+// Keep fetchNews for backward compatibility
+export const fetchNews = fetchContent;
 
 export const generateExampleSentence = async (word) => {
     const response = await apiService.getExampleSentence(

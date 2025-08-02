@@ -30,13 +30,14 @@
     font-weight: 600;
 }
 
-/* News filters */
-.news-filters {
+/* Content filters */
+.content-filters {
     display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
     gap: 20px;
     margin-bottom: 30px;
     flex-wrap: wrap;
-    justify-content: center;
 }
 
 .filter-group {
@@ -325,6 +326,237 @@
     font-style: italic;
 }
 
+/* Content generator styles */
+.generate-content-button {
+    background: linear-gradient(135deg, #2196F3, #1976D2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.generate-content-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(33, 150, 243, 0.3);
+}
+
+.content-generator {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.content-generator h3 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+}
+
+.generator-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1;
+    min-width: 200px;
+}
+
+.form-group label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+.topic-input,
+.generate-type-select,
+.difficulty-select,
+.word-count-select {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.topic-input:focus,
+.generate-type-select:focus,
+.difficulty-select:focus,
+.word-count-select:focus {
+    outline: none;
+    border-color: #2196F3;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.generator-buttons {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.generate-button {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 16px;
+}
+
+.generate-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.generate-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Enhanced article cards for different content types */
+.article-card {
+    position: relative;
+}
+
+.article-card.dialogue::before {
+    content: "💬";
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 16px;
+}
+
+.article-card.story::before {
+    content: "📖";
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 16px;
+}
+
+.article-card.summary::before {
+    content: "📝";
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 16px;
+}
+
+/* Content type indicators */
+.content-type-badge {
+    display: inline-block;
+    background: rgba(33, 150, 243, 0.8);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-left: 8px;
+}
+
+.content-type-badge.dialogue {
+    background: rgba(156, 39, 176, 0.8);
+}
+
+.content-type-badge.story {
+    background: rgba(255, 152, 0, 0.8);
+}
+
+.content-type-badge.summary {
+    background: rgba(76, 175, 80, 0.8);
+}
+
+/* Enhanced article content formatting */
+.article-content p {
+    margin-bottom: 1rem;
+    line-height: 1.7;
+}
+
+.formatted-content {
+    white-space: pre-line;
+}
+
+.formatted-content p {
+    margin-bottom: 0.8rem;
+    line-height: 1.7;
+    min-height: 1.2em;
+}
+
+.formatted-content p.paragraph-break {
+    margin-bottom: 1.5rem;
+    height: 0.5rem;
+}
+
+.article-content .dialogue-line {
+    margin: 0.5rem 0;
+    padding-left: 1rem;
+    font-style: italic;
+}
+
+.article-content .dialogue-speaker {
+    font-weight: 600;
+    color: #2196F3;
+}
+
+/* Special formatting for dialogue content */
+.formatted-content p:contains("Osoba A:"),
+.formatted-content p:contains("Osoba B:") {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Enhanced dialogue formatting */
+.dialogue-content p {
+    margin-bottom: 0.8rem;
+    line-height: 1.6;
+}
+
+.dialogue-content p:first-child {
+    margin-top: 0;
+}
+
+/* Content metadata */
+.content-metadata {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 15px;
+    font-size: 12px;
+    color: #666;
+}
+
+.metadata-item {
+    display: inline-block;
+    margin-right: 15px;
+}
+
+.metadata-item strong {
+    color: #333;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .news-container {
@@ -340,14 +572,15 @@
         max-height: none;
     }
 
-    .news-filters {
+    .content-filters {
         flex-direction: column;
-        align-items: center;
+        align-items: stretch;
+        gap: 15px;
     }
 
     .filter-group {
         width: 100%;
-        max-width: 250px;
+        max-width: none;
     }
 
     .selection-buttons {
@@ -356,5 +589,13 @@
 
     .words-grid {
         max-height: 200px;
+    }
+
+    .form-row {
+        flex-direction: column;
+    }
+
+    .form-group {
+        min-width: auto;
     }
 }

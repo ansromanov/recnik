@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { fetchContent, processText } from '../services/api';
 import apiService from '../services/api';
 import { Link } from 'react-router-dom';
-import './NewsPage.css';
+import './ContentPage.css';
 
-function NewsPage() {
+function ContentPage() {
     const [articles, setArticles] = useState([]);
     const [selectedArticle, setSelectedArticle] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -14,26 +14,45 @@ function NewsPage() {
     const [selectedWords, setSelectedWords] = useState([]);
     const [showWordSelection, setShowWordSelection] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [categories, setCategories] = useState({});
+    const [availableCategories, setAvailableCategories] = useState([]);
     const [cacheInfo, setCacheInfo] = useState(null);
     const [contentType, setContentType] = useState('all');
     const [showContentGenerator, setShowContentGenerator] = useState(false);
     const [generatingContent, setGeneratingContent] = useState(false);
-    const [contentTypes, setContentTypes] = useState({});
+
+    // Content generation form state
+    const [contentTopic, setContentTopic] = useState('');
+    const [generateType, setGenerateType] = useState('dialogue');
+    const [difficulty, setDifficulty] = useState('intermediate');
+    const [wordCount, setWordCount] = useState(200);
 
     useEffect(() => {
-        loadContent();
-        loadContentTypes();
+        loadSourcesAndCategories();
     }, []);
 
     useEffect(() => {
         loadContent();
-    }, [contentType]);
+    }, [selectedCategory, contentType]);
+
+    const loadSourcesAndCategories = async () => {
+        try {
+            const response = await apiService.getContentSources();
+            const data = response.data;
+            setCategories(data.categories);
+            setAvailableCategories(['all']); // Default to showing all categories
+        } catch (err) {
+            console.error('Error loading sources and categories:', err);
+        }
+    };
 
     const loadContent = async () => {
         try {
             setLoading(true);
             const params = new URLSearchParams();
-            if (contentType && contentType !== 'all') params.append('type', contentType);
+            if (selectedCategory && selectedCategory !== 'all') params.append('category', selectedCategory);
+            if (contentType !== 'all') params.append('type', contentType);
 
             const data = await fetchContent(params.toString());
             setArticles(data.articles || []);
@@ -52,84 +71,6 @@ function NewsPage() {
             console.error('Error loading content:', err);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const loadContentTypes = async () => {
-        try {
-            const response = await apiService.getContentTypes();
-            if (response.data.content_types) {
-                setContentTypes(response.data.content_types);
-            }
-        } catch (err) {
-            console.error('Error loading content types:', err);
-        }
-    };
-
-    const handleGenerateContent = async () => {
-        const topic = document.getElementById('content-topic').value.trim();
-        const type = document.getElementById('generate-type').value;
-        const difficulty = document.getElementById('difficulty').value;
-        const wordCount = parseInt(document.getElementById('word-count').value);
-
-        if (!topic) {
-            setError('Please enter a topic for content generation');
-            return;
-        }
-
-        try {
-            setGeneratingContent(true);
-            setError('');
-
-            let response;
-            if (type === 'dialogue') {
-                response = await apiService.generateDialogue(topic, difficulty, wordCount);
-            } else if (type === 'story') {
-                response = await apiService.generateVocabularyContent(topic, [], type);
-            } else {
-                setError('Content generation for this type is not yet implemented');
-                return;
-            }
-
-            if (response.data.success && response.data.content) {
-                const newContent = response.data.content;
-
-                // Add the generated content to the articles list
-                const generatedArticle = {
-                    title: newContent.title,
-                    content: newContent.content,
-                    source: 'Generated',
-                    date: new Date().toLocaleDateString(),
-                    type: newContent.content_type,
-                    generated: true
-                };
-
-                setArticles(prev => [generatedArticle, ...prev]);
-                setSuccessMessage(`Successfully generated ${type}: "${newContent.title}"`);
-
-                // Clear the form
-                document.getElementById('content-topic').value = '';
-                setShowContentGenerator(false);
-
-                // Auto-select the generated content
-                setSelectedArticle(generatedArticle);
-            } else {
-                setError('Failed to generate content. Please check your API configuration in Settings.');
-            }
-        } catch (err) {
-            console.error('Error generating content:', err);
-            if (err.response && err.response.status === 400) {
-                setError(
-                    <span>
-                        Please configure your OpenAI API key in{' '}
-                        <Link to="/settings">Settings</Link> to generate content
-                    </span>
-                );
-            } else {
-                setError('Failed to generate content. Please try again.');
-            }
-        } finally {
-            setGeneratingContent(false);
         }
     };
 
@@ -157,7 +98,7 @@ function NewsPage() {
                 setSelectedWords(result.words.map(w => w.id));
                 setShowWordSelection(true);
             } else {
-                setError('No new words found in this article');
+                setError('No new words found in this content');
             }
         } catch (err) {
             if (err.response && err.response.status === 400) {
@@ -168,11 +109,67 @@ function NewsPage() {
                     </span>
                 );
             } else {
-                setError('Failed to process article text');
+                setError('Failed to process content text');
             }
             console.error('Error processing text:', err);
         } finally {
             setProcessingWords(false);
+        }
+    };
+
+    const handleGenerateContent = async () => {
+        if (!contentTopic.trim()) {
+            setError('Please enter a topic for content generation');
+            return;
+        }
+
+        try {
+            setGeneratingContent(true);
+            setError('');
+
+            let response;
+            switch (generateType) {
+                case 'dialogue':
+                    response = await apiService.generateDialogue(contentTopic, difficulty, wordCount);
+                    break;
+                case 'story':
+                    response = await apiService.generateVocabularyContent(contentTopic, [], 'story');
+                    break;
+                case 'summary':
+                    // For summary, we'll use the selected article's content if available
+                    const textToSummarize = selectedArticle ? selectedArticle.content : contentTopic;
+                    response = await apiService.generateSummary(textToSummarize, 'brief');
+                    break;
+                default:
+                    throw new Error('Invalid content type');
+            }
+
+            if (response.data.success) {
+                setSuccessMessage(response.data.message);
+                // Add the generated content to the articles list
+                const newContent = response.data.content;
+                setArticles(prev => [newContent, ...prev]);
+                // Select the newly generated content
+                setSelectedArticle(newContent);
+                setShowContentGenerator(false);
+                setContentTopic('');
+            } else {
+                setError('Failed to generate content');
+            }
+        } catch (err) {
+            if (err.response && err.response.status === 400) {
+                setError(
+                    <span>
+                        Please configure your OpenAI API key in{' '}
+                        <Link to="/settings">Settings</Link> to generate content
+                    </span>
+                );
+            } else {
+                setError('Failed to generate content: ' + (err.response?.data?.error || err.message));
+            }
+            console.error('Error generating content:', err);
+        } finally {
+            setGeneratingContent(false);
         }
     };
 
@@ -207,7 +204,7 @@ function NewsPage() {
                 serbian_word: word.serbian,
                 english_translation: word.english,
                 category_id: 1, // Default category, you might want to map this properly
-                context: `From article: ${selectedArticle.title}`,
+                context: `From content: ${selectedArticle.title}`,
                 notes: word.original && word.original !== word.serbian ? `Original form: ${word.original}` : null
             }));
 
@@ -221,7 +218,7 @@ function NewsPage() {
                     category_id: 1
                 }));
 
-                await apiService.bulkExcludeWords(wordsToExcludeApi, 'news_parser_skip');
+                await apiService.bulkExcludeWords(wordsToExcludeApi, 'content_parser_skip');
             }
 
             setSuccessMessage(
@@ -250,13 +247,32 @@ function NewsPage() {
             );
         });
 
-        // Convert line breaks to proper HTML formatting
-        const formattedHtml = highlightedText
-            .split('\n')
-            .map(line => line.trim() === '' ? '<p class="paragraph-break">&nbsp;</p>' : `<p>${line}</p>`)
-            .join('');
+        return <div dangerouslySetInnerHTML={{ __html: highlightedText }} />;
+    };
 
-        return <div className="formatted-content" dangerouslySetInnerHTML={{ __html: formattedHtml }} />;
+    // Format content based on type for better display
+    const formatContentDisplay = (content, contentType) => {
+        if (contentType === 'dialogue') {
+            // Format dialogue with proper speaker indication
+            const lines = content.split('\n').filter(line => line.trim());
+            return lines.map((line, index) => {
+                if (line.includes(':')) {
+                    const [speaker, ...textParts] = line.split(':');
+                    const text = textParts.join(':').trim();
+                    return (
+                        <div key={index} className="dialogue-line">
+                            <span className="dialogue-speaker">{speaker.trim()}:</span> {text}
+                        </div>
+                    );
+                }
+                return <p key={index}>{line}</p>;
+            });
+        }
+
+        // For other content types, split into paragraphs
+        return content.split('\n\n').map((paragraph, index) => (
+            <p key={index}>{paragraph}</p>
+        ));
     };
 
     if (loading) {
@@ -266,7 +282,7 @@ function NewsPage() {
     return (
         <div className="container">
             <h1>Serbian Content</h1>
-            <p className="subtitle">Read Serbian content and generate new learning material</p>
+            <p className="subtitle">Read Serbian content and learn new vocabulary in context</p>
 
             {cacheInfo && (
                 <div className="cache-info">
@@ -280,6 +296,23 @@ function NewsPage() {
             )}
 
             <div className="content-filters">
+                <div className="filter-group">
+                    <label htmlFor="category-select">Category:</label>
+                    <select
+                        id="category-select"
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                        className="filter-select"
+                    >
+                        <option value="">All Categories</option>
+                        {Object.entries(categories).map(([key, name]) => (
+                            <option key={key} value={key}>
+                                {name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
                 <div className="filter-group">
                     <label htmlFor="content-type-select">Content Type:</label>
                     <select
@@ -316,13 +349,20 @@ function NewsPage() {
                                 <input
                                     type="text"
                                     id="content-topic"
+                                    value={contentTopic}
+                                    onChange={(e) => setContentTopic(e.target.value)}
                                     placeholder="Enter a topic (e.g., Serbian culture, technology)"
                                     className="topic-input"
                                 />
                             </div>
                             <div className="form-group">
                                 <label htmlFor="generate-type">Type:</label>
-                                <select id="generate-type" className="generate-type-select">
+                                <select
+                                    id="generate-type"
+                                    value={generateType}
+                                    onChange={(e) => setGenerateType(e.target.value)}
+                                    className="generate-type-select"
+                                >
                                     <option value="dialogue">Dialogue</option>
                                     <option value="story">Story</option>
                                     <option value="summary">Summary</option>
@@ -333,7 +373,12 @@ function NewsPage() {
                         <div className="form-row">
                             <div className="form-group">
                                 <label htmlFor="difficulty">Difficulty:</label>
-                                <select id="difficulty" className="difficulty-select">
+                                <select
+                                    id="difficulty"
+                                    value={difficulty}
+                                    onChange={(e) => setDifficulty(e.target.value)}
+                                    className="difficulty-select"
+                                >
                                     <option value="beginner">Beginner</option>
                                     <option value="intermediate">Intermediate</option>
                                     <option value="advanced">Advanced</option>
@@ -341,10 +386,15 @@ function NewsPage() {
                             </div>
                             <div className="form-group">
                                 <label htmlFor="word-count">Word Count:</label>
-                                <select id="word-count" className="word-count-select">
-                                    <option value="150">~150 words</option>
-                                    <option value="200">~200 words</option>
-                                    <option value="300">~300 words</option>
+                                <select
+                                    id="word-count"
+                                    value={wordCount}
+                                    onChange={(e) => setWordCount(parseInt(e.target.value))}
+                                    className="word-count-select"
+                                >
+                                    <option value={150}>~150 words</option>
+                                    <option value={200}>~200 words</option>
+                                    <option value={300}>~300 words</option>
                                 </select>
                             </div>
                         </div>
@@ -365,23 +415,48 @@ function NewsPage() {
             {error && <div className="error">{typeof error === 'string' ? error : error}</div>}
             {successMessage && <div className="success">{successMessage}</div>}
 
-            <div className="news-container">
+            <div className="content-container">
                 <div className="articles-list">
-                    <h2>Latest Articles</h2>
+                    <h2>Latest Content</h2>
                     {articles.length === 0 ? (
-                        <p>No articles available</p>
+                        <p>No content available</p>
                     ) : (
                         articles.map((article, index) => (
                             <div
                                 key={index}
-                                className={`article-card ${selectedArticle === article ? 'selected' : ''}`}
+                                className={`article-card ${selectedArticle === article ? 'selected' : ''} ${article.content_type || 'article'}`}
                                 onClick={() => handleArticleClick(article)}
                             >
                                 <h3>{article.title}</h3>
-                                <p className="article-source">{article.source} • {article.date}</p>
+                                <div className="article-meta-line">
+                                    <span className="article-source">{article.source}</span>
+                                    {article.content_type && (
+                                        <span className={`content-type-badge ${article.content_type}`}>
+                                            {article.content_type}
+                                        </span>
+                                    )}
+                                    <span className="article-date">• {article.date || article.created_at}</span>
+                                </div>
                                 <p className="article-preview">
                                     {article.content.substring(0, 150)}...
                                 </p>
+                                {article.word_count && (
+                                    <div className="content-metadata">
+                                        <span className="metadata-item">
+                                            <strong>Words:</strong> {article.word_count}
+                                        </span>
+                                        {article.reading_time_minutes && (
+                                            <span className="metadata-item">
+                                                <strong>Reading time:</strong> {article.reading_time_minutes} min
+                                            </span>
+                                        )}
+                                        {article.difficulty_level && (
+                                            <span className="metadata-item">
+                                                <strong>Level:</strong> {article.difficulty_level}
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         ))
                     )}
@@ -393,12 +468,12 @@ function NewsPage() {
                             <div className="article-header">
                                 <h2>{selectedArticle.title}</h2>
                                 <p className="article-meta">
-                                    {selectedArticle.source} • {selectedArticle.date}
-                                    {selectedArticle.link && (
+                                    {selectedArticle.source} • {selectedArticle.date || selectedArticle.created_at}
+                                    {selectedArticle.source_url && (
                                         <>
                                             {' • '}
                                             <a
-                                                href={selectedArticle.link}
+                                                href={selectedArticle.source_url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="article-link"
@@ -423,25 +498,13 @@ function NewsPage() {
                                 {showWordSelection ? (
                                     highlightWords(selectedArticle.content)
                                 ) : (
-                                    <>
-                                        <div className="formatted-content">
-                                            {selectedArticle.content.split('\n').map((line, index) => (
-                                                <p key={index} className={line.trim() === '' ? 'paragraph-break' : ''}>
-                                                    {line.trim() === '' ? '\u00A0' : line}
-                                                </p>
-                                            ))}
-                                        </div>
-                                        {selectedArticle.fullContentFetched && (
-                                            <p className="article-note article-note-success">
-                                                <em>Full article content loaded from N1 Info.</em>
-                                            </p>
-                                        )}
-                                        {selectedArticle.link && selectedArticle.content.length < 500 && !selectedArticle.fullContentFetched && (
-                                            <p className="article-note">
-                                                <em>Note: This is a preview. Full content could not be loaded automatically.</em>
-                                            </p>
-                                        )}
-                                    </>
+                                    formatContentDisplay(selectedArticle.content, selectedArticle.content_type)
+                                )}
+
+                                {selectedArticle.has_full_content && (
+                                    <p className="article-note article-note-success">
+                                        <em>Full content loaded successfully.</em>
+                                    </p>
                                 )}
                             </div>
 
@@ -484,7 +547,7 @@ function NewsPage() {
                         </>
                     ) : (
                         <div className="no-article-selected">
-                            <p>Select an article to start reading</p>
+                            <p>Select content to start reading</p>
                         </div>
                     )}
                 </div>
@@ -493,4 +556,4 @@ function NewsPage() {
     );
 }
 
-export default NewsPage;
+export default ContentPage;

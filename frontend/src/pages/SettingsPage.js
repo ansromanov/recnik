@@ -10,9 +10,13 @@ function SettingsPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
+    const [contentSources, setContentSources] = useState({});
+    const [selectedSources, setSelectedSources] = useState([]);
+    const [sourcesLoading, setSourcesLoading] = useState(false);
 
     useEffect(() => {
         loadSettings();
+        loadContentSources();
     }, []);
 
     const loadSettings = async () => {
@@ -26,6 +30,11 @@ function SettingsPage() {
                 }
                 setAutoAdvanceEnabled(settings.auto_advance_enabled || false);
                 setAutoAdvanceTimeout(settings.auto_advance_timeout || 3);
+
+                // Load selected sources from settings
+                if (settings.preferred_content_sources) {
+                    setSelectedSources(settings.preferred_content_sources);
+                }
             }
         } catch (error) {
             console.error('Error loading settings:', error);
@@ -33,6 +42,28 @@ function SettingsPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const loadContentSources = async () => {
+        try {
+            setSourcesLoading(true);
+            const response = await apiService.getContentSources();
+            if (response.data.sources) {
+                setContentSources(response.data.sources);
+            }
+        } catch (error) {
+            console.error('Error loading content sources:', error);
+        } finally {
+            setSourcesLoading(false);
+        }
+    };
+
+    const handleSourceToggle = (sourceKey) => {
+        setSelectedSources(prev =>
+            prev.includes(sourceKey)
+                ? prev.filter(s => s !== sourceKey)
+                : [...prev, sourceKey]
+        );
     };
 
     const handleSave = async () => {
@@ -43,7 +74,8 @@ function SettingsPage() {
             await apiService.updateSettings({
                 openai_api_key: apiKey,
                 auto_advance_enabled: autoAdvanceEnabled,
-                auto_advance_timeout: autoAdvanceTimeout
+                auto_advance_timeout: autoAdvanceTimeout,
+                preferred_content_sources: selectedSources
             });
             setMessage({ type: 'success', text: 'Settings saved successfully!' });
 
@@ -106,6 +138,43 @@ function SettingsPage() {
                         </ul>
                     </div>
                 </div>
+            </div>
+
+            <div className="settings-section">
+                <h2>Content Sources</h2>
+                <p className="settings-description">
+                    Select which news sources you want to see in your content feed. This helps customize your learning experience.
+                </p>
+
+                {sourcesLoading ? (
+                    <div className="loading">Loading sources...</div>
+                ) : (
+                    <div className="sources-settings-section">
+                        {Object.entries(contentSources).filter(([key]) => key !== 'all').map(([key, source]) => (
+                            <div key={key} className="setting-item">
+                                <label className="checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedSources.includes(source.value)}
+                                        onChange={() => handleSourceToggle(source.value)}
+                                        className="checkbox-input"
+                                    />
+                                    <span className="checkbox-text">
+                                        {source.name}
+                                    </span>
+                                </label>
+                                {source.description && (
+                                    <p className="setting-description">
+                                        {source.description}
+                                    </p>
+                                )}
+                            </div>
+                        ))}
+                        {Object.keys(contentSources).length === 0 && (
+                            <p className="no-sources">No content sources available</p>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="settings-section">

@@ -888,14 +888,50 @@ def add_words():
 
         inserted_words = []
         added_to_vocabulary = []
+        skipped_words = []
 
         for word_data in words:
             try:
-                # Always create a new word for each user - no sharing between users
-                # This ensures complete isolation of vocabulary between users
+                serbian_word = word_data.get("serbian_word", "").strip()
+                english_translation = word_data.get("english_translation", "").strip()
+
+                if not serbian_word or not english_translation:
+                    print(f"Skipping word with missing data: {word_data}")
+                    continue
+
+                # Check if word already exists (due to unique constraint)
+                existing_word = Word.query.filter_by(
+                    serbian_word=serbian_word, english_translation=english_translation
+                ).first()
+
+                if existing_word:
+                    # Check if already in user's vocabulary
+                    existing_vocab = UserVocabulary.query.filter_by(
+                        user_id=user_id, word_id=existing_word.id
+                    ).first()
+
+                    if existing_vocab:
+                        # Already in vocabulary, skip
+                        skipped_words.append(
+                            {
+                                "word": existing_word.to_dict(),
+                                "reason": "already_in_vocabulary",
+                            }
+                        )
+                        continue
+                    else:
+                        # Add existing word to user's vocabulary
+                        user_vocab = UserVocabulary(
+                            user_id=user_id, word_id=existing_word.id
+                        )
+                        db.session.add(user_vocab)
+                        added_to_vocabulary.append(existing_word.to_dict())
+                        continue
+
+                # Create new word
                 new_word = Word(
-                    serbian_word=word_data["serbian_word"],
-                    english_translation=word_data["english_translation"],
+                    serbian_word=serbian_word,
+                    english_translation=english_translation,
                     category_id=word_data.get("category_id", 1),
                     context=word_data.get("context"),
                     notes=word_data.get("notes"),
@@ -911,22 +947,48 @@ def add_words():
                 added_to_vocabulary.append(new_word.to_dict())
 
             except Exception as e:
-                print(f'Error processing word "{word_data["serbian_word"]}": {e}')
+                print(
+                    f'Error processing word "{word_data.get("serbian_word", "unknown")}": {e}'
+                )
+                # Continue processing other words instead of failing the entire request
+                skipped_words.append(
+                    {"word": word_data, "reason": f"processing_error: {str(e)}"}
+                )
+                continue
 
+        # Commit all changes at once
         db.session.commit()
+
+        # Queue words for image processing if any were added
+        if added_to_vocabulary:
+            try:
+                words_for_images = [
+                    {
+                        "serbian_word": word["serbian_word"],
+                        "english_translation": word["english_translation"],
+                    }
+                    for word in added_to_vocabulary
+                ]
+                image_service.populate_images_for_words(words_for_images, priority=True)
+            except Exception as img_error:
+                print(f"Error queuing images: {img_error}")
+                # Don't fail the request if image queuing fails
 
         return jsonify(
             {
+                "success": True,
                 "inserted": len(inserted_words),
                 "words": inserted_words,
                 "added_to_vocabulary": len(added_to_vocabulary),
                 "vocabulary_words": added_to_vocabulary,
+                "skipped": len(skipped_words),
+                "skipped_words": skipped_words,
             }
         )
     except Exception as e:
         db.session.rollback()
         print(f"Error adding words: {e}")
-        return jsonify({"error": "Failed to add words"}), 500
+        return jsonify({"error": f"Failed to add words: {str(e)}"}), 500
 
 
 @app.route("/api/practice/words")
@@ -2399,6 +2461,341 @@ def clear_translation_cache():
     except Exception as e:
         print(f"Error clearing translation cache: {e}")
         return jsonify({"error": "Failed to clear translation cache"}), 500
+
+
+# Content generation endpoints (from news-service)
+@app.route("/api/content/types")
+@jwt_required(optional=True)
+def get_content_types():
+    """Get available content types"""
+    content_types = {
+        "dialogue": {
+            "name": "Dialogue",
+            "description": "Conversational dialogue between two or more people",
+            "icon": "💬",
+        },
+        "summary": {
+            "name": "Summary",
+            "description": "Concise summary of news articles",
+            "icon": "📝",
+        },
+        "story": {
+            "name": "Story",
+            "description": "Short story based on news topics",
+            "icon": "📖",
+        },
+        "interview": {
+            "name": "Interview",
+            "description": "Simulated interview format",
+            "icon": "🎤",
+        },
+        "vocabulary_exercise": {
+            "name": "Vocabulary Exercise",
+            "description": "Content focused on specific vocabulary words",
+            "icon": "📚",
+        },
+    }
+
+    return jsonify(
+        {
+            "content_types": content_types,
+            "templates": [],  # Will be implemented later if needed
+        }
+    )
+
+
+@app.route("/api/content/dialogue", methods=["POST"])
+@jwt_required()
+def generate_dialogue():
+    """Generate dialogue from topic using LLM"""
+    try:
+        user_id = get_jwt_identity()
+        api_key = get_user_openai_key(int(user_id))
+
+        if not api_key:
+            return jsonify(
+                {"error": "Please configure your OpenAI API key in settings"}
+            ), 400
+
+        data = request.get_json()
+        topic = data.get("topic")
+        difficulty = data.get("difficulty", "intermediate")
+        word_count = data.get("word_count", 200)
+
+        if not topic:
+            return jsonify({"error": "Topic is required"}), 400
+
+        # Create prompt for dialogue generation
+        prompt = f"""Create a dialogue in Serbian between two people discussing: {topic}
+
+Requirements:
+- Use {difficulty} level Serbian vocabulary suitable for Serbian language learners
+- Make it natural and conversational
+- Approximately {word_count} words
+- Format each speaker on a new line like this:
+  Osoba A: [text]
+  Osoba B: [text]
+  Osoba A: [text]
+  etc.
+- Focus on vocabulary that would be useful for Serbian learners
+- Make sure each speaker's line starts on a new line
+
+Topic: {topic}
+Difficulty: {difficulty}
+Target word count: {word_count}
+
+Generate a natural dialogue with proper line breaks:"""
+
+        # Generate content using OpenAI
+        completion = openai.ChatCompletion.create(
+            api_key=api_key,
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert Serbian language teacher creating educational content for language learners.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.7,
+            max_tokens=800,
+        )
+
+        generated_content = completion.choices[0].message["content"].strip()
+
+        # Format dialogue with proper line breaks
+        # Replace " / " separators with actual line breaks for better readability
+        if " / " in generated_content:
+            generated_content = generated_content.replace(" / ", "\n")
+
+        # Ensure each speaker line starts on a new line
+        import re
+
+        # Look for patterns like "Osoba A:" or "Osoba B:" and ensure they start on new lines
+        generated_content = re.sub(r"(\w+:\s)", r"\n\1", generated_content)
+        generated_content = generated_content.strip()
+
+        # Calculate metadata
+        actual_word_count = len(generated_content.split())
+        reading_time = max(1, round(actual_word_count / 200))
+
+        # Return the generated content
+        return jsonify(
+            {
+                "success": True,
+                "content": {
+                    "title": f"Dialogue: {topic}",
+                    "content": generated_content,
+                    "content_type": "dialogue",
+                    "topic": topic,
+                    "difficulty_level": difficulty,
+                    "word_count": actual_word_count,
+                    "reading_time_minutes": reading_time,
+                    "generated_at": datetime.utcnow().isoformat(),
+                },
+                "message": f"Generated dialogue about '{topic}'",
+            }
+        )
+
+    except Exception as e:
+        print(f"Error generating dialogue: {e}")
+        return jsonify({"error": "Failed to generate dialogue"}), 500
+
+
+@app.route("/api/content/summary", methods=["POST"])
+@jwt_required()
+def generate_summary():
+    """Generate summary from article using LLM"""
+    try:
+        user_id = get_jwt_identity()
+        api_key = get_user_openai_key(int(user_id))
+
+        if not api_key:
+            return jsonify(
+                {"error": "Please configure your OpenAI API key in settings"}
+            ), 400
+
+        data = request.get_json()
+        article_text = data.get("article_text")
+        summary_type = data.get("type", "brief")
+
+        if not article_text:
+            return jsonify({"error": "Article text is required"}), 400
+
+        # Determine word count based on summary type
+        word_counts = {"brief": 100, "detailed": 200, "vocabulary_focused": 150}
+        target_word_count = word_counts.get(summary_type, 100)
+
+        # Create prompt based on summary type
+        if summary_type == "vocabulary_focused":
+            prompt = f"""Create a vocabulary-focused summary in Serbian of this article.
+
+Requirements:
+- Approximately {target_word_count} words
+- Highlight important vocabulary words that would be useful for Serbian learners
+- Use clear, intermediate-level language
+- Focus on key terms and their context
+
+Article: {article_text[:2000]}
+
+Write a vocabulary-focused summary:"""
+        else:
+            prompt = f"""Create a {summary_type} summary in Serbian of this article.
+
+Requirements:
+- Approximately {target_word_count} words  
+- Use clear, intermediate-level Serbian
+- Focus on main points and key information
+- Make it accessible for Serbian language learners
+
+Article: {article_text[:2000]}
+
+Write the summary:"""
+
+        # Generate summary
+        completion = openai.ChatCompletion.create(
+            api_key=api_key,
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert at creating clear, educational summaries in Serbian for language learners.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
+            max_tokens=600,
+        )
+
+        generated_content = completion.choices[0].message["content"].strip()
+
+        # Calculate metadata
+        actual_word_count = len(generated_content.split())
+        reading_time = max(1, round(actual_word_count / 200))
+
+        # Extract topic from article (simple heuristic)
+        topic = (
+            article_text.split(".")[0][:100]
+            if "." in article_text
+            else article_text[:100]
+        )
+
+        return jsonify(
+            {
+                "success": True,
+                "content": {
+                    "title": f"Summary: {topic}...",
+                    "content": generated_content,
+                    "content_type": "summary",
+                    "topic": topic,
+                    "difficulty_level": "intermediate",
+                    "word_count": actual_word_count,
+                    "reading_time_minutes": reading_time,
+                    "generated_at": datetime.utcnow().isoformat(),
+                },
+                "message": f"Generated {summary_type} summary",
+            }
+        )
+
+    except Exception as e:
+        print(f"Error generating summary: {e}")
+        return jsonify({"error": "Failed to generate summary"}), 500
+
+
+@app.route("/api/content/vocabulary-context", methods=["POST"])
+@jwt_required()
+def generate_vocabulary_context():
+    """Generate vocabulary-focused content from topic"""
+    try:
+        user_id = get_jwt_identity()
+        api_key = get_user_openai_key(int(user_id))
+
+        if not api_key:
+            return jsonify(
+                {"error": "Please configure your OpenAI API key in settings"}
+            ), 400
+
+        data = request.get_json()
+        topic = data.get("topic")
+        target_words = data.get("target_words", [])
+        content_type = data.get("content_type", "story")
+
+        if not topic:
+            return jsonify({"error": "Topic is required"}), 400
+
+        target_words_str = (
+            ", ".join(target_words) if target_words else "any relevant vocabulary"
+        )
+
+        # Create prompt
+        prompt = f"""Create a {content_type} in Serbian about: {topic}
+
+Requirements:
+- Include these vocabulary words: {target_words_str}
+- Use intermediate level Serbian
+- Approximately 200 words
+- Make it educational and engaging for Serbian learners
+- Help learners understand vocabulary in context
+
+Topic: {topic}
+Vocabulary words to include: {target_words_str}
+
+Create the {content_type}:"""
+
+        # Generate content
+        completion = openai.ChatCompletion.create(
+            api_key=api_key,
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": f"You are creating educational Serbian content that helps language learners understand vocabulary in context.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.7,
+            max_tokens=800,
+        )
+
+        generated_content = completion.choices[0].message["content"].strip()
+
+        # Calculate metadata
+        actual_word_count = len(generated_content.split())
+        reading_time = max(1, round(actual_word_count / 200))
+
+        return jsonify(
+            {
+                "success": True,
+                "content": {
+                    "title": f"{content_type.title()}: {topic}",
+                    "content": generated_content,
+                    "content_type": content_type,
+                    "topic": topic,
+                    "difficulty_level": "intermediate",
+                    "target_words": target_words,
+                    "word_count": actual_word_count,
+                    "reading_time_minutes": reading_time,
+                    "generated_at": datetime.utcnow().isoformat(),
+                },
+                "message": f"Generated {content_type} with vocabulary focus",
+            }
+        )
+
+    except Exception as e:
+        print(f"Error generating vocabulary context: {e}")
+        return jsonify({"error": "Failed to generate vocabulary content"}), 500
+
+
+@app.route("/api/content/recent")
+@jwt_required(optional=True)
+def get_recent_content():
+    """Get recently generated content (stub implementation)"""
+    # This would normally query a database of generated content
+    # For now, return empty array
+    content_type = request.args.get("type", "all")
+    limit = int(request.args.get("limit", 10))
+
+    return jsonify({"content": [], "total": 0, "content_type": content_type})
 
 
 if __name__ == "__main__":

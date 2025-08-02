@@ -32,6 +32,9 @@ function PracticePage() {
     const [userWord, setUserWord] = useState('');
     const [availableLetters, setAvailableLetters] = useState([]);
     const [usedLetterIndices, setUsedLetterIndices] = useState([]);
+    const [letterStates, setLetterStates] = useState([]); // Track correct/incorrect letter positions
+    const [mistakeCount, setMistakeCount] = useState(0);
+    const [maxMistakes] = useState(3);
 
     useEffect(() => {
         loadUserSettings();
@@ -92,6 +95,8 @@ function PracticePage() {
                 setUserWord('');
                 setAvailableLetters(currentWord.letters);
                 setUsedLetterIndices([]);
+                setLetterStates([]);
+                setMistakeCount(0);
             }
         }
     }, [practiceWords, currentWordIndex]);
@@ -314,6 +319,7 @@ function PracticePage() {
                                 className="btn"
                                 onClick={() => {
                                     setShowGameSelection(true);
+                                    setSessionComplete(false);
                                     setLoading(false);
                                 }}
                             >
@@ -447,14 +453,36 @@ function PracticePage() {
 
     // Handle letter clicking
     const handleLetterClick = (letterIndex) => {
-        if (showResult || usedLetterIndices.includes(letterIndex)) return;
+        if (showResult || usedLetterIndices.includes(letterIndex) || mistakeCount >= maxMistakes) return;
 
         const letter = availableLetters[letterIndex];
         const newUserWord = userWord + letter;
         const newUsedIndices = [...usedLetterIndices, letterIndex];
+        const currentPosition = userWord.length;
+        const correctLetter = currentWord.correct_answer[currentPosition];
+
+        // Check if the letter is correct for this position
+        const isCorrect = letter.toLowerCase() === correctLetter.toLowerCase();
+        const newLetterStates = [...letterStates];
+        newLetterStates[currentPosition] = isCorrect ? 'correct' : 'incorrect';
 
         setUserWord(newUserWord);
         setUsedLetterIndices(newUsedIndices);
+        setLetterStates(newLetterStates);
+
+        // If incorrect, increment mistake counter
+        if (!isCorrect) {
+            const newMistakeCount = mistakeCount + 1;
+            setMistakeCount(newMistakeCount);
+
+            // Auto-advance to next word after 3 mistakes
+            if (newMistakeCount >= maxMistakes) {
+                setTimeout(() => {
+                    handleAnswerSelect(newUserWord); // This will be marked as incorrect
+                }, 1000); // Give user time to see the mistake
+                return;
+            }
+        }
 
         // Auto-submit when word is complete
         if (newUserWord.length === currentWord.correct_answer.length) {
@@ -470,16 +498,19 @@ function PracticePage() {
 
         const newUserWord = userWord.slice(0, -1);
         const newUsedIndices = usedLetterIndices.slice(0, -1);
+        const newLetterStates = letterStates.slice(0, -1);
 
         setUserWord(newUserWord);
         setUsedLetterIndices(newUsedIndices);
+        setLetterStates(newLetterStates);
     };
 
-    // Clear word
+    // Clear word  
     const handleClearWord = () => {
         if (showResult) return;
         setUserWord('');
         setUsedLetterIndices([]);
+        setLetterStates([]);
     };
 
     return (
@@ -574,17 +605,33 @@ function PracticePage() {
                             {/* User's current word display */}
                             <div className="user-word-display">
                                 <div className="word-progress">
-                                    {Array.from({ length: currentWord.correct_answer.length }).map((_, index) => (
-                                        <div
-                                            key={index}
-                                            className={`letter-slot ${index < userWord.length ? 'filled' : ''}`}
-                                        >
-                                            {userWord[index] || ''}
-                                        </div>
-                                    ))}
+                                    {Array.from({ length: currentWord.correct_answer.length }).map((_, index) => {
+                                        const letterState = letterStates[index];
+                                        let slotClass = 'letter-slot';
+
+                                        if (index < userWord.length) {
+                                            slotClass += ' filled';
+                                            if (letterState === 'correct') {
+                                                slotClass += ' correct';
+                                            } else if (letterState === 'incorrect') {
+                                                slotClass += ' incorrect';
+                                            }
+                                        }
+
+                                        return (
+                                            <div key={index} className={slotClass}>
+                                                {userWord[index] || ''}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                                 <div className="word-length-indicator">
                                     {userWord.length} / {currentWord.correct_answer.length}
+                                    {mistakeCount > 0 && (
+                                        <span style={{ marginLeft: '10px', color: '#dc3545', fontSize: '12px' }}>
+                                            Mistakes: {mistakeCount}/{maxMistakes}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
 
