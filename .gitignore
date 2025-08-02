@@ -40,8 +40,89 @@ coverage/
 *.seed
 *.pid.lock
 
-# Ignore Python cache files
+# Python
 __pycache__/
 *.py[cod]
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
 
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Package management
+pip-log.txt
+pip-delete-this-directory.txt
+.installed.cfg
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+database_backups/
+migrations/versions/
+*.sql.backup
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+.docker/
+
+# Monitoring & Logs
+monitoring/data/
+grafana/data/
+prometheus/data/
+*.log.*
+log/
+logs/
+*.out
+
+# Development tools
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.black/
+
+# OS specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Spotlight-V100
+.Trashes
+.fseventsd
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Service-specific temp files
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+.#*
+\#*#
+.*.sw?
