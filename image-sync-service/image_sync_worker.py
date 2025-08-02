@@ -424,6 +424,8 @@ class ImageSyncService:
             queue_item_json = self.redis_client.rpop(self.priority_queue_key)
             if queue_item_json:
                 queue_item = json.loads(queue_item_json)
+                # Remove from tracking set
+                self._remove_from_tracking_set(queue_item.get("serbian_word"))
                 self.logger.info(
                     f"🔥 Processing HIGH PRIORITY item: {queue_item.get('serbian_word')}"
                 )
@@ -435,10 +437,21 @@ class ImageSyncService:
                 return None
 
             queue_item = json.loads(queue_item_json)
+            # Remove from tracking set
+            self._remove_from_tracking_set(queue_item.get("serbian_word"))
             return queue_item
         except Exception as e:
             self.logger.error(f"Error getting queue item: {e}")
             return None
+
+    def _remove_from_tracking_set(self, serbian_word):
+        """Remove word from the tracking set when processed"""
+        try:
+            if serbian_word:
+                queued_words_set_key = f"{self.background_queue_key}_words_set"
+                self.redis_client.srem(queued_words_set_key, serbian_word)
+        except Exception as e:
+            self.logger.error(f"Error removing {serbian_word} from tracking set: {e}")
 
     def get_queue_length(self):
         """Get current queue lengths"""

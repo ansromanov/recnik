@@ -51,26 +51,12 @@ class ImageQueuePopulator:
             return False
 
     def _is_word_in_queue(self, serbian_word):
-        """Check if word is already in the processing queue"""
+        """Check if word is already in the processing queue using a tracking set"""
         try:
-            queue_length = self.redis_client.llen(self.queue_key)
-            if queue_length == 0:
-                return False
-
-            # Check last 100 items in queue (to avoid checking entire queue)
-            queue_items = self.redis_client.lrange(
-                self.queue_key, 0, min(100, queue_length - 1)
-            )
-
-            for item_json in queue_items:
-                try:
-                    item = json.loads(item_json)
-                    if item.get("serbian_word") == serbian_word:
-                        return True
-                except json.JSONDecodeError:
-                    continue
-
-            return False
+            # Use a Redis set to track queued words for efficient lookups
+            queued_words_set_key = f"{self.queue_key}_words_set"
+            is_queued = self.redis_client.sismember(queued_words_set_key, serbian_word)
+            return bool(is_queued)
         except Exception as e:
             print(f"Error checking queue for {serbian_word}: {e}")
             return False
@@ -95,7 +81,13 @@ class ImageQueuePopulator:
                 "auto_populated": True,
             }
 
-            self.redis_client.lpush(self.queue_key, json.dumps(queue_item))
+            # Add to queue and tracking set atomically
+            queued_words_set_key = f"{self.queue_key}_words_set"
+            pipe = self.redis_client.pipeline()
+            pipe.lpush(self.queue_key, json.dumps(queue_item))
+            pipe.sadd(queued_words_set_key, serbian_word)
+            pipe.execute()
+
             print(f"➕ Added '{serbian_word}' ({word_type}) to queue")
             return True
 

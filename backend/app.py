@@ -1798,12 +1798,22 @@ def get_word_image(word_id):
         if image_data and "error" not in image_data:
             return jsonify({"success": True, "image": image_data})
         else:
+            # If no cached image, add to priority queue for faster processing
+            image_service.populate_images_for_words(
+                [
+                    {
+                        "serbian_word": word.serbian_word,
+                        "english_translation": word.english_translation,
+                    }
+                ],
+                priority=True,
+            )
+
             return jsonify(
                 {
                     "success": False,
-                    "error": image_data.get("error", "No image found")
-                    if image_data
-                    else "No image found",
+                    "error": "Image not yet available - queued for processing",
+                    "queued": True,
                 }
             )
 

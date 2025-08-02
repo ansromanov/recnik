@@ -294,483 +294,493 @@ function VocabularyPage() {
         });
     }, [filteredWords]);
 
-    if (loading) return <div className="loading">Loading vocabulary...</div>;
-    if (error) return <div className="error">{error}</div>;
+    const renderSearchSection = () => (
+        <section className="search-section card">
+            <div className="search-container">
+                <input
+                    type="text"
+                    className="input-field search-input"
+                    placeholder="Search words in your vocabulary or add new ones..."
+                    value={searchTerm}
+                    onChange={handleSearchInputChange}
+                />
+                {searchLoading && (
+                    <div className="search-loading-indicator">
+                        🔍
+                    </div>
+                )}
+            </div>
 
-    return (
-        <div className="container">
-            <h1>My Vocabulary</h1>
+            {searchResults && (
+                <div className="search-results">
+                    <header className="search-results-header">
+                        <h4>Search Results for "{searchResults.query}"</h4>
+                    </header>
 
-            <div className="card">
-                <div style={{ marginBottom: '20px', position: 'relative' }}>
-                    <input
-                        type="text"
-                        className="input-field"
-                        placeholder="Search words in your vocabulary or add new ones..."
-                        value={searchTerm}
-                        onChange={handleSearchInputChange}
-                    />
-                    {searchLoading && (
-                        <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)' }}>
-                            🔍
+                    {searchResults.vocabulary_results.length > 0 && (
+                        <div className="vocabulary-results">
+                            <h5>In Your Vocabulary ({searchResults.vocabulary_results.length})</h5>
+                            <div className="search-results-grid">
+                                {searchResults.vocabulary_results.map(word => (
+                                    <div key={`vocab-${word.id}`} className="search-result-item">
+                                        <div className="word-details">
+                                            <strong>{word.serbian_word}</strong> - {word.english_translation}
+                                        </div>
+                                        <span className="category-badge small">{word.category_name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {searchResults.all_results.filter(w => !w.is_in_vocabulary).length > 0 && (
+                        <div className="available-results">
+                            <h5>Available to Add ({searchResults.all_results.filter(w => !w.is_in_vocabulary).length})</h5>
+                            <div className="search-results-grid">
+                                {searchResults.all_results.filter(w => !w.is_in_vocabulary).map(word => (
+                                    <div key={`available-${word.id}`} className="search-result-item">
+                                        <div className="word-details">
+                                            <strong>{word.serbian_word}</strong> - {word.english_translation}
+                                        </div>
+                                        <span className="category-badge small">{word.category_name}</span>
+                                        <button
+                                            className="add-word-btn small"
+                                            onClick={() => {
+                                                setNewWordData({
+                                                    serbian_word: word.serbian_word,
+                                                    english_translation: word.english_translation,
+                                                    category_id: word.category_id,
+                                                    context: word.context || '',
+                                                    notes: word.notes || ''
+                                                });
+                                                setShowAddWordForm(true);
+                                            }}
+                                        >
+                                            + Add
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {searchResults.suggestion && (
+                        <div className={`word-suggestion ${searchResults.suggestion.llm_processed ? 'ai-enhanced' : 'basic'}`}>
+                            <header className="suggestion-header">
+                                <h5>
+                                    <span className="suggestion-icon">
+                                        {searchResults.suggestion.llm_processed ? '🧠' : '💡'}
+                                    </span>
+                                    {searchResults.suggestion.message}
+                                </h5>
+                            </header>
+
+                            {searchResults.suggestion.llm_processed && (
+                                <div className="suggestion-details">
+                                    <div className="details-grid">
+                                        {searchResults.suggestion.suggested_serbian && (
+                                            <div className="detail-item">
+                                                <strong>Serbian:</strong> {searchResults.suggestion.suggested_serbian}
+                                            </div>
+                                        )}
+                                        {searchResults.suggestion.suggested_english && (
+                                            <div className="detail-item">
+                                                <strong>English:</strong> {searchResults.suggestion.suggested_english}
+                                            </div>
+                                        )}
+                                        {searchResults.suggestion.word_type && (
+                                            <div className="detail-item">
+                                                <strong>Type:</strong> {searchResults.suggestion.word_type}
+                                            </div>
+                                        )}
+                                        {searchResults.suggestion.confidence && (
+                                            <div className="detail-item">
+                                                <strong>Confidence:</strong>
+                                                <span className={`confidence-level ${searchResults.suggestion.confidence}`}>
+                                                    {searchResults.suggestion.confidence}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {searchResults.suggestion.needs_openai_key && (
+                                <div className="openai-warning">
+                                    <p>⚠️ Configure your OpenAI API key in Settings to get AI-powered translation and word normalization.</p>
+                                </div>
+                            )}
+
+                            <div className="suggestion-actions">
+                                <button
+                                    className={`add-word-btn ${searchResults.suggestion.llm_processed ? 'ai-enhanced' : ''}`}
+                                    onClick={() => openAddWordForm(searchResults.suggestion)}
+                                >
+                                    + Add "{searchResults.suggestion.search_term}" to Vocabulary
+                                </button>
+
+                                {searchResults.suggestion.llm_processed && (
+                                    <span className="ai-badge">✨ AI Enhanced</span>
+                                )}
+                            </div>
+
+                            {searchResults.suggestion.error && (
+                                <div className="suggestion-error">
+                                    Error: {searchResults.suggestion.error}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
-
-                {/* Search Results */}
-                {searchResults && (
-                    <div className="search-results" style={{ marginBottom: '20px' }}>
-                        <h4>Search Results for "{searchResults.query}"</h4>
-
-                        {searchResults.vocabulary_results.length > 0 && (
-                            <div>
-                                <h5>In Your Vocabulary ({searchResults.vocabulary_results.length})</h5>
-                                <div className="search-results-grid">
-                                    {searchResults.vocabulary_results.map(word => (
-                                        <div key={`vocab-${word.id}`} className="search-result-item">
-                                            <strong>{word.serbian_word}</strong> - {word.english_translation}
-                                            <span className="category-badge small">{word.category_name}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {searchResults.all_results.filter(w => !w.is_in_vocabulary).length > 0 && (
-                            <div style={{ marginTop: '15px' }}>
-                                <h5>Available to Add ({searchResults.all_results.filter(w => !w.is_in_vocabulary).length})</h5>
-                                <div className="search-results-grid">
-                                    {searchResults.all_results.filter(w => !w.is_in_vocabulary).map(word => (
-                                        <div key={`available-${word.id}`} className="search-result-item">
-                                            <strong>{word.serbian_word}</strong> - {word.english_translation}
-                                            <span className="category-badge small">{word.category_name}</span>
-                                            <button
-                                                className="add-word-btn small"
-                                                onClick={() => {
-                                                    setNewWordData({
-                                                        serbian_word: word.serbian_word,
-                                                        english_translation: word.english_translation,
-                                                        category_id: word.category_id,
-                                                        context: word.context || '',
-                                                        notes: word.notes || ''
-                                                    });
-                                                    setShowAddWordForm(true);
-                                                }}
-                                            >
-                                                + Add
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Suggestion to add new word */}
-                        {searchResults.suggestion && (
-                            <div className="word-suggestion" style={{
-                                marginTop: '15px',
-                                padding: '15px',
-                                backgroundColor: searchResults.suggestion.llm_processed ? '#e8f5e8' : '#f8f9fa',
-                                borderRadius: '8px',
-                                border: searchResults.suggestion.llm_processed ? '2px solid #4CAF50' : '1px solid #dee2e6'
-                            }}>
-                                <h5>
-                                    {searchResults.suggestion.llm_processed ? '🧠' : '💡'}
-                                    {' '}{searchResults.suggestion.message}
-                                </h5>
-
-                                {searchResults.suggestion.llm_processed && (
-                                    <div style={{ marginBottom: '15px' }}>
-                                        <div className="suggestion-details" style={{
-                                            display: 'grid',
-                                            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                                            gap: '10px',
-                                            marginBottom: '10px',
-                                            fontSize: '14px'
-                                        }}>
-                                            {searchResults.suggestion.suggested_serbian && (
-                                                <div>
-                                                    <strong>Serbian:</strong> {searchResults.suggestion.suggested_serbian}
-                                                </div>
-                                            )}
-                                            {searchResults.suggestion.suggested_english && (
-                                                <div>
-                                                    <strong>English:</strong> {searchResults.suggestion.suggested_english}
-                                                </div>
-                                            )}
-                                            {searchResults.suggestion.word_type && (
-                                                <div>
-                                                    <strong>Type:</strong> {searchResults.suggestion.word_type}
-                                                </div>
-                                            )}
-                                            {searchResults.suggestion.confidence && (
-                                                <div>
-                                                    <strong>Confidence:</strong>
-                                                    <span style={{
-                                                        color: searchResults.suggestion.confidence === 'high' ? '#4CAF50' :
-                                                            searchResults.suggestion.confidence === 'medium' ? '#FF9800' : '#F44336',
-                                                        marginLeft: '5px'
-                                                    }}>
-                                                        {searchResults.suggestion.confidence}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {searchResults.suggestion.needs_openai_key ? (
-                                    <div style={{
-                                        padding: '10px',
-                                        backgroundColor: '#fff3cd',
-                                        border: '1px solid #ffeaa7',
-                                        borderRadius: '5px',
-                                        marginBottom: '10px'
-                                    }}>
-                                        <p style={{ margin: '0', fontSize: '14px' }}>
-                                            ⚠️ Configure your OpenAI API key in Settings to get AI-powered translation and word normalization.
-                                        </p>
-                                    </div>
-                                ) : null}
-
-                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                    <button
-                                        className="add-word-btn"
-                                        onClick={() => openAddWordForm(searchResults.suggestion)}
-                                        style={{
-                                            backgroundColor: searchResults.suggestion.llm_processed ? '#4CAF50' : '#007bff'
-                                        }}
-                                    >
-                                        + Add "{searchResults.suggestion.search_term}" to Vocabulary
-                                    </button>
-
-                                    {searchResults.suggestion.llm_processed && (
-                                        <span style={{
-                                            fontSize: '12px',
-                                            color: '#666',
-                                            fontStyle: 'italic'
-                                        }}>
-                                            ✨ AI Enhanced
-                                        </span>
-                                    )}
-                                </div>
-
-                                {searchResults.suggestion.error && (
-                                    <div style={{
-                                        marginTop: '10px',
-                                        padding: '8px',
-                                        backgroundColor: '#f8d7da',
-                                        color: '#721c24',
-                                        borderRadius: '4px',
-                                        fontSize: '12px'
-                                    }}>
-                                        Error: {searchResults.suggestion.error}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                <div className="category-filter">
-                    <div
-                        className={`category-badge ${!selectedCategory ? 'active' : ''}`}
-                        onClick={() => setSelectedCategory(null)}
-                    >
-                        All ({words.length})
-                    </div>
-                    {categories.map(cat => {
-                        const count = words.filter(w => w.category_id === cat.id).length;
-                        return (
-                            <div
-                                key={cat.id}
-                                className={`category-badge ${selectedCategory === cat.id ? 'active' : ''}`}
-                                onClick={() => setSelectedCategory(cat.id)}
-                            >
-                                {cat.name} ({count})
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* Add Word Form Modal */}
-            {showAddWordForm && (
-                <div className="modal-overlay" onClick={() => setShowAddWordForm(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
-                        <h3>Add Word to Vocabulary</h3>
-                        <form onSubmit={(e) => { e.preventDefault(); handleAddSuggestedWord(); }}>
-                            <div className="form-group">
-                                <label>Serbian Word *</label>
-                                <input
-                                    type="text"
-                                    className="input-field"
-                                    value={newWordData.serbian_word}
-                                    onChange={(e) => setNewWordData(prev => ({ ...prev, serbian_word: e.target.value }))}
-                                    required
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label>English Translation *</label>
-                                <input
-                                    type="text"
-                                    className="input-field"
-                                    value={newWordData.english_translation}
-                                    onChange={(e) => setNewWordData(prev => ({ ...prev, english_translation: e.target.value }))}
-                                    required
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label>Category</label>
-                                <select
-                                    className="input-field"
-                                    value={newWordData.category_id}
-                                    onChange={(e) => setNewWordData(prev => ({ ...prev, category_id: parseInt(e.target.value) }))}
-                                >
-                                    {categories.map(cat => (
-                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="form-group">
-                                <label>Context (optional)</label>
-                                <textarea
-                                    className="input-field"
-                                    value={newWordData.context}
-                                    onChange={(e) => setNewWordData(prev => ({ ...prev, context: e.target.value }))}
-                                    placeholder="Example sentence or context where you encountered this word"
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label>Notes (optional)</label>
-                                <textarea
-                                    className="input-field"
-                                    value={newWordData.notes}
-                                    onChange={(e) => setNewWordData(prev => ({ ...prev, notes: e.target.value }))}
-                                    placeholder="Personal notes about this word"
-                                />
-                            </div>
-
-                            <div className="form-actions">
-                                <button type="button" className="btn-secondary" onClick={() => setShowAddWordForm(false)}>
-                                    Cancel
-                                </button>
-                                <button type="submit" className="btn-primary">
-                                    Add Word & Queue Image
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
             )}
+        </section>
+    );
 
+    const renderCategoryFilter = () => (
+        <section className="category-filter-section">
+            <div className="category-filter">
+                <button
+                    className={`category-badge ${!selectedCategory ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory(null)}
+                >
+                    All ({words.length})
+                </button>
+                {categories.map(cat => {
+                    const count = words.filter(w => w.category_id === cat.id).length;
+                    return (
+                        <button
+                            key={cat.id}
+                            className={`category-badge ${selectedCategory === cat.id ? 'active' : ''}`}
+                            onClick={() => setSelectedCategory(cat.id)}
+                        >
+                            {cat.name} ({count})
+                        </button>
+                    );
+                })}
+            </div>
+        </section>
+    );
+
+    const renderWordGrid = () => (
+        <section className="words-section">
             {filteredWords.length === 0 ? (
-                <div className="card">
+                <div className="empty-state">
                     <p>No words in your vocabulary. Start by processing some Serbian text or reading news articles!</p>
                 </div>
             ) : (
                 <div className="word-grid">
                     {filteredWords.map(word => (
-                        <div
+                        <article
                             key={word.id}
                             className="word-card"
                             style={{
                                 backgroundImage: wordImages[word.id] ? `url(${wordImages[word.id]})` : 'none'
                             }}
                         >
-                            {/* Image status indicator */}
-                            {loadingImages[word.id] ? (
-                                <div className="image-placeholder loading-image">
-                                    <div className="image-spinner"></div>
-                                </div>
-                            ) : !wordImages[word.id] ? (
-                                <div className="image-placeholder">
-                                    <span>📷</span>
-                                </div>
-                            ) : null}
-
-                            <div className="word-header">
-                                <h3 className="serbian-word">{word.serbian_word}</h3>
-                                <p className="english-translation">{word.english_translation}</p>
-                            </div>
-
-                            <div className="word-category">
-                                <span className="category-badge">
-                                    {word.category_name}
-                                </span>
-                            </div>
-
-                            {word.mastery_level !== null && (
-                                <div className="mastery-section">
-                                    <div className="mastery-header">
-                                        <span className="mastery-label">Mastery</span>
-                                        <span className="mastery-percentage">{word.mastery_level}%</span>
+                            <div className="word-image-section">
+                                {loadingImages[word.id] ? (
+                                    <div className="image-placeholder loading-state">
+                                        <div className="image-spinner"></div>
                                     </div>
-                                    <div className="mastery-indicator">
-                                        <div className="mastery-bar">
-                                            <div
-                                                className="mastery-fill"
-                                                style={{
-                                                    width: `${word.mastery_level}%`,
-                                                    backgroundColor: getMasteryColor(word.mastery_level)
-                                                }}
-                                            />
+                                ) : !wordImages[word.id] ? (
+                                    <div className="image-placeholder empty-state">
+                                        <span>📷</span>
+                                    </div>
+                                ) : null}
+                            </div>
+
+                            <div className="word-content">
+                                <header className="word-header">
+                                    <h3 className="serbian-word">{word.serbian_word}</h3>
+                                    <p className="english-translation">{word.english_translation}</p>
+                                </header>
+
+                                <div className="word-meta">
+                                    <span className="category-badge">
+                                        {word.category_name}
+                                    </span>
+                                </div>
+
+                                {word.mastery_level !== null && (
+                                    <div className="mastery-section">
+                                        <div className="mastery-header">
+                                            <span className="mastery-label">Mastery</span>
+                                            <span className="mastery-percentage">{word.mastery_level}%</span>
                                         </div>
+                                        <div className="mastery-progress">
+                                            <div className="mastery-bar">
+                                                <div
+                                                    className="mastery-fill"
+                                                    style={{
+                                                        width: `${word.mastery_level}%`,
+                                                        backgroundColor: getMasteryColor(word.mastery_level)
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                        {word.times_practiced > 0 && (
+                                            <p className="practice-count">
+                                                Practiced {word.times_practiced} times
+                                            </p>
+                                        )}
                                     </div>
-                                    {word.times_practiced > 0 && (
-                                        <p className="practice-count">
-                                            Practiced {word.times_practiced} times
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-
-                            {word.context && (
-                                <div className="word-context">
-                                    <p className="context-label">Context:</p>
-                                    <p className="context-text">{word.context}</p>
-                                </div>
-                            )}
-
-                            {word.notes && (
-                                <div className="word-notes">
-                                    <p className="notes-label">Notes:</p>
-                                    <p className="notes-text">{word.notes}</p>
-                                </div>
-                            )}
+                                )}
+                            </div>
 
                             <div className="word-actions">
                                 <button
                                     className="remove-word-btn"
                                     onClick={() => handleRemoveWord(word)}
                                     title="Remove from vocabulary"
+                                    aria-label={`Remove ${word.serbian_word} from vocabulary`}
                                 >
-                                    ❌ Remove
+                                    ×
                                 </button>
                             </div>
-                        </div>
+                        </article>
                     ))}
                 </div>
             )}
+        </section>
+    );
 
-            <div className="card" style={{ marginTop: '30px' }}>
+    const renderStatistics = () => (
+        <section className="statistics-section card">
+            <header>
                 <h3>Vocabulary Statistics</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginTop: '20px' }}>
-                    <div>
-                        <p style={{ color: '#666', marginBottom: '5px' }}>Total Words</p>
-                        <p style={{ fontSize: '24px', fontWeight: 'bold' }}>{words.length}</p>
+            </header>
+            <div className="stats-grid">
+                <div className="stat-card">
+                    <h3>Total Words</h3>
+                    <div className="stat-value">{words.length}</div>
+                </div>
+                <div className="stat-card">
+                    <h3>Mastered (80%+)</h3>
+                    <div className="stat-value">
+                        {words.filter(w => w.mastery_level >= 80).length}
                     </div>
-                    <div>
-                        <p style={{ color: '#666', marginBottom: '5px' }}>Mastered (80%+)</p>
-                        <p style={{ fontSize: '24px', fontWeight: 'bold' }}>
-                            {words.filter(w => w.mastery_level >= 80).length}
-                        </p>
+                </div>
+                <div className="stat-card">
+                    <h3>In Progress</h3>
+                    <div className="stat-value">
+                        {words.filter(w => w.mastery_level > 0 && w.mastery_level < 80).length}
                     </div>
-                    <div>
-                        <p style={{ color: '#666', marginBottom: '5px' }}>In Progress</p>
-                        <p style={{ fontSize: '24px', fontWeight: 'bold' }}>
-                            {words.filter(w => w.mastery_level > 0 && w.mastery_level < 80).length}
-                        </p>
+                </div>
+                <div className="stat-card">
+                    <h3>Not Started</h3>
+                    <div className="stat-value">
+                        {words.filter(w => !w.mastery_level || w.mastery_level === 0).length}
                     </div>
-                    <div>
-                        <p style={{ color: '#666', marginBottom: '5px' }}>Not Started</p>
-                        <p style={{ fontSize: '24px', fontWeight: 'bold' }}>
-                            {words.filter(w => !w.mastery_level || w.mastery_level === 0).length}
-                        </p>
-                    </div>
-                    <div>
-                        <p style={{ color: '#666', marginBottom: '5px' }}>Excluded Words</p>
-                        <p style={{ fontSize: '24px', fontWeight: 'bold' }}>{excludedWords.length}</p>
-                    </div>
+                </div>
+                <div className="stat-card">
+                    <h3>Excluded Words</h3>
+                    <div className="stat-value">{excludedWords.length}</div>
                 </div>
             </div>
+        </section>
+    );
 
-            <div className="card" style={{ marginTop: '30px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h3>Excluded Words</h3>
-                    <button
-                        className="category-badge"
-                        onClick={() => setShowExcludedWords(!showExcludedWords)}
-                        style={{ cursor: 'pointer' }}
-                    >
-                        {showExcludedWords ? 'Hide' : 'Show'} ({excludedWords.length})
-                    </button>
-                </div>
+    const renderExcludedWords = () => (
+        <section className="excluded-words-section card">
+            <header className="excluded-words-header">
+                <h3>Excluded Words</h3>
+                <button
+                    className="toggle-excluded-btn btn"
+                    onClick={() => setShowExcludedWords(!showExcludedWords)}
+                    aria-expanded={showExcludedWords}
+                >
+                    {showExcludedWords ? 'Hide' : 'Show'} ({excludedWords.length})
+                </button>
+            </header>
 
-                {showExcludedWords && (
-                    <div>
-                        <p style={{ color: '#666', marginBottom: '20px' }}>
-                            These words have been excluded from your vocabulary and will not appear in lessons or practice sessions.
-                        </p>
+            {showExcludedWords && (
+                <div className="excluded-words-content">
+                    <p className="excluded-words-description">
+                        These words have been excluded from your vocabulary and will not appear in lessons or practice sessions.
+                    </p>
 
-                        {loadingExcluded ? (
-                            <div className="loading">Loading excluded words...</div>
-                        ) : excludedWords.length === 0 ? (
+                    {loadingExcluded ? (
+                        <div className="loading-state">Loading excluded words...</div>
+                    ) : excludedWords.length === 0 ? (
+                        <div className="empty-state">
                             <p>No excluded words. Words you remove from vocabulary will appear here.</p>
-                        ) : (
-                            <div className="excluded-words-table">
-                                <div className="table-header">
-                                    <div className="table-cell">Serbian Word</div>
-                                    <div className="table-cell">English Translation</div>
-                                    <div className="table-cell">Category</div>
-                                    <div className="table-cell">Reason</div>
-                                    <div className="table-cell">Date Excluded</div>
-                                    <div className="table-cell">Actions</div>
-                                </div>
-                                {excludedWords.map(excluded => (
-                                    <div key={excluded.id} className="table-row">
-                                        <div className="table-cell">
-                                            <strong>{excluded.word.serbian_word}</strong>
-                                        </div>
-                                        <div className="table-cell">
-                                            {excluded.word.english_translation}
-                                        </div>
-                                        <div className="table-cell">
-                                            <span className="category-badge">
-                                                {excluded.word.category_name || 'Unknown'}
-                                            </span>
-                                        </div>
-                                        <div className="table-cell">
-                                            <span className={`reason-badge ${excluded.reason}`}>
-                                                {excluded.reason === 'manual_removal' ? 'Manual' :
-                                                    excluded.reason === 'news_parser_skip' ? 'News Skip' :
-                                                        excluded.reason || 'Unknown'}
-                                            </span>
-                                        </div>
-                                        <div className="table-cell">
-                                            {new Date(excluded.created_at).toLocaleDateString()}
-                                        </div>
-                                        <div className="table-cell">
-                                            <div className="table-actions">
-                                                <button
-                                                    className="restore-btn"
-                                                    onClick={() => handleRestoreWord(excluded)}
-                                                    title="Restore to vocabulary"
-                                                >
-                                                    ↩️ Restore
-                                                </button>
-                                                <button
-                                                    className="delete-btn"
-                                                    onClick={() => handlePermanentlyDeleteExcluded(excluded)}
-                                                    title="Remove from excluded list"
-                                                >
-                                                    🗑️ Delete
-                                                </button>
-                                            </div>
+                        </div>
+                    ) : (
+                        <div className="excluded-words-table">
+                            <div className="table-header" role="row">
+                                <div className="table-cell" role="columnheader">Serbian Word</div>
+                                <div className="table-cell" role="columnheader">English Translation</div>
+                                <div className="table-cell" role="columnheader">Category</div>
+                                <div className="table-cell" role="columnheader">Reason</div>
+                                <div className="table-cell" role="columnheader">Date Excluded</div>
+                                <div className="table-cell" role="columnheader">Actions</div>
+                            </div>
+                            {excludedWords.map(excluded => (
+                                <div key={excluded.id} className="table-row" role="row">
+                                    <div className="table-cell" role="cell">
+                                        <strong>{excluded.word.serbian_word}</strong>
+                                    </div>
+                                    <div className="table-cell" role="cell">
+                                        {excluded.word.english_translation}
+                                    </div>
+                                    <div className="table-cell" role="cell">
+                                        <span className="category-badge">
+                                            {excluded.word.category_name || 'Unknown'}
+                                        </span>
+                                    </div>
+                                    <div className="table-cell" role="cell">
+                                        <span className={`reason-badge ${excluded.reason}`}>
+                                            {excluded.reason === 'manual_removal' ? 'Manual' :
+                                                excluded.reason === 'news_parser_skip' ? 'News Skip' :
+                                                    excluded.reason || 'Unknown'}
+                                        </span>
+                                    </div>
+                                    <div className="table-cell" role="cell">
+                                        {new Date(excluded.created_at).toLocaleDateString()}
+                                    </div>
+                                    <div className="table-cell" role="cell">
+                                        <div className="table-actions">
+                                            <button
+                                                className="restore-btn"
+                                                onClick={() => handleRestoreWord(excluded)}
+                                                title="Restore to vocabulary"
+                                                aria-label={`Restore ${excluded.word.serbian_word} to vocabulary`}
+                                            >
+                                                ↩️ Restore
+                                            </button>
+                                            <button
+                                                className="delete-btn"
+                                                onClick={() => handlePermanentlyDeleteExcluded(excluded)}
+                                                title="Remove from excluded list"
+                                                aria-label={`Remove ${excluded.word.serbian_word} from excluded list`}
+                                            >
+                                                🗑️ Delete
+                                            </button>
                                         </div>
                                     </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+        </section>
+    );
+
+    const renderAddWordModal = () => (
+        showAddWordForm && (
+            <div className="modal-overlay" onClick={() => setShowAddWordForm(false)}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                    <header className="modal-header">
+                        <h3>Add Word to Vocabulary</h3>
+                    </header>
+                    <form className="add-word-form" onSubmit={(e) => { e.preventDefault(); handleAddSuggestedWord(); }}>
+                        <div className="form-group">
+                            <label htmlFor="serbian-word">Serbian Word *</label>
+                            <input
+                                id="serbian-word"
+                                type="text"
+                                className="input-field"
+                                value={newWordData.serbian_word}
+                                onChange={(e) => setNewWordData(prev => ({ ...prev, serbian_word: e.target.value }))}
+                                required
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="english-translation">English Translation *</label>
+                            <input
+                                id="english-translation"
+                                type="text"
+                                className="input-field"
+                                value={newWordData.english_translation}
+                                onChange={(e) => setNewWordData(prev => ({ ...prev, english_translation: e.target.value }))}
+                                required
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="category">Category</label>
+                            <select
+                                id="category"
+                                className="input-field"
+                                value={newWordData.category_id}
+                                onChange={(e) => setNewWordData(prev => ({ ...prev, category_id: parseInt(e.target.value) }))}
+                            >
+                                {categories.map(cat => (
+                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
                                 ))}
-                            </div>
-                        )}
-                    </div>
-                )}
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="context">Context (optional)</label>
+                            <textarea
+                                id="context"
+                                className="input-field"
+                                value={newWordData.context}
+                                onChange={(e) => setNewWordData(prev => ({ ...prev, context: e.target.value }))}
+                                placeholder="Example sentence or context where you encountered this word"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label htmlFor="notes">Notes (optional)</label>
+                            <textarea
+                                id="notes"
+                                className="input-field"
+                                value={newWordData.notes}
+                                onChange={(e) => setNewWordData(prev => ({ ...prev, notes: e.target.value }))}
+                                placeholder="Personal notes about this word"
+                            />
+                        </div>
+
+                        <div className="form-actions">
+                            <button type="button" className="btn-secondary" onClick={() => setShowAddWordForm(false)}>
+                                Cancel
+                            </button>
+                            <button type="submit" className="btn-primary">
+                                Add Word & Queue Image
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        )
+    );
+
+    if (loading) {
+        return (
+            <div className="loading-container">
+                <div className="loading">Loading vocabulary...</div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="error-container">
+                <div className="error">{error}</div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="vocabulary-page">
+            <div className="page-header">
+                <h1>My Vocabulary</h1>
             </div>
 
-            {/* Custom Modal for confirmations */}
+            <div className="container page-content">
+                {renderSearchSection()}
+                {renderCategoryFilter()}
+                {renderWordGrid()}
+                {renderStatistics()}
+                {renderExcludedWords()}
+            </div>
+
+            {renderAddWordModal()}
+
             <CustomModal
                 isOpen={showConfirmModal}
                 onClose={() => setShowConfirmModal(false)}
@@ -780,7 +790,6 @@ function VocabularyPage() {
                 type="confirm"
             />
 
-            {/* Toast notifications */}
             <ToastContainer />
         </div>
     );
