@@ -6,12 +6,7 @@ WORKDIR /app
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
-    libjpeg-dev \
-    libpng-dev \
-    libfreetype6-dev \
-    liblcms2-dev \
-    libwebp-dev \
-    zlib1g-dev \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
@@ -25,12 +20,8 @@ WORKDIR /app
 
 # Install only runtime system dependencies
 RUN apt-get update && apt-get install -y \
-    libjpeg62-turbo \
-    libpng16-16 \
-    libfreetype6 \
-    liblcms2-2 \
-    libwebp7 \
-    zlib1g \
+    libpq5 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python packages from builder stage
@@ -42,17 +33,17 @@ ENV PATH=/root/.local/bin:$PATH
 # Copy application code
 COPY . .
 
-# Create logs directory
-RUN mkdir -p /app/logs
-
-# Run as non-root user
+# Create non-root user
 RUN useradd --create-home --shell /bin/bash app \
     && chown -R app:app /app
 USER app
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD python -c "import redis; redis.from_url('redis://redis:6379').ping()" || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3003/health || exit 1
 
-# Default command
-CMD ["python", "image_sync_worker.py"]
+# Expose port
+EXPOSE 3003
+
+# Run application
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-3003} --workers 2 --timeout 120 main:app"]

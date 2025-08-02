@@ -1,0 +1,9 @@
+Flask==2.3.3
+flask-cors==4.0.0
+Flask-JWT-Extended==4.5.2
+Flask-SQLAlchemy==3.0.5
+SQLAlchemy==2.0.21
+psycopg2-binary==2.9.7
+python-dotenv==1.0.0
+prometheus-flask-exporter==0.22.4
+gunicorn==21.2.0

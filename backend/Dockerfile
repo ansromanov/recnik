@@ -1,8 +1,9 @@
-FROM python:3.11-alpine
+# Build stage - includes build dependencies
+FROM python:3.11-alpine AS builder
 
 WORKDIR /app
 
-# Install system dependencies for psycopg2, Pillow, and other packages
+# Install build dependencies
 RUN apk add --no-cache \
     gcc \
     musl-dev \
@@ -19,13 +20,43 @@ RUN apk add --no-cache \
     fribidi-dev \
     libimagequant-dev \
     libxcb-dev \
-    libpng-dev \
+    libpng-dev
+
+# Install Python dependencies
+COPY requirements.txt requirements-test.txt ./
+RUN pip install --no-cache-dir --user -r requirements.txt && \
+    pip install --no-cache-dir --user -r requirements-test.txt
+
+# Runtime stage - minimal runtime dependencies
+FROM python:3.11-alpine AS runtime
+
+WORKDIR /app
+
+# Install only runtime system dependencies
+RUN apk add --no-cache \
+    postgresql-libs \
+    jpeg \
+    zlib \
+    freetype \
+    lcms2 \
+    openjpeg \
+    tiff \
+    tk \
+    tcl \
+    harfbuzz \
+    fribidi \
+    libimagequant \
+    libxcb \
+    libpng \
     netcat-openbsd
 
-COPY requirements.txt requirements-test.txt ./
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir -r requirements-test.txt
+# Copy Python packages from builder stage
+COPY --from=builder /root/.local /root/.local
 
+# Make sure scripts in .local are usable:
+ENV PATH=/root/.local/bin:$PATH
+
+# Copy application code
 COPY . .
 
 # Make init script executable

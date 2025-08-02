@@ -1,7 +1,7 @@
 # Serbian Vocabulary App - Common Tasks
 # Usage: make <task>
 
-.PHONY: help up down restart logs build rebuild-backend rebuild-frontend rebuild-grafana rebuild-all clean migrate test
+.PHONY: help up down restart logs build rebuild-backend rebuild-frontend rebuild-grafana rebuild-all force-rebuild-backend force-rebuild-frontend force-rebuild-grafana force-rebuild-all rebuild-auth rebuild-news rebuild-vocab rebuild-image-sync force-rebuild-auth force-rebuild-news force-rebuild-vocab force-rebuild-image-sync clean migrate test
 
 # Default target
 help:
@@ -16,10 +16,24 @@ help:
 	@echo ""
 	@echo "Building:"
 	@echo "  build           - Build all images"
-	@echo "  rebuild-backend - Rebuild only backend"
-	@echo "  rebuild-frontend - Rebuild only frontend"
-	@echo "  rebuild-grafana - Rebuild only Grafana"
-	@echo "  rebuild-all     - Rebuild all services"
+	@echo "  rebuild-backend - Rebuild only backend (cache base images)"
+	@echo "  rebuild-frontend - Rebuild only frontend (cache base images)"
+	@echo "  rebuild-grafana - Rebuild only Grafana (cache base images)"
+	@echo "  rebuild-all     - Rebuild all services (cache base images)"
+	@echo "  force-rebuild-backend - Force rebuild backend (including base images)"
+	@echo "  force-rebuild-frontend - Force rebuild frontend (including base images)"
+	@echo "  force-rebuild-grafana - Force rebuild Grafana (including base images)"
+	@echo "  force-rebuild-all - Force rebuild all services (including base images)"
+	@echo ""
+	@echo "Microservices:"
+	@echo "  rebuild-auth - Rebuild auth service (cache base images)"
+	@echo "  rebuild-news - Rebuild news service (cache base images)"
+	@echo "  rebuild-vocab - Rebuild vocabulary service (cache base images)"
+	@echo "  rebuild-image-sync - Rebuild image sync service (cache base images)"
+	@echo "  force-rebuild-auth - Force rebuild auth service (including base images)"
+	@echo "  force-rebuild-news - Force rebuild news service (including base images)"
+	@echo "  force-rebuild-vocab - Force rebuild vocabulary service (including base images)"
+	@echo "  force-rebuild-image-sync - Force rebuild image sync service (including base images)"
 	@echo ""
 	@echo "Database:"
 	@echo "  migrate         - Run database migrations"
@@ -56,32 +70,99 @@ build:
 	docker-compose build
 
 rebuild-backend:
-	@echo "🔨 Rebuilding backend..."
-	docker-compose stop backend
-	docker-compose build --no-cache backend
+	@echo "🔨 Rebuilding backend (caching base images)..."
+	docker-compose build backend
 	docker-compose up -d backend
 	@echo "✅ Backend rebuilt successfully!"
 
 rebuild-frontend:
-	@echo "🔨 Rebuilding frontend..."
-	docker-compose stop frontend
-	docker-compose build --no-cache frontend
+	@echo "🔨 Rebuilding frontend (caching base images)..."
+	docker-compose build frontend
 	docker-compose up -d frontend
 	@echo "✅ Frontend rebuilt successfully!"
 
 rebuild-grafana:
-	@echo "🔨 Rebuilding Grafana..."
-	docker-compose stop grafana
-	docker-compose build --no-cache grafana
+	@echo "🔨 Rebuilding Grafana (caching base images)..."
+	docker-compose build grafana
 	docker-compose up -d grafana
 	@echo "✅ Grafana rebuilt successfully!"
 
 rebuild-all:
-	@echo "🔨 Rebuilding all services..."
+	@echo "🔨 Rebuilding all services (caching base images)..."
+	docker-compose build
+	docker-compose up -d
+	@echo "✅ All services rebuilt successfully!"
+
+# Force rebuild commands (including base images)
+force-rebuild-backend:
+	@echo "🔨 Force rebuilding backend (including base images)..."
+	docker-compose stop backend
+	docker-compose build --no-cache backend
+	docker-compose up -d backend
+	@echo "✅ Backend force rebuilt successfully!"
+
+force-rebuild-frontend:
+	@echo "🔨 Force rebuilding frontend (including base images)..."
+	docker-compose stop frontend
+	docker-compose build --no-cache frontend
+	docker-compose up -d frontend
+	@echo "✅ Frontend force rebuilt successfully!"
+
+force-rebuild-grafana:
+	@echo "🔨 Force rebuilding Grafana (including base images)..."
+	docker-compose stop grafana
+	docker-compose build --no-cache grafana
+	docker-compose up -d grafana
+	@echo "✅ Grafana force rebuilt successfully!"
+
+force-rebuild-all:
+	@echo "🔨 Force rebuilding all services (including base images)..."
 	docker-compose down
 	docker-compose build --no-cache
 	docker-compose up -d
-	@echo "✅ All services rebuilt successfully!"
+	@echo "✅ All services force rebuilt successfully!"
+
+# Microservice rebuild commands (cache base images)
+rebuild-auth:
+	@echo "🔨 Rebuilding auth service (caching base images)..."
+	cd services/auth-service && docker build -t serbian-vocab-auth .
+	@echo "✅ Auth service rebuilt successfully!"
+
+rebuild-news:
+	@echo "🔨 Rebuilding news service (caching base images)..."
+	cd services/news-service && docker build -t serbian-vocab-news .
+	@echo "✅ News service rebuilt successfully!"
+
+rebuild-vocab:
+	@echo "🔨 Rebuilding vocabulary service (caching base images)..."
+	cd services/vocabulary-service && docker build -t serbian-vocab-vocab .
+	@echo "✅ Vocabulary service rebuilt successfully!"
+
+rebuild-image-sync:
+	@echo "🔨 Rebuilding image sync service (caching base images)..."
+	cd image-sync-service && docker build -t serbian-vocab-image-sync .
+	@echo "✅ Image sync service rebuilt successfully!"
+
+# Microservice force rebuild commands (including base images)
+force-rebuild-auth:
+	@echo "🔨 Force rebuilding auth service (including base images)..."
+	cd services/auth-service && docker build --no-cache -t serbian-vocab-auth .
+	@echo "✅ Auth service force rebuilt successfully!"
+
+force-rebuild-news:
+	@echo "🔨 Force rebuilding news service (including base images)..."
+	cd services/news-service && docker build --no-cache -t serbian-vocab-news .
+	@echo "✅ News service force rebuilt successfully!"
+
+force-rebuild-vocab:
+	@echo "🔨 Force rebuilding vocabulary service (including base images)..."
+	cd services/vocabulary-service && docker build --no-cache -t serbian-vocab-vocab .
+	@echo "✅ Vocabulary service force rebuilt successfully!"
+
+force-rebuild-image-sync:
+	@echo "🔨 Force rebuilding image sync service (including base images)..."
+	cd image-sync-service && docker build --no-cache -t serbian-vocab-image-sync .
+	@echo "✅ Image sync service force rebuilt successfully!"
 
 # Database commands
 migrate:

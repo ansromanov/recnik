@@ -1337,9 +1337,16 @@ def generate_example_sentence():
         )
 
         if cached_sentence:
+            # Extract just the Serbian sentence text for frontend compatibility
+            sentence_text = (
+                cached_sentence.get("serbian", cached_sentence)
+                if isinstance(cached_sentence, dict)
+                else cached_sentence
+            )
+
             return jsonify(
                 {
-                    "sentence": cached_sentence,
+                    "sentence": sentence_text,
                     "from_cache": True,
                     "cache_hit": True,
                     "performance": "instant",
