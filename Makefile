@@ -125,43 +125,50 @@ force-rebuild-all:
 # Microservice rebuild commands (cache base images)
 rebuild-auth:
 	@echo "🔨 Rebuilding auth service (caching base images)..."
-	cd services/auth-service && docker build -t serbian-vocab-auth .
+	docker-compose build auth-service
+	docker-compose up -d auth-service
 	@echo "✅ Auth service rebuilt successfully!"
 
 rebuild-news:
-	@echo "🔨 Rebuilding news service (caching base images)..."
-	cd services/news-service && docker build -t serbian-vocab-news .
-	@echo "✅ News service rebuilt successfully!"
+	@echo "🔨 News service not configured in docker-compose.yml"
+	@echo "❌ Please add news-service to docker-compose.yml first!"
 
 rebuild-vocab:
 	@echo "🔨 Rebuilding vocabulary service (caching base images)..."
-	cd services/vocabulary-service && docker build -t serbian-vocab-vocab .
+	docker-compose --profile microservices build vocabulary-service
+	docker-compose --profile microservices up -d vocabulary-service
 	@echo "✅ Vocabulary service rebuilt successfully!"
 
 rebuild-image-sync:
 	@echo "🔨 Rebuilding image sync service (caching base images)..."
-	cd image-sync-service && docker build -t serbian-vocab-image-sync .
+	docker-compose build image-sync-service
+	docker-compose up -d image-sync-service
 	@echo "✅ Image sync service rebuilt successfully!"
 
 # Microservice force rebuild commands (including base images)
 force-rebuild-auth:
 	@echo "🔨 Force rebuilding auth service (including base images)..."
-	cd services/auth-service && docker build --no-cache -t serbian-vocab-auth .
+	docker-compose stop auth-service
+	docker-compose build --no-cache auth-service
+	docker-compose up -d auth-service
 	@echo "✅ Auth service force rebuilt successfully!"
 
 force-rebuild-news:
-	@echo "🔨 Force rebuilding news service (including base images)..."
-	cd services/news-service && docker build --no-cache -t serbian-vocab-news .
-	@echo "✅ News service force rebuilt successfully!"
+	@echo "🔨 News service not configured in docker-compose.yml"
+	@echo "❌ Please add news-service to docker-compose.yml first!"
 
 force-rebuild-vocab:
 	@echo "🔨 Force rebuilding vocabulary service (including base images)..."
-	cd services/vocabulary-service && docker build --no-cache -t serbian-vocab-vocab .
+	docker-compose --profile microservices stop vocabulary-service
+	docker-compose --profile microservices build --no-cache vocabulary-service
+	docker-compose --profile microservices up -d vocabulary-service
 	@echo "✅ Vocabulary service force rebuilt successfully!"
 
 force-rebuild-image-sync:
 	@echo "🔨 Force rebuilding image sync service (including base images)..."
-	cd image-sync-service && docker build --no-cache -t serbian-vocab-image-sync .
+	docker-compose stop image-sync-service
+	docker-compose build --no-cache image-sync-service
+	docker-compose up -d image-sync-service
 	@echo "✅ Image sync service force rebuilt successfully!"
 
 # Database commands

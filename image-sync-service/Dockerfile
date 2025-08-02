@@ -1,9 +1,8 @@
-# Build stage - includes build dependencies
-FROM python:3.11-slim AS builder
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install build dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     libjpeg-dev \
@@ -12,32 +11,18 @@ RUN apt-get update && apt-get install -y \
     liblcms2-dev \
     libwebp-dev \
     zlib1g-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
-
-# Runtime stage - minimal runtime dependencies
-FROM python:3.11-slim AS runtime
-
-WORKDIR /app
-
-# Install only runtime system dependencies
-RUN apt-get update && apt-get install -y \
     libjpeg62-turbo \
     libpng16-16 \
     libfreetype6 \
     liblcms2-2 \
     libwebp7 \
-    zlib1g \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Python packages from builder stage
-COPY --from=builder /root/.local /root/.local
+# Copy requirements first for better caching
+COPY requirements.txt .
 
-# Make sure scripts in .local are usable:
-ENV PATH=/root/.local/bin:$PATH
+# Install Python dependencies globally to avoid path issues with volume mounts
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
@@ -45,9 +30,11 @@ COPY . .
 # Create logs directory
 RUN mkdir -p /app/logs
 
-# Run as non-root user
+# Create non-root user and set permissions
 RUN useradd --create-home --shell /bin/bash app \
     && chown -R app:app /app
+
+# Switch to non-root user
 USER app
 
 # Health check

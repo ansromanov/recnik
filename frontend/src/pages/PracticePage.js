@@ -232,7 +232,17 @@ function PracticePage() {
                     currentWord.english_translation,
                     currentWord.category_name
                 );
-                setExampleSentence(sentenceResponse.data.sentence);
+                // Handle both new format (with english translation) and old format (serbian only)
+                const sentenceData = sentenceResponse.data;
+                if (sentenceData.sentence && typeof sentenceData.sentence === 'object') {
+                    // New format: {serbian: "...", english: "..."}
+                    setExampleSentence(sentenceData.sentence);
+                } else if (typeof sentenceData.sentence === 'string') {
+                    // Old format: just serbian text
+                    setExampleSentence({ serbian: sentenceData.sentence, english: '' });
+                } else {
+                    setExampleSentence({ serbian: '', english: '' });
+                }
             } catch (err) {
                 console.error('Error fetching example sentence:', err);
                 if (err.response && err.response.status === 400) {
@@ -602,21 +612,39 @@ function PracticePage() {
                         Word {currentWordIndex + 1} of {practiceWords.length}
                     </p>
 
-                    <div className="word-with-image">
-                        <h2 style={{
-                            fontSize: currentWord.game_mode === 'letters' ? '24px' : '32px',
-                            letterSpacing: currentWord.game_mode === 'letters' ? '3px' : 'normal',
-                            fontFamily: currentWord.game_mode === 'letters' ? 'monospace' : 'inherit'
-                        }}>
-                            {currentWord.question}
-                        </h2>
-                        {wordImage && gameMode === 'translation' && (
+                    <div className="word-with-image" style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '20px',
+                        marginBottom: '20px',
+                        flexWrap: 'wrap',
+                        justifyContent: 'center'
+                    }}>
+                        {wordImage && (
                             <img
                                 src={`data:image/jpeg;base64,${wordImage.data}`}
                                 alt={currentWord.serbian_word}
-                                className="word-image-preview"
+                                style={{
+                                    width: '120px',
+                                    height: '120px',
+                                    objectFit: 'cover',
+                                    borderRadius: '12px',
+                                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                                    border: '3px solid #fff'
+                                }}
                             />
                         )}
+                        <div style={{ flex: '1', minWidth: '200px' }}>
+                            <h2 style={{
+                                fontSize: currentWord.game_mode === 'letters' ? '24px' : '32px',
+                                letterSpacing: currentWord.game_mode === 'letters' ? '3px' : 'normal',
+                                fontFamily: currentWord.game_mode === 'letters' ? 'monospace' : 'inherit',
+                                margin: '0',
+                                textAlign: wordImage ? 'left' : 'center'
+                            }}>
+                                {currentWord.question}
+                            </h2>
+                        </div>
                     </div>
 
                     {currentWord.category_name && (
@@ -804,23 +832,36 @@ function PracticePage() {
                                         <div style={{
                                             marginTop: '20px',
                                             padding: '15px',
-                                            backgroundColor: exampleSentence.includes('Configure OpenAI') ? '#fff3cd' : '#e8f5e9',
+                                            backgroundColor: (typeof exampleSentence === 'string' && exampleSentence.includes('Configure OpenAI')) ? '#fff3cd' : '#e8f5e9',
                                             borderRadius: '8px',
                                             fontSize: '16px',
                                             lineHeight: '1.6'
                                         }}>
-                                            <p style={{ margin: 0, fontWeight: 'bold', marginBottom: '10px', color: exampleSentence.includes('Configure OpenAI') ? '#856404' : '#2e7d32' }}>
+                                            <p style={{ margin: 0, fontWeight: 'bold', marginBottom: '10px', color: (typeof exampleSentence === 'string' && exampleSentence.includes('Configure OpenAI')) ? '#856404' : '#2e7d32' }}>
                                                 Example sentence:
                                             </p>
-                                            <p style={{ margin: 0 }}>
-                                                {exampleSentence.includes('Configure OpenAI') ? (
+                                            <div style={{ margin: 0 }}>
+                                                {(typeof exampleSentence === 'string' && exampleSentence.includes('Configure OpenAI')) ? (
                                                     <span>
                                                         <Link to="/settings">Configure OpenAI API key in Settings</Link> to see example sentences
                                                     </span>
-                                                ) : (
-                                                    highlightWordInSentence(exampleSentence, currentWord.serbian_word)
-                                                )}
-                                            </p>
+                                                ) : typeof exampleSentence === 'object' && exampleSentence.serbian ? (
+                                                    <>
+                                                        <p style={{ margin: '0 0 10px 0', fontSize: '16px' }}>
+                                                            <strong>🇷🇸 Serbian:</strong> {highlightWordInSentence(exampleSentence.serbian || '', currentWord.serbian_word)}
+                                                        </p>
+                                                        {exampleSentence.english && (
+                                                            <p style={{ margin: '0', fontSize: '16px', color: '#555' }}>
+                                                                <strong>🇺🇸 English:</strong> {highlightWordInSentence(exampleSentence.english, currentWord.english_translation)}
+                                                            </p>
+                                                        )}
+                                                    </>
+                                                ) : typeof exampleSentence === 'string' ? (
+                                                    <p style={{ margin: 0 }}>
+                                                        {highlightWordInSentence(exampleSentence, currentWord.serbian_word)}
+                                                    </p>
+                                                ) : null}
+                                            </div>
                                         </div>
                                     )}
                                     {loadingSentence && (
@@ -830,8 +871,28 @@ function PracticePage() {
                                     )}
                                 </>
                             ) : (
-                                <div className="error">
-                                    ✗ Incorrect. The correct answer is: <strong>{currentWord.correct_answer}</strong>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', justifyContent: 'center' }}>
+                                    <span style={{
+                                        backgroundColor: '#dc3545',
+                                        color: 'white',
+                                        padding: '8px 15px',
+                                        borderRadius: '6px',
+                                        fontSize: '16px',
+                                        fontWeight: 'bold'
+                                    }}>
+                                        {selectedAnswer}
+                                    </span>
+                                    <span style={{ fontSize: '18px', color: '#666' }}>→</span>
+                                    <span style={{
+                                        backgroundColor: '#ffc107',
+                                        color: '#212529',
+                                        padding: '8px 15px',
+                                        borderRadius: '6px',
+                                        fontSize: '16px',
+                                        fontWeight: 'bold'
+                                    }}>
+                                        {currentWord.correct_answer}
+                                    </span>
                                 </div>
                             )}
                         </div>
@@ -864,18 +925,6 @@ function PracticePage() {
                     </div>
                 </div>
 
-                <div className="card">
-                    <h3>Practice Tips:</h3>
-                    <ul style={{ marginLeft: '20px', lineHeight: '1.8' }}>
-                        <li>Click on the answer you think is correct or use keyboard shortcuts (1-4)</li>
-                        <li>Press Escape to end your practice session early</li>
-                        <li>Correct answers will show an example sentence</li>
-                        <li>The Serbian word is highlighted in green in the example</li>
-                        <li>Words with lower mastery levels appear more frequently</li>
-                        <li>Regular practice helps improve retention</li>
-                        <li>Background images help with visual memory association</li>
-                    </ul>
-                </div>
             </div>
 
             {/* End Session Modal */}
