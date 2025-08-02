@@ -59,7 +59,7 @@
 
     0%,
     100% {
-        opacity: 0.5;
+        opacity: 0.7;
     }
 
     50% {
@@ -353,7 +353,7 @@
 }
 
 .word-card:hover::before {
-    opacity: 0.9;
+    opacity: 1;
 }
 
 .word-card:hover {

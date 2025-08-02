@@ -453,6 +453,19 @@ def update_settings():
                     {"error": "Auto-advance timeout must be between 1 and 10 seconds"}
                 ), 400
 
+        # Update mastery threshold if provided
+        if "mastery_threshold" in data:
+            threshold = int(data["mastery_threshold"])
+            # Validate threshold range (3-10 correct answers)
+            if 3 <= threshold <= 10:
+                user.settings.mastery_threshold = threshold
+            else:
+                return jsonify(
+                    {
+                        "error": "Mastery threshold must be between 3 and 10 correct answers"
+                    }
+                ), 400
+
         db.session.commit()
 
         return jsonify(
@@ -1525,11 +1538,27 @@ def submit_practice_result():
             user_vocab.times_practiced += 1
             user_vocab.last_practiced = datetime.utcnow()
 
-            if was_correct:
-                user_vocab.times_correct += 1
-                user_vocab.mastery_level = min(user_vocab.mastery_level + 10, 100)
-            else:
-                user_vocab.mastery_level = max(user_vocab.mastery_level - 5, 0)
+            # Get user's mastery threshold setting
+            user = User.query.get(user_id)
+            mastery_threshold = (
+                user.settings.mastery_threshold if user and user.settings else 5
+            )
+
+        # Calculate mastery level based on correct answers vs threshold
+        # Mastery level = (times_correct / mastery_threshold) * 100, capped at 100%
+        if was_correct:
+            user_vocab.times_correct += 1
+
+        # Calculate mastery as percentage of correct answers toward threshold
+        # This gives a more accurate representation of progress toward mastery
+        user_vocab.mastery_level = min(
+            (user_vocab.times_correct / mastery_threshold) * 100, 100
+        )
+
+        # Optional: Reduce mastery slightly on incorrect answers to encourage consistency
+        if not was_correct and user_vocab.mastery_level > 0:
+            # Small reduction (5% of current mastery) to encourage consistent practice
+            user_vocab.mastery_level = max(user_vocab.mastery_level * 0.95, 0)
 
         db.session.commit()
         return jsonify({"success": True})
@@ -1627,9 +1656,18 @@ def get_user_stats():
             UserVocabulary.user_id == user_id, UserVocabulary.times_practiced > 0
         ).count()
 
-        # User's mastered words
+        # User's mastered words (using user's configurable mastery threshold)
+        # Get user's mastery threshold setting to calculate mastered words properly
+        user = User.query.get(user_id)
+        mastery_threshold = (
+            user.settings.mastery_threshold if user and user.settings else 5
+        )
+
+        # Words are considered mastered when they reach 100% mastery level
+        # (The practice logic already handles this correctly by awarding 100/threshold points per correct answer)
         mastered_words = UserVocabulary.query.filter(
-            UserVocabulary.user_id == user_id, UserVocabulary.mastery_level >= 80
+            UserVocabulary.user_id == user_id,
+            UserVocabulary.mastery_level >= 100,
         ).count()
 
         # User's recent sessions

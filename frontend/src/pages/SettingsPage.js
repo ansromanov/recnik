@@ -7,6 +7,7 @@ function SettingsPage() {
     const [showApiKey, setShowApiKey] = useState(false);
     const [autoAdvanceEnabled, setAutoAdvanceEnabled] = useState(false);
     const [autoAdvanceTimeout, setAutoAdvanceTimeout] = useState(3);
+    const [masteryThreshold, setMasteryThreshold] = useState(5);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
@@ -30,6 +31,7 @@ function SettingsPage() {
                 }
                 setAutoAdvanceEnabled(settings.auto_advance_enabled || false);
                 setAutoAdvanceTimeout(settings.auto_advance_timeout || 3);
+                setMasteryThreshold(settings.mastery_threshold || 5);
 
                 // Load selected sources from settings
                 if (settings.preferred_content_sources) {
@@ -75,6 +77,7 @@ function SettingsPage() {
                 openai_api_key: apiKey,
                 auto_advance_enabled: autoAdvanceEnabled,
                 auto_advance_timeout: autoAdvanceTimeout,
+                mastery_threshold: masteryThreshold,
                 preferred_content_sources: selectedSources
             });
             setMessage({ type: 'success', text: 'Settings saved successfully!' });
@@ -221,6 +224,25 @@ function SettingsPage() {
                             </p>
                         </div>
                     )}
+
+                    <div className="setting-item">
+                        <label htmlFor="mastery-threshold">Mastery threshold (correct answers needed):</label>
+                        <div className="timeout-input-group">
+                            <input
+                                id="mastery-threshold"
+                                type="range"
+                                min="3"
+                                max="10"
+                                value={masteryThreshold}
+                                onChange={(e) => setMasteryThreshold(parseInt(e.target.value))}
+                                className="timeout-slider"
+                            />
+                            <span className="timeout-value">{masteryThreshold}</span>
+                        </div>
+                        <p className="setting-description">
+                            How many correct answers are needed to consider a word mastered. Lower values make it easier to master words.
+                        </p>
+                    </div>
                 </div>
             </div>
 

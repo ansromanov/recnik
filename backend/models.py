@@ -53,6 +53,9 @@ class Settings(db.Model):
     openai_api_key = db.Column(db.String(255))
     auto_advance_enabled = db.Column(db.Boolean, default=False, nullable=False)
     auto_advance_timeout = db.Column(db.Integer, default=3, nullable=False)  # seconds
+    mastery_threshold = db.Column(
+        db.Integer, default=5, nullable=False
+    )  # correct answers needed for mastery
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,
@@ -66,6 +69,7 @@ class Settings(db.Model):
             "user_id": self.user_id,
             "auto_advance_enabled": self.auto_advance_enabled,
             "auto_advance_timeout": self.auto_advance_timeout,
+            "mastery_threshold": self.mastery_threshold,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
