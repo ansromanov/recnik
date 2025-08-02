@@ -1,0 +1,12 @@
+# Pre-commit configuration for Serbian Vocabulary App
+repos:
+  - repo: local
+    hooks:
+      - id: analyze-code-lines
+        name: Analyze code lines and save results
+        entry: python3 analyze_code_lines.py --write --diff
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+        verbose: true

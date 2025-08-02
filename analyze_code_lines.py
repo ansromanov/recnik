@@ -361,6 +361,119 @@ class CodeAnalyzer:
             print("• Containerized application with Docker support")
 
 
+def save_results_to_json(
+    total_results, prod_results, test_results, filepath="code_analysis_results.json"
+):
+    """Save analysis results to JSON file"""
+    import json
+    from datetime import datetime
+
+    output = {
+        "timestamp": datetime.now().isoformat(),
+        "total": total_results,
+        "production": prod_results,
+        "tests": test_results,
+        "summary": {
+            "total_lines": sum(total_results.values()),
+            "production_lines": sum(prod_results.values()),
+            "test_lines": sum(test_results.values()),
+        },
+    }
+
+    with open(filepath, "w") as f:
+        json.dump(output, f, indent=2)
+
+    print(f"✅ Results saved to {filepath}")
+    return output
+
+
+def load_previous_results(filepath="code_analysis_results.json"):
+    """Load previous analysis results from JSON file"""
+    import json
+
+    try:
+        with open(filepath, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"❌ No previous results found at {filepath}")
+        return None
+    except json.JSONDecodeError:
+        print(f"❌ Invalid JSON in {filepath}")
+        return None
+
+
+def show_diff(current_results, previous_results):
+    """Show differences between current and previous results"""
+    if not previous_results:
+        print("❌ Cannot show diff: no previous results available")
+        return
+
+    print("\n" + "=" * 65)
+    print("📊 Diff: Current vs Previous Analysis")
+    print("=" * 65)
+    print(f"📅 Previous analysis: {previous_results.get('timestamp', 'Unknown')}")
+    print()
+
+    # Compare totals
+    current_total = current_results["total"]
+    previous_total = previous_results["total"]
+
+    current_summary = current_results["summary"]
+    previous_summary = previous_results["summary"]
+
+    # Overall changes
+    total_diff = current_summary["total_lines"] - previous_summary["total_lines"]
+    prod_diff = (
+        current_summary["production_lines"] - previous_summary["production_lines"]
+    )
+    test_diff = current_summary["test_lines"] - previous_summary["test_lines"]
+
+    print("📈 Overall Changes:")
+    print(
+        f"Total Lines:      {previous_summary['total_lines']:,} → {current_summary['total_lines']:,} ({total_diff:+,})"
+    )
+    print(
+        f"Production Lines: {previous_summary['production_lines']:,} → {current_summary['production_lines']:,} ({prod_diff:+,})"
+    )
+    print(
+        f"Test Lines:       {previous_summary['test_lines']:,} → {current_summary['test_lines']:,} ({test_diff:+,})"
+    )
+    print()
+
+    # Technology-specific changes
+    all_techs = set(current_total.keys()) | set(previous_total.keys())
+    changes = []
+
+    for tech in all_techs:
+        current_count = current_total.get(tech, 0)
+        previous_count = previous_total.get(tech, 0)
+        diff = current_count - previous_count
+
+        if diff != 0:
+            changes.append((tech, previous_count, current_count, diff))
+
+    if changes:
+        print("🔍 Technology Changes:")
+        changes.sort(
+            key=lambda x: abs(x[3]), reverse=True
+        )  # Sort by absolute difference
+
+        for tech, prev_count, curr_count, diff in changes:
+            if prev_count == 0:
+                status = "NEW"
+                print(f"{tech:<25} {status:<8} → {curr_count:>6,} lines ({diff:+,})")
+            elif curr_count == 0:
+                status = "REMOVED"
+                print(f"{tech:<25} {prev_count:>6,} → {status:<8} ({diff:+,})")
+            else:
+                percentage_change = (diff / prev_count) * 100 if prev_count > 0 else 0
+                print(
+                    f"{tech:<25} {prev_count:>6,} → {curr_count:>6,} ({diff:+,}, {percentage_change:+.1f}%)"
+                )
+    else:
+        print("✅ No changes detected between analyses")
+
+
 def main():
     """Main function"""
     import argparse
@@ -374,6 +487,17 @@ def main():
     )
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
     parser.add_argument("--csv", action="store_true", help="Output results as CSV")
+    parser.add_argument(
+        "--write", action="store_true", help="Save results to JSON file"
+    )
+    parser.add_argument(
+        "--diff", action="store_true", help="Show diff with previous results"
+    )
+    parser.add_argument(
+        "--output",
+        default="code_analysis_results.json",
+        help="Output file for --write (default: code_analysis_results.json)",
+    )
 
     args = parser.parse_args()
 
@@ -385,6 +509,27 @@ def main():
     analyzer = CodeAnalyzer(args.path)
     total_results, prod_results, test_results = analyzer.analyze()
 
+    # Handle diff option first if requested
+    if args.diff:
+        previous_results = load_previous_results(args.output)
+        current_results = {
+            "timestamp": "",  # Will be set by save_results_to_json if needed
+            "total": total_results,
+            "production": prod_results,
+            "tests": test_results,
+            "summary": {
+                "total_lines": sum(total_results.values()),
+                "production_lines": sum(prod_results.values()),
+                "test_lines": sum(test_results.values()),
+            },
+        }
+        show_diff(current_results, previous_results)
+
+    # Handle write option
+    if args.write:
+        save_results_to_json(total_results, prod_results, test_results, args.output)
+
+    # Handle output format options
     if args.json:
         import json
 
@@ -404,7 +549,8 @@ def main():
             prod_lines = prod_results.get(tech, 0)
             test_lines = test_results.get(tech, 0)
             print(f'"{tech}",{lines},{prod_lines},{test_lines},{percentage:.1f}')
-    else:
+    elif not args.write and not args.diff:
+        # Only show the full report if not using write or diff options
         analyzer.generate_report(total_results, prod_results, test_results)
 
 
