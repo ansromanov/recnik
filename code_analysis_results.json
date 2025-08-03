@@ -1,28 +1,31 @@
 {
   "total": {
-    "Python": 20069,
+    "Python": 20070,
     "JavaScript": 6289,
     "CSS": 7036,
-    "JSON": 1428,
-    "Markdown": 2372
+    "YAML": 646,
+    "JSON": 1431,
+    "Markdown": 2564
   },
   "production": {
-    "Python": 17807,
+    "Python": 17808,
     "JavaScript": 6289,
     "CSS": 7036,
-    "JSON": 1428,
-    "Markdown": 2372
+    "YAML": 646,
+    "JSON": 1431,
+    "Markdown": 2564
   },
   "tests": {
     "Python": 2262,
     "JavaScript": 0,
     "CSS": 0,
+    "YAML": 0,
     "JSON": 0,
     "Markdown": 0
   },
   "summary": {
-    "total_lines": 37194,
-    "production_lines": 34932,
+    "total_lines": 38036,
+    "production_lines": 35774,
     "test_lines": 2262
   }
 }

@@ -30,7 +30,8 @@ RECAPTCHA_VERIFY_URL = "https://www.google.com/recaptcha/api/siteverify"
 
 # CORS Configuration
 CORS_ORIGINS = os.getenv(
-    "CORS_ORIGINS", "http://localhost:3000,http://localhost:3001"
+    "CORS_ORIGINS",
+    "https://localhost:443,https://localhost:3000,http://localhost:3000,http://localhost:3001",
 ).split(",")
 
 # Application Settings

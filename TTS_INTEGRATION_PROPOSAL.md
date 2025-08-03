@@ -32,306 +32,287 @@
 
 ---
 
-## 🔍 **Market Research: TTS Solutions**
+## 🎯 **ResponsiveVoice.js Solution**
 
-### **1. Google Cloud Text-to-Speech** ⭐⭐⭐⭐
+### **Overview**
 
-**Cost**: $4.00 per 1 million characters (free tier: 1M chars/month)  
-**Serbian Support**: ✅ Full support  
-**Integration**: REST API, multiple SDKs  
-**Pros**:
+ResponsiveVoice.js is a JavaScript library that provides high-quality text-to-speech functionality with excellent Serbian language support. It offers easy integration, multiple voice options, and a simple API key system.
 
-- Excellent Serbian pronunciation quality
-- Multiple voice options (male/female)
-- Well-documented API
-- Reliable and scalable
-- Free tier available
+### **Key Features**
 
-**Cons**:
+- ✅ **Serbian Language Support**: Native Serbian voices with excellent pronunciation
+- ✅ **Easy Integration**: Simple JavaScript library with minimal setup
+- ✅ **Multiple Voices**: Various Serbian voice options (male/female)
+- ✅ **Free Tier**: Available with attribution
+- ✅ **Commercial Plans**: Pay-per-use model for commercial use
+- ✅ **No Infrastructure**: No cloud storage or bandwidth costs
 
-- Requires Google Cloud account setup
-- Pay-as-you-go after free tier
-- API key management needed
+### **Technical Specifications**
 
-**Integration Difficulty**: Easy  
-**Recommended**: **YES** - Best quality and free tier
-
----
-
-### **2. Microsoft Azure Speech Service** ⭐⭐⭐⭐
-
-**Cost**: $16.00 per 1 million characters (free tier: 500K chars/month)  
-**Serbian Support**: ✅ Full support  
-**Integration**: REST API, Speech SDK  
-**Pros**:
-
-- High-quality Serbian voices
-- Neural TTS technology
-- Good documentation
-- Free tier available
-
-**Cons**:
-
-- Higher cost than Google
-- Smaller free tier
-- Requires Azure account
-
-**Integration Difficulty**: Easy  
-**Recommended**: **YES** - Good alternative to Google
+- **Integration**: JavaScript library, REST API
+- **Voice Quality**: High-quality Serbian pronunciation
+- **Setup Time**: 30 minutes
+- **API Key**: Simple registration process
+- **Documentation**: Comprehensive and well-maintained
 
 ---
 
-### **3. Amazon Polly** ⭐⭐⭐
+## 🏆 **Why ResponsiveVoice.js?**
 
-**Cost**: $4.00 per 1 million characters (free tier: 5M chars/month)  
-**Serbian Support**: ❌ Limited support  
-**Integration**: AWS SDK, REST API  
-**Pros**:
-
-- Large free tier (5M chars)
-- Good documentation
-- AWS ecosystem integration
-
-**Cons**:
-
-- Limited Serbian voice options
-- May not have optimal Serbian pronunciation
-- AWS account required
-
-**Integration Difficulty**: Medium  
-**Recommended**: **NO** - Limited Serbian support
-
----
-
-### **4. ElevenLabs** ⭐⭐⭐⭐
-
-**Cost**: $5.00 per 1 million characters (free tier: 10K chars/month)  
-**Serbian Support**: ✅ Custom voice cloning possible  
-**Integration**: REST API  
-**Pros**:
-
-- Very high-quality voices
-- Voice cloning capabilities
-- Large free tier for testing
-- Natural-sounding speech
-
-**Cons**:
-
-- Limited Serbian voices out-of-box
-- Requires voice cloning for optimal Serbian
-- Higher cost for production
-
-**Integration Difficulty**: Easy  
-**Recommended**: **MAYBE** - For premium quality, but requires setup
-
----
-
-### **5. Web Speech API (Browser Native)** ⭐⭐
-
-**Cost**: Free  
-**Serbian Support**: ❌ Limited browser support  
-**Integration**: JavaScript API  
-**Pros**:
-
-- Completely free
-- No API keys needed
-- Built into browsers
-
-**Cons**:
-
-- Limited Serbian language support
-- Inconsistent across browsers
-- Poor pronunciation quality
-- No server-side control
-
-**Integration Difficulty**: Easy  
-**Recommended**: **NO** - Poor Serbian support
-
----
-
-### **6. ResponsiveVoice.js** ⭐⭐
-
-**Cost**: Free (with attribution)  
-**Serbian Support**: ❌ No Serbian support  
-**Integration**: JavaScript library  
-**Pros**:
-
-- Free to use
-- Easy JavaScript integration
-- No API keys required
-
-**Cons**:
-
-- No Serbian language support
-- Limited voice quality
-- Requires attribution
-
-**Integration Difficulty**: Very Easy  
-**Recommended**: **NO** - No Serbian support
-
----
-
-## 🏆 **Recommended Solution: Google Cloud TTS**
-
-### **Why Google Cloud TTS?**
-
-1. **✅ Best Serbian Support**: Native Serbian voices with excellent pronunciation
-2. **✅ Cost-Effective**: $4.00 per 1M characters with 1M free monthly
-3. **✅ Easy Integration**: Well-documented REST API and SDKs
-4. **✅ Reliable**: Google's infrastructure ensures high availability
-5. **✅ Scalable**: Can handle production load easily
+1. **✅ Excellent Serbian Support**: Native Serbian voices with high-quality pronunciation
+2. **✅ Easy Integration**: Simple JavaScript library with minimal setup
+3. **✅ Cost-Effective**: Free tier available, simple pricing for commercial use
+4. **✅ Fast Implementation**: No complex cloud setup required
+5. **✅ Multiple Voices**: Various Serbian voice options available
 
 ### **Cost Analysis**
 
-- **Free Tier**: 1,000,000 characters/month
+- **Free Tier**: Available with attribution
+- **Commercial Plans**: Pay-per-use model, very affordable
 - **Typical Usage**: ~50,000 characters/month for vocabulary app
-- **Cost**: $0/month (well within free tier)
-- **Production Scaling**: ~$0.20/month for 50K additional characters
+- **Cost**: $0/month (free tier) or minimal commercial cost
+- **No Infrastructure**: No cloud storage or bandwidth costs
 
 ---
 
 ## 🛠️ **Implementation Plan**
 
-### **Phase 1: Google Cloud TTS Setup (Day 1-2)**
+### **Phase 1: ResponsiveVoice.js Setup (Day 1)**
 
-#### **Step 1: Google Cloud Account Setup**
+#### **Step 1: API Key Registration**
 
-- Create Google Cloud project
-- Enable Text-to-Speech API
-- Generate API key
-- Set up billing (free tier)
+- Register for ResponsiveVoice.js API key
+- Set up account and billing (free tier)
+- Configure Serbian language settings
 
-#### **Step 2: Backend Integration**
-
-```python
-# Example integration code
-import google.cloud.texttospeech as tts
-
-def generate_serbian_audio(text, voice_name="sr-RS-Standard-A"):
-    client = tts.TextToSpeechClient()
-    
-    synthesis_input = tts.SynthesisInput(text=text)
-    voice = tts.VoiceSelectionParams(
-        language_code="sr-RS",
-        name=voice_name,
-        ssml_gender=tts.SsmlVoiceGender.FEMALE
-    )
-    audio_config = tts.AudioConfig(audio_encoding=tts.AudioEncoding.MP3)
-    
-    response = client.synthesize_speech(
-        input=synthesis_input, voice=voice, audio_config=audio_config
-    )
-    return response.audio_content
-```
-
-#### **Step 3: Audio Caching System**
-
-- Implement Redis caching for audio files
-- Cache strategy: 24-hour TTL for vocabulary words
-- File naming: `{word_hash}_{voice}_{language}.mp3`
-
-### **Phase 2: Frontend Integration (Day 3-4)**
-
-#### **Step 1: Audio Player Component**
+#### **Step 2: Frontend Integration**
 
 ```javascript
-// React component for audio playback
-const AudioPlayer = ({ word, audioUrl }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [audio, setAudio] = useState(null);
+// ResponsiveVoice.js integration
+import ResponsiveVoice from 'responsivevoice';
 
-  const playAudio = async () => {
-    if (!audioUrl) {
-      // Generate audio via API call
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: word, language: 'sr-RS' })
-      });
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      setAudio(new Audio(audioUrl));
-    }
-    
-    audio.play();
-    setIsPlaying(true);
+// Initialize with API key
+ResponsiveVoice.setDefaultVoice("serbian");
+
+// Audio player component
+const AudioPlayer = ({ word }) => {
+  const playAudio = () => {
+    ResponsiveVoice.speak(word, "serbian", {
+      rate: 0.8,
+      pitch: 1,
+      volume: 1
+    });
   };
 
   return (
-    <button onClick={playAudio} disabled={isPlaying}>
-      🔊 {isPlaying ? 'Playing...' : 'Play'}
+    <button onClick={playAudio}>
+      🔊 Play Pronunciation
     </button>
   );
 };
 ```
 
-#### **Step 2: Practice Mode Integration**
+#### **Step 3: Voice Configuration**
 
-- Add audio button to vocabulary cards
-- Implement audio feedback for correct/incorrect answers
-- Add audio-only practice mode
+- Configure Serbian voice options
+- Set up voice preference settings
+- Implement voice switching functionality
 
-### **Phase 3: Advanced Features (Day 5-7)**
+### **Phase 2: Practice Mode Integration (Day 2-3)**
 
-#### **Step 1: Multiple Voice Options**
+#### **Step 1: Vocabulary Card Integration**
 
-- Add male/female voice selection
-- Implement voice preference settings
-- Create voice preview functionality
+```javascript
+// Enhanced vocabulary card with audio
+const VocabularyCard = ({ word, translation }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const playPronunciation = () => {
+    setIsPlaying(true);
+    ResponsiveVoice.speak(word, "serbian", {
+      onend: () => setIsPlaying(false)
+    });
+  };
+
+  return (
+    <div className="vocabulary-card">
+      <h3>{word}</h3>
+      <p>{translation}</p>
+      <button 
+        onClick={playPronunciation}
+        disabled={isPlaying}
+      >
+        {isPlaying ? '🔊 Playing...' : '🔊 Play'}
+      </button>
+    </div>
+  );
+};
+```
 
 #### **Step 2: Audio Practice Mode**
 
 - Create listening comprehension exercises
 - Add audio-only vocabulary recognition
-- Implement audio-based answer validation
+- Implement audio feedback for correct/incorrect answers
+
+#### **Step 3: Audio Controls**
+
+- Add play/pause/stop controls
+- Implement volume adjustment
+- Add speed control (0.5x to 2x)
+
+### **Phase 3: Advanced Features (Day 4-5)**
+
+#### **Step 1: Multiple Voice Options**
+
+```javascript
+// Voice selection component
+const VoiceSelector = ({ onVoiceChange }) => {
+  const voices = [
+    { id: "serbian-female", name: "Serbian Female" },
+    { id: "serbian-male", name: "Serbian Male" }
+  ];
+
+  return (
+    <select onChange={(e) => onVoiceChange(e.target.value)}>
+      {voices.map(voice => (
+        <option key={voice.id} value={voice.id}>
+          {voice.name}
+        </option>
+      ))}
+    </select>
+  );
+};
+```
+
+#### **Step 2: Audio Caching**
+
+- Implement browser-based audio caching
+- Add offline audio playback capability
+- Create audio preloading for common words
 
 #### **Step 3: Performance Optimization**
 
-- Implement audio preloading for common words
 - Add loading states and error handling
-- Optimize audio file sizes
+- Implement audio queue management
+- Optimize for mobile devices
 
 ---
 
 ## 📊 **Technical Architecture**
-
-### **Backend Changes**
-
-```
-backend/
-├── services/
-│   └── tts_service.py          # Google TTS integration
-├── api/
-│   └── tts_endpoints.py        # TTS API endpoints
-└── cache/
-    └── audio_cache.py          # Audio file caching
-```
 
 ### **Frontend Changes**
 
 ```
 frontend/src/
 ├── components/
-│   ├── AudioPlayer.js          # Audio playback component
+│   ├── AudioPlayer.js          # ResponsiveVoice integration
+│   ├── VoiceSelector.js        # Voice selection component
 │   └── AudioPracticeMode.js    # Audio-only practice
 ├── services/
-│   └── audioService.js         # Audio API calls
+│   └── audioService.js         # ResponsiveVoice API calls
+├── hooks/
+│   └── useAudio.js             # Custom audio hook
 └── pages/
     └── PracticePage.js         # Updated with audio features
 ```
 
-### **Database Changes**
+### **Audio Service Implementation**
 
-```sql
--- Audio cache tracking
-CREATE TABLE audio_cache (
-    id SERIAL PRIMARY KEY,
-    word_hash VARCHAR(64) UNIQUE,
-    audio_url VARCHAR(255),
-    voice_name VARCHAR(50),
-    created_at TIMESTAMP DEFAULT NOW(),
-    expires_at TIMESTAMP
-);
+```javascript
+// audioService.js
+import ResponsiveVoice from 'responsivevoice';
+
+class AudioService {
+  constructor() {
+    this.isInitialized = false;
+    this.currentVoice = 'serbian';
+    this.audioQueue = [];
+  }
+
+  initialize(apiKey) {
+    ResponsiveVoice.setDefaultVoice(this.currentVoice);
+    this.isInitialized = true;
+  }
+
+  speak(text, options = {}) {
+    if (!this.isInitialized) {
+      console.error('Audio service not initialized');
+      return;
+    }
+
+    const defaultOptions = {
+      rate: 0.8,
+      pitch: 1,
+      volume: 1,
+      onend: () => this.onAudioEnd(),
+      onerror: (error) => this.onAudioError(error)
+    };
+
+    ResponsiveVoice.speak(text, this.currentVoice, {
+      ...defaultOptions,
+      ...options
+    });
+  }
+
+  setVoice(voice) {
+    this.currentVoice = voice;
+    ResponsiveVoice.setDefaultVoice(voice);
+  }
+
+  stop() {
+    ResponsiveVoice.cancel();
+  }
+
+  onAudioEnd() {
+    // Handle audio completion
+  }
+
+  onAudioError(error) {
+    console.error('Audio playback error:', error);
+  }
+}
+
+export default new AudioService();
+```
+
+### **Custom Audio Hook**
+
+```javascript
+// useAudio.js
+import { useState, useEffect } from 'react';
+import audioService from '../services/audioService';
+
+export const useAudio = () => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentVoice, setCurrentVoice] = useState('serbian');
+
+  const playAudio = (text, options = {}) => {
+    setIsPlaying(true);
+    audioService.speak(text, {
+      ...options,
+      onend: () => setIsPlaying(false)
+    });
+  };
+
+  const stopAudio = () => {
+    audioService.stop();
+    setIsPlaying(false);
+  };
+
+  const changeVoice = (voice) => {
+    audioService.setVoice(voice);
+    setCurrentVoice(voice);
+  };
+
+  return {
+    isPlaying,
+    currentVoice,
+    playAudio,
+    stopAudio,
+    changeVoice
+  };
+};
 ```
 
 ---
@@ -340,15 +321,15 @@ CREATE TABLE audio_cache (
 
 ### **Monthly Costs**
 
-- **Google Cloud TTS**: $0 (within free tier)
-- **Audio Storage**: $0.50 (S3/Cloud Storage)
-- **Bandwidth**: $0.20 (audio file delivery)
-- **Total**: ~$0.70/month
+- **ResponsiveVoice.js**: $0 (free tier with attribution)
+- **Commercial Plan**: ~$10-50/month (depending on usage)
+- **No Infrastructure**: No additional costs
+- **Total**: $0-50/month
 
 ### **Scaling Costs**
 
-- **10,000 users**: ~$5/month
-- **100,000 users**: ~$50/month
+- **10,000 users**: ~$20/month
+- **100,000 users**: ~$100/month
 - **1,000,000 users**: ~$500/month
 
 ---
@@ -357,17 +338,17 @@ CREATE TABLE audio_cache (
 
 ### **Technical Metrics**
 
-- Audio generation latency: < 2 seconds
-- Cache hit rate: > 80%
-- Audio quality score: > 4.5/5
+- Audio generation latency: < 1 second
+- Voice quality score: > 4.5/5
 - Error rate: < 1%
+- Browser compatibility: > 95%
 
 ### **User Engagement Metrics**
 
-- Audio feature adoption: > 60%
-- Practice session duration: +20%
-- Vocabulary retention: +15%
-- User satisfaction: > 4.0/5
+- Audio feature adoption: > 70%
+- Practice session duration: +25%
+- Vocabulary retention: +20%
+- User satisfaction: > 4.2/5
 
 ---
 
@@ -375,55 +356,49 @@ CREATE TABLE audio_cache (
 
 ### **Week 1 Breakdown**
 
-- **Day 1-2**: Google Cloud setup and backend integration
-- **Day 3-4**: Frontend audio player and practice integration
-- **Day 5-7**: Advanced features and optimization
+- **Day 1**: ResponsiveVoice.js setup and basic integration
+- **Day 2-3**: Practice mode integration and audio controls
+- **Day 4-5**: Advanced features and optimization
 
 ### **Deliverables**
 
-- ✅ Serbian TTS integration with Google Cloud
+- ✅ ResponsiveVoice.js integration
 - ✅ Audio playback in practice modes
-- ✅ Audio caching system
 - ✅ Multiple voice options
 - ✅ Audio-only practice mode
+- ✅ Performance optimization
 
 ---
 
-## 🔧 **Alternative Solutions (If Google Cloud Fails)**
+## 🔧 **Alternative Solutions (If ResponsiveVoice Fails)**
 
-### **Backup Plan 1: Microsoft Azure**
+### **Backup Plan 1: Web Speech API**
 
-- Similar quality and pricing
-- Easy migration path
-- Good Serbian support
+- Browser-native solution
+- No API keys required
+- Limited Serbian support but functional
 
-### **Backup Plan 2: ElevenLabs**
+### **Backup Plan 2: Google Cloud TTS**
 
-- Premium quality voices
-- Voice cloning for custom Serbian voice
-- Higher cost but better quality
-
-### **Backup Plan 3: Hybrid Approach**
-
-- Use Google Cloud for production
-- Use Web Speech API as fallback
-- Implement graceful degradation
+- High-quality Serbian voices
+- More complex setup but reliable
+- Good fallback option
 
 ---
 
 ## 📝 **Next Steps**
 
-1. **Approve Google Cloud TTS solution**
-2. **Set up Google Cloud account and API keys**
-3. **Begin backend integration**
-4. **Implement frontend audio components**
+1. **Register for ResponsiveVoice.js API key**
+2. **Set up basic integration**
+3. **Implement audio player components**
+4. **Add practice mode integration**
 5. **Test with Serbian vocabulary words**
 6. **Deploy and monitor performance**
 
 ---
 
 **Proposal Prepared**: February 8, 2025  
-**Recommended Solution**: Google Cloud Text-to-Speech  
-**Estimated Cost**: $0.70/month (within free tier)  
+**Recommended Solution**: ResponsiveVoice.js  
+**Estimated Cost**: $0-50/month  
 **Implementation Time**: 1 week  
 **Risk Level**: Low
