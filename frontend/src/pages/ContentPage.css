@@ -539,6 +539,105 @@
 }
 
 /* Enhanced dialogue formatting */
+.dialogue-content {
+    background: rgba(248, 249, 250, 0.5);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 15px 0;
+}
+
+.dialogue-controls {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.pronounce-dialogue-button {
+    background: linear-gradient(135deg, #9C27B0, #7B1FA2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.pronounce-dialogue-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(156, 39, 176, 0.3);
+}
+
+.pronounce-dialogue-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.dialogue-line {
+    margin: 15px 0;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    border-left: 4px solid #9C27B0;
+}
+
+.dialogue-line-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.dialogue-speaker {
+    font-weight: 700;
+    color: #9C27B0;
+    font-size: 16px;
+}
+
+.pronounce-line-button {
+    background: rgba(156, 39, 176, 0.1);
+    border: 1px solid rgba(156, 39, 176, 0.3);
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 12px;
+    color: #9C27B0;
+}
+
+.pronounce-line-button:hover:not(:disabled) {
+    background: rgba(156, 39, 176, 0.2);
+    transform: scale(1.05);
+}
+
+.pronounce-line-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.dialogue-text {
+    color: #333;
+    line-height: 1.6;
+    font-size: 15px;
+    display: block;
+}
+
+.dialogue-narrative {
+    font-style: italic;
+    color: #666;
+    margin: 10px 0;
+    padding: 8px 15px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 6px;
+    border-left: 3px solid #ccc;
+}
+
 .dialogue-content p {
     margin-bottom: 0.8rem;
     line-height: 1.6;
@@ -546,6 +645,85 @@
 
 .dialogue-content p:first-child {
     margin-top: 0;
+}
+
+/* Content controls for non-dialogue content */
+.content-controls {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.pronounce-content-button {
+    background: linear-gradient(135deg, #2196F3, #1976D2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.pronounce-content-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+}
+
+.pronounce-content-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.content-paragraph {
+    position: relative;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    transition: background-color 0.3s ease;
+}
+
+.content-paragraph:hover {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.content-paragraph p {
+    margin: 0;
+    padding-right: 40px;
+    /* Space for the button */
+}
+
+.pronounce-paragraph-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(33, 150, 243, 0.1);
+    border: 1px solid rgba(33, 150, 243, 0.3);
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 12px;
+    color: #2196F3;
+    opacity: 0.7;
+}
+
+.pronounce-paragraph-button:hover:not(:disabled) {
+    background: rgba(33, 150, 243, 0.2);
+    transform: scale(1.05);
+    opacity: 1;
+}
+
+.pronounce-paragraph-button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
 }
 
 /* Content metadata */

@@ -235,15 +235,8 @@ export const fetchWithAuth = async (url, options = {}) => {
 // Export individual functions for components that use them
 export const processText = async (text) => {
     const response = await apiService.processText(text);
-    return {
-        words: response.data.translations.map((word, index) => ({
-            id: index,
-            serbian: word.serbian_word,
-            english: word.english_translation,
-            category: word.category_name,
-            original: word.original_form
-        }))
-    };
+    // The backend now returns data in the format expected by the frontend
+    return response.data;
 };
 
 export const fetchContent = async (queryParams) => {

@@ -901,7 +901,34 @@ def process_text():
                 excluded_words=excluded_words,
             )
 
-            # Return the result in the expected format
+            # Transform the result to match frontend expectations
+            if "translations" in result:
+                # Convert backend format to frontend expected format
+                words = []
+                for i, word_data in enumerate(result["translations"]):
+                    words.append(
+                        {
+                            "id": i + 1,  # Generate sequential ID
+                            "serbian": word_data.get("serbian_word", ""),
+                            "english": word_data.get("english_translation", ""),
+                            "category": word_data.get("category_name", "Common Words"),
+                            "original": word_data.get("original_form", ""),
+                            "category_id": word_data.get("category_id", 1),
+                        }
+                    )
+
+                # Return in the format expected by frontend
+                return jsonify(
+                    {
+                        "words": words,
+                        "total_words": result.get("total_words", len(words)),
+                        "new_words": result.get("new_words", len(words)),
+                        "existing_words": result.get("existing_words", 0),
+                        "filtering_summary": result.get("filtering_summary", {}),
+                    }
+                )
+
+            # Return the original result if no translations found
             return jsonify(result)
 
         except Exception as processor_error:
@@ -3511,26 +3538,28 @@ def generate_dialogue():
         if not topic:
             return jsonify({"error": "Topic is required"}), 400
 
-        # Create prompt for dialogue generation
+        # Create prompt for dialogue generation with realistic Serbian names
         prompt = f"""Create a dialogue in Serbian between two people discussing: {topic}
 
 Requirements:
 - Use {difficulty} level Serbian vocabulary suitable for Serbian language learners
 - Make it natural and conversational
 - Approximately {word_count} words
+- Use realistic Serbian names for speakers (like Marko, Ana, Stefan, Milica, Nikola, Jovana, etc.)
 - Format each speaker on a new line like this:
-  Osoba A: [text]
-  Osoba B: [text]
-  Osoba A: [text]
+  [Name]: [text]
+  [Name]: [text]
   etc.
 - Focus on vocabulary that would be useful for Serbian learners
 - Make sure each speaker's line starts on a new line
+- Choose appropriate names for the context (e.g., common Serbian first names)
+- Make the conversation flow naturally with proper turn-taking
 
 Topic: {topic}
 Difficulty: {difficulty}
 Target word count: {word_count}
 
-Generate a natural dialogue with proper line breaks:"""
+Generate a natural dialogue between two Serbian speakers with proper names and line breaks:"""
 
         # Generate content using OpenAI
         completion = openai.ChatCompletion.create(

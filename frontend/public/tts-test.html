@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTS Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>TTS (Text-to-Speech) Test Page</h1>
+
+    <div class="test-section">
+        <h2>Environment Variables Check</h2>
+        <p>This will show if the ResponsiveVoice API key is available:</p>
+        <div id="env-status" class="status"></div>
+        <button onclick="checkEnvironment()">Check Environment</button>
+    </div>
+
+    <div class="test-section">
+        <h2>TTS Service Status</h2>
+        <p>Check if the TTS service is initialized and ready:</p>
+        <div id="tts-status" class="status"></div>
+        <button onclick="checkTTSStatus()">Check TTS Status</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Simple TTS Test</h2>
+        <p>Test basic pronunciation:</p>
+        <div id="test-status" class="status"></div>
+        <button onclick="testBasicTTS()">Test: "Zdravo, kako ste?"</button>
+        <button onclick="testDialogueLine()">Test Dialogue Line</button>
+        <button onclick="stopTTS()">Stop TTS</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Logs</h2>
+        <p>Check the browser console (F12) for detailed logs.</p>
+        <div id="console-logs"
+            style="background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto;">
+        </div>
+    </div>
+
+    <script>
+        // Mock TTS service for testing
+        class TTSService {
+            constructor() {
+                this.isInitialized = false;
+                this.currentVoice = 'Serbian Male';
+                this.isPlaying = false;
+                this.audioQueue = [];
+                this.isEnabled = true;
+                this.scriptLoaded = false;
+                this.loadResponsiveVoiceScript();
+            }
+
+            loadResponsiveVoiceScript() {
+                if (typeof window.responsiveVoice !== 'undefined') {
+                    this.scriptLoaded = true;
+                    this.initialize();
+                    return;
+                }
+
+                // Get API key - simulating the React environment variable access
+                const apiKey = 'XPYa6k6X'; // Using the key directly for testing
+
+                if (!apiKey) {
+                    console.error('ResponsiveVoice API key not found');
+                    return;
+                }
+
+                console.log('Loading ResponsiveVoice script with API key:', apiKey.substring(0, 4) + '***');
+
+                const script = document.createElement('script');
+                script.src = `https://code.responsivevoice.org/responsivevoice.js?key=${apiKey}`;
+                script.async = true;
+                script.onload = () => {
+                    console.log('ResponsiveVoice script loaded successfully');
+                    this.scriptLoaded = true;
+                    setTimeout(() => this.initialize(), 100);
+                };
+                script.onerror = (error) => {
+                    console.error('Failed to load ResponsiveVoice script:', error);
+                };
+
+                document.head.appendChild(script);
+            }
+
+            initialize() {
+                if (typeof window.responsiveVoice !== 'undefined') {
+                    this.isInitialized = true;
+                    console.log('TTS Service initialized with ResponsiveVoice.js');
+                } else {
+                    setTimeout(() => this.initialize(), 100);
+                }
+            }
+
+            isReady() {
+                return this.isInitialized && typeof window.responsiveVoice !== 'undefined';
+            }
+
+            async speak(text, options = {}) {
+                if (!this.isReady() || !this.isEnabled || !text) {
+                    console.warn('TTS not ready, disabled, or no text provided');
+                    return Promise.resolve();
+                }
+
+                return new Promise((resolve, reject) => {
+                    try {
+                        const defaultOptions = {
+                            rate: 0.8,
+                            pitch: 1,
+                            volume: 1,
+                            onstart: () => {
+                                this.isPlaying = true;
+                                if (options.onstart) options.onstart();
+                            },
+                            onend: () => {
+                                this.isPlaying = false;
+                                if (options.onend) options.onend();
+                                resolve();
+                            },
+                            onerror: (error) => {
+                                this.isPlaying = false;
+                                console.error('TTS Error:', error);
+                                if (options.onerror) options.onerror(error);
+                                reject(error);
+                            }
+                        };
+
+                        const finalOptions = { ...defaultOptions, ...options };
+                        window.responsiveVoice.speak(text, this.currentVoice, finalOptions);
+                    } catch (error) {
+                        this.isPlaying = false;
+                        console.error('TTS Speak Error:', error);
+                        reject(error);
+                    }
+                });
+            }
+
+            stop() {
+                if (this.isReady()) {
+                    window.responsiveVoice.cancel();
+                    this.isPlaying = false;
+                }
+            }
+
+            getStatus() {
+                return {
+                    isInitialized: this.isInitialized,
+                    isReady: this.isReady(),
+                    isEnabled: this.isEnabled,
+                    isPlaying: this.isPlaying,
+                    currentVoice: this.currentVoice,
+                    responsiveVoiceAvailable: typeof window.responsiveVoice !== 'undefined',
+                    voiceSupport: this.isReady() ? window.responsiveVoice.voiceSupport() : false
+                };
+            }
+        }
+
+        // Create TTS service instance
+        const ttsService = new TTSService();
+
+        // Console logging functions
+        function logToConsole(message, level = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${level.toUpperCase()}: ${message}`;
+
+            console[level](message);
+
+            const consoleDiv = document.getElementById('console-logs');
+            consoleDiv.textContent += logEntry + '\n';
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        // Override console methods to capture logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        console.log = function (...args) {
+            logToConsole(args.join(' '), 'log');
+            originalLog.apply(console, args);
+        };
+
+        console.error = function (...args) {
+            logToConsole(args.join(' '), 'error');
+            originalError.apply(console, args);
+        };
+
+        console.warn = function (...args) {
+            logToConsole(args.join(' '), 'warn');
+            originalWarn.apply(console, args);
+        };
+
+        // Test functions
+        function checkEnvironment() {
+            const statusDiv = document.getElementById('env-status');
+            const apiKey = 'XPYa6k6X'; // Direct API key for testing
+
+            if (apiKey) {
+                statusDiv.className = 'status success';
+                statusDiv.textContent = `✓ ResponsiveVoice API key found: ${apiKey.substring(0, 4)}***`;
+                logToConsole('Environment check: API key found');
+            } else {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '✗ ResponsiveVoice API key not found';
+                logToConsole('Environment check: API key NOT found', 'error');
+            }
+        }
+
+        function checkTTSStatus() {
+            const statusDiv = document.getElementById('tts-status');
+            const status = ttsService.getStatus();
+
+            statusDiv.className = status.isReady ? 'status success' : 'status error';
+            statusDiv.innerHTML = `
+                <strong>TTS Status:</strong><br>
+                • Initialized: ${status.isInitialized ? '✓' : '✗'}<br>
+                • Ready: ${status.isReady ? '✓' : '✗'}<br>
+                • ResponsiveVoice Available: ${status.responsiveVoiceAvailable ? '✓' : '✗'}<br>
+                • Voice Support: ${status.voiceSupport ? '✓' : '✗'}<br>
+                • Current Voice: ${status.currentVoice}<br>
+                • Playing: ${status.isPlaying ? '✓' : '✗'}
+            `;
+
+            logToConsole(`TTS Status check: ${JSON.stringify(status, null, 2)}`);
+        }
+
+        async function testBasicTTS() {
+            const statusDiv = document.getElementById('test-status');
+            const testText = "Zdravo, kako ste?";
+
+            try {
+                statusDiv.className = 'status info';
+                statusDiv.textContent = `🔊 Testing pronunciation: "${testText}"`;
+                logToConsole(`Starting TTS test with text: "${testText}"`);
+
+                await ttsService.speak(testText, {
+                    onstart: () => {
+                        logToConsole('TTS started successfully');
+                        statusDiv.textContent = `🔊 Playing: "${testText}"`;
+                    },
+                    onend: () => {
+                        logToConsole('TTS completed successfully');
+                        statusDiv.className = 'status success';
+                        statusDiv.textContent = `✓ TTS test completed successfully!`;
+                    },
+                    onerror: (error) => {
+                        logToConsole(`TTS error: ${error}`, 'error');
+                        statusDiv.className = 'status error';
+                        statusDiv.textContent = `✗ TTS error: ${error}`;
+                    }
+                });
+            } catch (error) {
+                logToConsole(`TTS test failed: ${error}`, 'error');
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `✗ TTS test failed: ${error.message}`;
+            }
+        }
+
+        async function testDialogueLine() {
+            const statusDiv = document.getElementById('test-status');
+            const testText = "Marko: Dobro jutro! Kako se osećate danas?";
+
+            try {
+                statusDiv.className = 'status info';
+                statusDiv.textContent = `🔊 Testing dialogue line: "${testText}"`;
+                logToConsole(`Starting dialogue TTS test with text: "${testText}"`);
+
+                // Clean the text (remove speaker name)
+                const cleanText = testText.split(':').slice(1).join(':').trim();
+
+                await ttsService.speak(cleanText, {
+                    rate: 0.8,
+                    onstart: () => {
+                        logToConsole('Dialogue TTS started successfully');
+                        statusDiv.textContent = `🔊 Playing: "${cleanText}"`;
+                    },
+                    onend: () => {
+                        logToConsole('Dialogue TTS completed successfully');
+                        statusDiv.className = 'status success';
+                        statusDiv.textContent = `✓ Dialogue TTS test completed successfully!`;
+                    },
+                    onerror: (error) => {
+                        logToConsole(`Dialogue TTS error: ${error}`, 'error');
+                        statusDiv.className = 'status error';
+                        statusDiv.textContent = `✗ Dialogue TTS error: ${error}`;
+                    }
+                });
+            } catch (error) {
+                logToConsole(`Dialogue TTS test failed: ${error}`, 'error');
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `✗ Dialogue TTS test failed: ${error.message}`;
+            }
+        }
+
+        function stopTTS() {
+            const statusDiv = document.getElementById('test-status');
+            try {
+                ttsService.stop();
+                statusDiv.className = 'status info';
+                statusDiv.textContent = '⏹ TTS stopped';
+                logToConsole('TTS stopped by user');
+            } catch (error) {
+                logToConsole(`Error stopping TTS: ${error}`, 'error');
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `✗ Error stopping TTS: ${error.message}`;
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            logToConsole('TTS Test Page loaded');
+            setTimeout(checkTTSStatus, 2000); // Check status after 2 seconds
+        });
+    </script>
+</body>
+
+</html>

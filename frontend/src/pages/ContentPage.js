@@ -2,7 +2,49 @@ import React, { useState, useEffect } from 'react';
 import { fetchContent, processText } from '../services/api';
 import apiService from '../services/api';
 import { Link } from 'react-router-dom';
+import ttsService from '../services/ttsService';
 import './ContentPage.css';
+
+// Global function for handling dialogue line pronunciation with consistent voice assignment
+window.handleDialogueLinePronunciation = async (text, buttonElement, speakerName = null, allSpeakers = []) => {
+    if (!ttsService.isReady()) {
+        console.warn('TTS service not ready. Status:', ttsService.getStatus());
+        // Try to reinitialize TTS if it's not ready
+        ttsService.loadResponsiveVoiceScript();
+        return;
+    }
+
+    try {
+        // Clean the text for pronunciation
+        const cleanText = text.replace(/<[^>]*>/g, '').trim();
+
+        // Get consistent voice assignment for this speaker in dialog context
+        const voiceForSpeaker = ttsService.getVoiceForDialogSpeaker(speakerName, allSpeakers);
+
+        // Temporarily set the voice for this speaker
+        const originalVoice = ttsService.getCurrentVoice();
+        ttsService.setVoice(voiceForSpeaker);
+
+        await ttsService.playPronunciationWithFeedback(cleanText, buttonElement, {
+            rate: 0.8,
+            onstart: () => {
+                console.log(`Started pronunciation for ${speakerName || 'speaker'} using voice: ${voiceForSpeaker}`);
+            },
+            onend: () => {
+                console.log('Finished pronunciation');
+                // Restore original voice
+                ttsService.setVoice(originalVoice);
+            },
+            onerror: (error) => {
+                console.error('Pronunciation error:', error);
+                // Restore original voice on error
+                ttsService.setVoice(originalVoice);
+            }
+        });
+    } catch (error) {
+        console.error('Error pronouncing text:', error);
+    }
+};
 
 function ContentPage() {
     const [articles, setArticles] = useState([]);
@@ -89,16 +131,32 @@ function ContentPage() {
             setProcessingWords(true);
             setError('');
 
-            // Combine title and content for processing
-            const fullText = `${selectedArticle.title} ${selectedArticle.content}`;
+            // Combine title and content for processing, but preserve formatting
+            let fullText;
+            if (selectedArticle.content_type === 'dialogue') {
+                // For dialogues, preserve the structure but clean up speaker names
+                fullText = `${selectedArticle.title}\n\n${selectedArticle.content}`;
+            } else {
+                fullText = `${selectedArticle.title} ${selectedArticle.content}`;
+            }
+
             const result = await processText(fullText);
 
             if (result.words && result.words.length > 0) {
-                setProcessedWords(result.words);
-                setSelectedWords(result.words.map(w => w.id));
-                setShowWordSelection(true);
+                // Filter out any words that might have been missed due to exclusions
+                const validWords = result.words.filter(word =>
+                    word.serbian && word.english && word.serbian.trim() !== '' && word.english.trim() !== ''
+                );
+
+                if (validWords.length > 0) {
+                    setProcessedWords(validWords);
+                    setSelectedWords(validWords.map(w => w.id));
+                    setShowWordSelection(true);
+                } else {
+                    setError('No new words found after filtering. All words may already be in your vocabulary or excluded.');
+                }
             } else {
-                setError('No new words found in this content');
+                setError('No new words found in this content. You may have already learned all the vocabulary from this text!');
             }
         } catch (err) {
             if (err.response && err.response.status === 400) {
@@ -236,43 +294,504 @@ function ContentPage() {
 
     const highlightWords = (text) => {
         if (!showWordSelection || processedWords.length === 0) {
-            return text;
+            return formatContentDisplay(text, selectedArticle.content_type);
         }
 
+        // Preserve the original formatting while highlighting words
         let highlightedText = text;
-        processedWords.forEach(word => {
-            const regex = new RegExp(`\\b${word.original || word.serbian}\\b`, 'gi');
+
+        // Sort words by length (longest first) to avoid partial matches
+        const sortedWords = [...processedWords].sort((a, b) =>
+            (b.original || b.serbian).length - (a.original || a.serbian).length
+        );
+
+        sortedWords.forEach(word => {
+            const wordToMatch = word.original || word.serbian;
+            // Use more precise regex to avoid breaking formatting
+            const regex = new RegExp(`\\b${wordToMatch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
             highlightedText = highlightedText.replace(regex, match =>
                 `<span class="highlighted-word" title="${word.serbian}: ${word.english}">${match}</span>`
             );
         });
 
-        return <div dangerouslySetInnerHTML={{ __html: highlightedText }} />;
-    };
-
-    // Format content based on type for better display
-    const formatContentDisplay = (content, contentType) => {
-        if (contentType === 'dialogue') {
-            // Format dialogue with proper speaker indication
-            const lines = content.split('\n').filter(line => line.trim());
-            return lines.map((line, index) => {
-                if (line.includes(':')) {
-                    const [speaker, ...textParts] = line.split(':');
-                    const text = textParts.join(':').trim();
-                    return (
-                        <div key={index} className="dialogue-line">
-                            <span className="dialogue-speaker">{speaker.trim()}:</span> {text}
-                        </div>
-                    );
-                }
-                return <p key={index}>{line}</p>;
-            });
+        // Handle dialogue formatting with highlights
+        if (selectedArticle.content_type === 'dialogue') {
+            return (
+                <div className="dialogue-content">
+                    <div className="dialogue-controls">
+                        <button
+                            className="pronounce-dialogue-button"
+                            onClick={(e) => {
+                                const lines = highlightedText.split('\n').filter(line => line.trim());
+                                const fullText = lines
+                                    .filter(line => line.includes(':'))
+                                    .map(line => {
+                                        const cleanLine = line.replace(/<[^>]*>/g, ''); // Remove HTML tags
+                                        return cleanLine.split(':').slice(1).join(':').trim();
+                                    })
+                                    .join('. ');
+                                handlePronounceText(fullText, e.target);
+                            }}
+                            title="Pronounce entire dialogue"
+                        >
+                            🔊 Pronounce Dialogue
+                        </button>
+                    </div>
+                    <div dangerouslySetInnerHTML={{ __html: formatDialogueWithHighlights(highlightedText) }} />
+                </div>
+            );
         }
 
-        // For other content types, split into paragraphs
-        return content.split('\n\n').map((paragraph, index) => (
-            <p key={index}>{paragraph}</p>
-        ));
+        // For other content types, preserve paragraph structure
+        const paragraphs = highlightedText.split('\n\n').filter(p => p.trim());
+        return (
+            <div className="formatted-content">
+                <div className="content-controls">
+                    <button
+                        className="pronounce-content-button"
+                        onClick={(e) => {
+                            const cleanText = paragraphs.map(p => p.replace(/<[^>]*>/g, '')).join('. ');
+                            handlePronounceText(cleanText, e.target);
+                        }}
+                        title="Pronounce entire content"
+                    >
+                        🔊 Pronounce Content
+                    </button>
+                </div>
+                {paragraphs.map((paragraph, index) => (
+                    <div key={index} className="content-paragraph">
+                        <p dangerouslySetInnerHTML={{ __html: paragraph }} />
+                        <button
+                            className="pronounce-paragraph-button"
+                            onClick={(e) => {
+                                const cleanText = paragraph.replace(/<[^>]*>/g, '');
+                                handlePronounceText(cleanText, e.target);
+                            }}
+                            title="Pronounce this paragraph"
+                        >
+                            🔊
+                        </button>
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
+    // Generate realistic Serbian names for dialogue speakers
+    const generateSpeakerNames = () => {
+        const maleNames = ['Marko', 'Stefan', 'Nikola', 'Miloš', 'Aleksandar', 'Filip', 'Luka', 'Petar', 'Nemanja', 'Jovan'];
+        const femaleNames = ['Ana', 'Milica', 'Jovana', 'Marija', 'Tamara', 'Teodora', 'Nina', 'Ivana', 'Jelena', 'Sara'];
+
+        const allNames = [...maleNames, ...femaleNames];
+        const shuffled = allNames.sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, 2); // Return 2 random names
+    };
+
+    // Format dialogue content with highlighting and proper speaker names
+    const formatDialogueWithHighlights = (highlightedText) => {
+        const speakerNames = generateSpeakerNames();
+        const speakerMap = {};
+        let speakerIndex = 0;
+
+        const lines = highlightedText.split('\n').filter(line => line.trim());
+
+        // First pass: collect all speakers for consistent voice assignment
+        const allSpeakers = [];
+        lines.forEach((line) => {
+            if (line.includes(':')) {
+                const [originalSpeaker] = line.split(':');
+                const trimmedSpeaker = originalSpeaker.trim().replace(/<[^>]*>/g, '');
+
+                let displaySpeaker = trimmedSpeaker;
+                if (trimmedSpeaker === 'Osoba A' || trimmedSpeaker === 'Person A') {
+                    if (!speakerMap['A']) {
+                        speakerMap['A'] = speakerNames[0] || 'Marko';
+                    }
+                    displaySpeaker = speakerMap['A'];
+                } else if (trimmedSpeaker === 'Osoba B' || trimmedSpeaker === 'Person B') {
+                    if (!speakerMap['B']) {
+                        speakerMap['B'] = speakerNames[1] || 'Ana';
+                    }
+                    displaySpeaker = speakerMap['B'];
+                } else if (!speakerMap[trimmedSpeaker]) {
+                    speakerMap[trimmedSpeaker] = speakerNames[speakerIndex % speakerNames.length] || `Speaker ${speakerIndex + 1}`;
+                    speakerIndex++;
+                    displaySpeaker = speakerMap[trimmedSpeaker];
+                } else {
+                    displaySpeaker = speakerMap[trimmedSpeaker];
+                }
+
+                if (!allSpeakers.includes(displaySpeaker)) {
+                    allSpeakers.push(displaySpeaker);
+                }
+            }
+        });
+
+        // Second pass: format HTML with speaker list for consistent voice assignment
+        let formattedHtml = '';
+        lines.forEach((line, index) => {
+            if (line.includes(':')) {
+                const [originalSpeaker, ...textParts] = line.split(':');
+                const text = textParts.join(':').trim();
+                const trimmedSpeaker = originalSpeaker.trim().replace(/<[^>]*>/g, '');
+
+                // Get the display speaker name using the same logic
+                let displaySpeaker = trimmedSpeaker;
+                if (trimmedSpeaker === 'Osoba A' || trimmedSpeaker === 'Person A') {
+                    displaySpeaker = speakerMap['A'];
+                } else if (trimmedSpeaker === 'Osoba B' || trimmedSpeaker === 'Person B') {
+                    displaySpeaker = speakerMap['B'];
+                } else {
+                    displaySpeaker = speakerMap[trimmedSpeaker] || displaySpeaker;
+                }
+
+                const allSpeakersStr = JSON.stringify(allSpeakers).replace(/"/g, '&quot;');
+
+                formattedHtml += `
+                    <div class="dialogue-line">
+                        <div class="dialogue-line-header">
+                            <span class="dialogue-speaker">${displaySpeaker}:</span>
+                            <button 
+                                class="pronounce-line-button" 
+                                onclick="window.handleDialogueLinePronunciation('${text.replace(/'/g, "\\'")}', this, '${displaySpeaker}', ${allSpeakersStr})"
+                                title="Pronounce ${displaySpeaker}'s line"
+                            >
+                                🔊
+                            </button>
+                        </div>
+                        <span class="dialogue-text">${text}</span>
+                    </div>
+                `;
+            } else {
+                formattedHtml += `<p class="dialogue-narrative">${line}</p>`;
+            }
+        });
+
+        return formattedHtml;
+    };
+
+    // Enhanced pronunciation functionality
+    const handlePronounceText = async (text, buttonElement) => {
+        if (!ttsService.isReady()) {
+            console.warn('TTS service not ready');
+            return;
+        }
+
+        try {
+            // Clean the text for pronunciation (remove speaker names if present)
+            let cleanText = text;
+            if (text.includes(':')) {
+                const parts = text.split(':');
+                if (parts.length > 1) {
+                    cleanText = parts.slice(1).join(':').trim();
+                }
+            }
+
+            await ttsService.playPronunciationWithFeedback(cleanText, buttonElement, {
+                rate: 0.8,
+                onstart: () => {
+                    console.log('Started pronunciation');
+                },
+                onend: () => {
+                    console.log('Finished pronunciation');
+                },
+                onerror: (error) => {
+                    console.error('Pronunciation error:', error);
+                }
+            });
+        } catch (error) {
+            console.error('Error pronouncing text:', error);
+        }
+    };
+
+    // Enhanced pronunciation functionality with speaker-specific voices
+    const handlePronounceTextWithSpeaker = async (text, buttonElement, speakerName) => {
+        if (!ttsService.isReady()) {
+            console.warn('TTS service not ready');
+            return;
+        }
+
+        try {
+            // Clean the text for pronunciation (remove speaker names if present)
+            let cleanText = text;
+            if (text.includes(':')) {
+                const parts = text.split(':');
+                if (parts.length > 1) {
+                    cleanText = parts.slice(1).join(':').trim();
+                }
+            }
+
+            // Get appropriate voice for this speaker
+            const voiceForSpeaker = ttsService.getVoiceForSpeaker(speakerName);
+
+            // Temporarily set the voice for this speaker
+            const originalVoice = ttsService.getCurrentVoice();
+            ttsService.setVoice(voiceForSpeaker);
+
+            await ttsService.playPronunciationWithFeedback(cleanText, buttonElement, {
+                rate: 0.8,
+                onstart: () => {
+                    console.log(`Started pronunciation for ${speakerName} using voice: ${voiceForSpeaker}`);
+                },
+                onend: () => {
+                    console.log('Finished pronunciation');
+                    // Restore original voice
+                    ttsService.setVoice(originalVoice);
+                },
+                onerror: (error) => {
+                    console.error('Pronunciation error:', error);
+                    // Restore original voice on error
+                    ttsService.setVoice(originalVoice);
+                }
+            });
+        } catch (error) {
+            console.error('Error pronouncing text:', error);
+        }
+    };
+
+    // Handle pronunciation of entire dialog with different voices
+    const handlePronounceEntireDialog = async (content, buttonElement) => {
+        if (!ttsService.isReady()) {
+            console.warn('TTS service not ready');
+            return;
+        }
+
+        try {
+            const originalText = buttonElement.textContent;
+            const originalDisabled = buttonElement.disabled;
+
+            // Update button state
+            buttonElement.textContent = '🔊 Playing Dialog...';
+            buttonElement.disabled = true;
+
+            // Parse dialog content to extract speakers and lines
+            const speakerNames = generateSpeakerNames();
+            const speakerMap = {};
+            let speakerIndex = 0;
+
+            const lines = content.split('\n').filter(line => line.trim());
+            const dialogLines = [];
+            const allSpeakers = [];
+
+            // First pass: collect all speakers and dialog lines
+            lines.forEach((line) => {
+                if (line.includes(':')) {
+                    const [originalSpeaker, ...textParts] = line.split(':');
+                    const text = textParts.join(':').trim();
+                    const cleanText = text.replace(/<[^>]*>/g, '').trim(); // Remove HTML tags
+                    const trimmedSpeaker = originalSpeaker.trim().replace(/<[^>]*>/g, '');
+
+                    // Map speaker names consistently
+                    let displaySpeaker = trimmedSpeaker;
+                    if (trimmedSpeaker === 'Osoba A' || trimmedSpeaker === 'Person A') {
+                        if (!speakerMap['A']) {
+                            speakerMap['A'] = speakerNames[0] || 'Marko';
+                        }
+                        displaySpeaker = speakerMap['A'];
+                    } else if (trimmedSpeaker === 'Osoba B' || trimmedSpeaker === 'Person B') {
+                        if (!speakerMap['B']) {
+                            speakerMap['B'] = speakerNames[1] || 'Ana';
+                        }
+                        displaySpeaker = speakerMap['B'];
+                    } else if (!speakerMap[trimmedSpeaker]) {
+                        speakerMap[trimmedSpeaker] = speakerNames[speakerIndex % speakerNames.length] || `Speaker ${speakerIndex + 1}`;
+                        speakerIndex++;
+                        displaySpeaker = speakerMap[trimmedSpeaker];
+                    } else {
+                        displaySpeaker = speakerMap[trimmedSpeaker];
+                    }
+
+                    if (!allSpeakers.includes(displaySpeaker)) {
+                        allSpeakers.push(displaySpeaker);
+                    }
+
+                    dialogLines.push({
+                        speaker: displaySpeaker,
+                        text: cleanText
+                    });
+                }
+            });
+
+            // Play the dialog with different voices
+            await ttsService.playDialogWithVoices(dialogLines, allSpeakers, {
+                rate: 0.8,
+                onlinestart: (lineIndex, speaker, voice) => {
+                    buttonElement.textContent = `🔊 Playing ${speaker}... (${lineIndex + 1}/${dialogLines.length})`;
+                },
+                onend: () => {
+                    // Restore button state
+                    buttonElement.textContent = originalText;
+                    buttonElement.disabled = originalDisabled;
+                    console.log('Finished playing entire dialog');
+                },
+                onerror: (error) => {
+                    // Restore button state on error
+                    buttonElement.textContent = originalText;
+                    buttonElement.disabled = originalDisabled;
+                    console.error('Error playing dialog:', error);
+                }
+            });
+
+        } catch (error) {
+            console.error('Error pronouncing entire dialog:', error);
+            // Restore button state on error
+            if (buttonElement) {
+                buttonElement.textContent = '🔊 Pronounce Dialogue';
+                buttonElement.disabled = false;
+            }
+        }
+    };
+
+    // Enhanced dialogue formatting with proper names and pronunciation
+    const formatContentDisplay = (content, contentType) => {
+        if (contentType === 'dialogue') {
+            // Generate speaker names once for consistency
+            const speakerNames = generateSpeakerNames();
+            const speakerMap = {};
+            let speakerIndex = 0;
+
+            const lines = content.split('\n').filter(line => line.trim());
+
+            // First pass: collect all speakers for consistent voice assignment
+            const allSpeakers = [];
+            lines.forEach((line) => {
+                if (line.includes(':')) {
+                    const [originalSpeaker] = line.split(':');
+                    const trimmedSpeaker = originalSpeaker.trim();
+
+                    let displaySpeaker = trimmedSpeaker;
+                    if (trimmedSpeaker === 'Osoba A' || trimmedSpeaker === 'Person A') {
+                        if (!speakerMap['A']) {
+                            speakerMap['A'] = speakerNames[0] || 'Marko';
+                        }
+                        displaySpeaker = speakerMap['A'];
+                    } else if (trimmedSpeaker === 'Osoba B' || trimmedSpeaker === 'Person B') {
+                        if (!speakerMap['B']) {
+                            speakerMap['B'] = speakerNames[1] || 'Ana';
+                        }
+                        displaySpeaker = speakerMap['B'];
+                    } else if (!speakerMap[trimmedSpeaker]) {
+                        speakerMap[trimmedSpeaker] = speakerNames[speakerIndex % speakerNames.length] || `Speaker ${speakerIndex + 1}`;
+                        speakerIndex++;
+                        displaySpeaker = speakerMap[trimmedSpeaker];
+                    } else {
+                        displaySpeaker = speakerMap[trimmedSpeaker];
+                    }
+
+                    if (!allSpeakers.includes(displaySpeaker)) {
+                        allSpeakers.push(displaySpeaker);
+                    }
+                }
+            });
+
+            return (
+                <div className="dialogue-content">
+                    {/* Add pronunciation button for entire dialogue */}
+                    <div className="dialogue-controls">
+                        <button
+                            className="pronounce-dialogue-button"
+                            onClick={(e) => {
+                                handlePronounceEntireDialog(content, e.target);
+                            }}
+                            title="Pronounce entire dialogue with different voices"
+                        >
+                            🔊 Pronounce Dialogue
+                        </button>
+                    </div>
+
+                    {lines.map((line, index) => {
+                        if (line.includes(':')) {
+                            const [originalSpeaker, ...textParts] = line.split(':');
+                            const text = textParts.join(':').trim();
+                            const trimmedSpeaker = originalSpeaker.trim();
+
+                            // Get the display speaker name using the same logic as first pass
+                            let displaySpeaker = trimmedSpeaker;
+                            if (trimmedSpeaker === 'Osoba A' || trimmedSpeaker === 'Person A') {
+                                displaySpeaker = speakerMap['A'];
+                            } else if (trimmedSpeaker === 'Osoba B' || trimmedSpeaker === 'Person B') {
+                                displaySpeaker = speakerMap['B'];
+                            } else {
+                                displaySpeaker = speakerMap[trimmedSpeaker] || displaySpeaker;
+                            }
+
+                            return (
+                                <div key={index} className="dialogue-line">
+                                    <div className="dialogue-line-header">
+                                        <span className="dialogue-speaker">{displaySpeaker}:</span>
+                                        <button
+                                            className="pronounce-line-button"
+                                            onClick={(e) => {
+                                                // Get consistent voice for this speaker using dialog speakers list
+                                                const voiceForSpeaker = ttsService.getVoiceForDialogSpeaker(displaySpeaker, allSpeakers);
+                                                const originalVoice = ttsService.getCurrentVoice();
+                                                ttsService.setVoice(voiceForSpeaker);
+
+                                                ttsService.playPronunciationWithFeedback(text, e.target, {
+                                                    rate: 0.8,
+                                                    onstart: () => {
+                                                        console.log(`Started pronunciation for ${displaySpeaker} using voice: ${voiceForSpeaker}`);
+                                                    },
+                                                    onend: () => {
+                                                        console.log('Finished pronunciation');
+                                                        ttsService.setVoice(originalVoice);
+                                                    },
+                                                    onerror: (error) => {
+                                                        console.error('Pronunciation error:', error);
+                                                        ttsService.setVoice(originalVoice);
+                                                    }
+                                                }).catch(error => {
+                                                    console.error('Error pronouncing text:', error);
+                                                    ttsService.setVoice(originalVoice);
+                                                });
+                                            }}
+                                            title={`Pronounce ${displaySpeaker}'s line`}
+                                        >
+                                            🔊
+                                        </button>
+                                    </div>
+                                    <span className="dialogue-text">{text}</span>
+                                </div>
+                            );
+                        }
+                        return <p key={index} className="dialogue-narrative">{line}</p>;
+                    })}
+                </div>
+            );
+        }
+
+        // For other content types, split into paragraphs with pronunciation option
+        const paragraphs = content.split('\n\n').filter(p => p.trim());
+        return (
+            <div className="formatted-content">
+                {contentType !== 'article' && (
+                    <div className="content-controls">
+                        <button
+                            className="pronounce-content-button"
+                            onClick={(e) => {
+                                const fullText = paragraphs.join('. ');
+                                handlePronounceText(fullText, e.target);
+                            }}
+                            title="Pronounce entire content"
+                        >
+                            🔊 Pronounce Content
+                        </button>
+                    </div>
+                )}
+                {paragraphs.map((paragraph, index) => (
+                    <div key={index} className="content-paragraph">
+                        <p>{paragraph}</p>
+                        <button
+                            className="pronounce-paragraph-button"
+                            onClick={(e) => handlePronounceText(paragraph, e.target)}
+                            title="Pronounce this paragraph"
+                        >
+                            🔊
+                        </button>
+                    </div>
+                ))}
+            </div>
+        );
     };
 
     if (loading) {

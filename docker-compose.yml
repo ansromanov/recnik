@@ -193,8 +193,13 @@ services:
 
   # Frontend with HTTPS
   frontend:
-    build: ./frontend
+    build: 
+      context: ./frontend
+      args:
+        - REACT_APP_RESPONSIVEVOICE_API_KEY=${REACT_APP_RESPONSIVEVOICE_API_KEY}
     container_name: serbian-vocab-frontend
+    environment:
+      - REACT_APP_RESPONSIVEVOICE_API_KEY=${REACT_APP_RESPONSIVEVOICE_API_KEY}
     ports:
       - "3000:80"   # HTTP redirect
       - "443:443"   # HTTPS
