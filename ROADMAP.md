@@ -1,245 +1,105 @@
 # Serbian Vocabulary App - Development Roadmap 🗺️
 
-## 🎯 Current State (February 2025)
+## 🎯 Next 2 Weeks: Priority Features
 
-**Status**: Core application with advanced gamification features and microservices foundation
+### 🗣️ **1. Text-to-Speech Integration (Week 1)**
 
-### ✅ **COMPLETED FEATURES**
+- **Step 1**: Integrate Serbian TTS API (Google Cloud TTS)
+  - Add pronunciation playback for vocabulary words
+  - Implement audio controls (play/pause/speed)
+  - Cache audio files for performance
+- **Step 2**: Audio Practice Mode
+  - Create listening comprehension exercises
+  - Add audio-only vocabulary recognition
+  - Implement audio feedback for correct/incorrect answers
 
-#### 🎮 **Gamification System** (IMPLEMENTED)
+### 📱 **2. Progressive Web App Foundation (Week 1)**
 
-- **XP & Leveling**: Full XP system with level progression and activity tracking
-- **Achievement System**: Comprehensive badge system with unlockable rewards
-- **Streak Tracking**: Daily/weekly/monthly streak monitoring with activity logging
-- **Progress Analytics**: Detailed tracking of learning velocity and performance
+- **Step 1**: Service Worker Implementation
+  - Add offline caching for core vocabulary data
+  - Implement background sync for progress updates
+  - Create app manifest for mobile installation
+- **Step 2**: Mobile UI Optimization
+  - Redesign layouts for touch interfaces
+  - Add gesture-based navigation (swipe, pinch)
+  - Implement mobile-specific practice modes
 
-#### 🎯 **Practice Modes** (IMPLEMENTED)
+### 🧠 **3. AI-Enhanced Content Generation (Week 2)**
 
-- **Translation Practice**: Serbian → English multiple choice
-- **Reverse Translation**: English → Serbian multiple choice  
-- **Letter Arrangement**: Unscramble letters to form Serbian words
-- **Smart Question Generation**: Contextual wrong answers for better learning
-- **Configurable Sessions**: Customizable practice round counts (10 default)
-- **Auto-advance Settings**: Optional timed progression between questions
+- **Step 1**: Contextual Sentence Generation
+  - Enhance OpenAI integration for better sentence quality
+  - Add difficulty-based sentence complexity
+  - Implement cultural context integration
+- **Step 2**: Adaptive Question Generation
+  - Create AI-powered wrong answer generation
+  - Implement difficulty progression algorithms
+  - Add personalized question selection
 
-#### 🎨 **Visual Learning** (IMPLEMENTED)
+### 🎮 **4. Social Leaderboards (Week 2)**
 
-- **Dynamic Word Images**: Unsplash integration with contextual vocabulary images
-- **AI-Generated Avatars**: DiceBear API integration with 12+ avatar styles
-- **Interactive UI**: Modern React interface with smooth transitions
-- **Background Imagery**: Full-screen word-contextual backgrounds during practice
+- **Step 1**: User Profiles & Rankings
+  - Add public/private profile options
+  - Create global and friend leaderboards
+  - Implement weekly/monthly challenges
+- **Step 2**: Competitive Practice
+  - Add real-time multiplayer practice
+  - Create tournament-style competitions
+  - Implement team-based learning challenges
 
-#### 🧠 **Smart Learning Features** (IMPLEMENTED)
+### 📊 **5. Advanced Analytics Dashboard (Week 2)**
 
-- **Adaptive Difficulty**: Mastery-based word selection and repetition
-- **Example Sentences**: AI-generated contextual sentences (OpenAI integration)
-- **Sentence Caching**: Efficient storage and retrieval of example content
-- **Word Exclusion**: User-controlled vocabulary filtering
-- **Category Organization**: Structured vocabulary grouping
-
-#### ⚙️ **User Experience** (IMPLEMENTED)
-
-- **Personalized Settings**: Configurable practice preferences and API keys
-- **Keyboard Shortcuts**: Full keyboard navigation for efficient practice
-- **Session Management**: Comprehensive practice session tracking and analytics
-- **Responsive Design**: Mobile-first interface design
-- **Sound Effects**: Correct/incorrect answer sounds with user preference controls
-
----
-
-## 🏗️ **CURRENT ARCHITECTURE**
-
-### **Operational Infrastructure** (IMPLEMENTED)
-
-- **Microservices Foundation**: Service-oriented architecture with Docker
-- **Database Layer**: PostgreSQL with comprehensive data models
-- **Caching Layer**: Redis for performance optimization
-- **Background Processing**: Image sync and cache update services
-- **Monitoring Stack**: Prometheus + Grafana observability
-- **Health Checks**: Service availability monitoring across all components
-
-### **Service Structure** (IN PROGRESS)
-
-- ✅ **Core Backend**: Flask-based API with full feature set
-- 🔄 **Auth Service**: Authentication microservice (infrastructure ready)
-- 🔄 **Vocabulary Service**: Vocabulary management microservice (infrastructure ready)
-- ✅ **Image Sync Service**: Background image processing service
-- 🔄 **News Service**: Content processing service (infrastructure ready)
-- 🔄 **Text Processing Service**: Language processing microservice (planned)
+- **Step 1**: Learning Analytics
+  - Create comprehensive progress visualization
+  - Add weakness detection algorithms
+  - Implement learning velocity tracking
+- **Step 2**: Performance Insights
+  - Develop retention prediction models
+  - Add optimal study time recommendations
+  - Implement improvement suggestions
 
 ---
 
-## 🎯 **NEXT PHASE: Feature Enhancement (Q1-Q2 2025)**
+## 🛠️ **Technical Requirements**
 
-### 🚀 **Priority: Feature Development** (Not Operations)
+### **New Dependencies**
 
-#### 📱 **Mobile Experience**
+- **Speech APIs**: Google Cloud TTS
+- **PWA Tools**: Workbox, service worker libraries
+- **AI Services**: Enhanced OpenAI integration
+- **Real-time Features**: WebSocket implementation
+- **Analytics**: Chart.js or D3.js for visualizations
 
-- **Progressive Web App**: Offline-capable mobile experience
-- **Touch Optimizations**: Gesture-based learning interactions
-- **Mobile-Specific UI**: Optimized layouts for small screens
-- **Push Notifications**: Learning reminders and streak alerts
+### **Infrastructure Updates**
 
-#### 🗣️ **Audio & Speech**
-
-- **Text-to-Speech**: Serbian pronunciation playback
-- **Speech Recognition**: Pronunciation practice with feedback
-- **Audio Practice Mode**: Listening comprehension exercises
-- **Phonetic Learning**: IPA notation and pronunciation guides
-
-#### 📊 **Advanced Analytics**
-
-- **Learning Insights**: Detailed progress visualization
-- **Weakness Detection**: AI-powered gap analysis
-- **Study Recommendations**: Personalized learning path suggestions
-- **Performance Trends**: Long-term progress tracking
-
-#### 🎮 **Enhanced Gamification**
-
-- **Leaderboards**: Social comparison and competition
-- **Challenges**: Time-based and accuracy-based competitions
-- **Rewards System**: Unlockable content and features
-- **Social Features**: Friend connections and shared progress
-
-#### 🧠 **AI-Powered Learning**
-
-- **Adaptive Content**: AI-generated practice materials
-- **Context Awareness**: Personalized difficulty adjustment
-- **Learning Style Detection**: Automatic preference identification
-- **Smart Repetition**: Optimized spaced repetition algorithms
+- **Audio Processing**: Audio file storage and streaming
+- **Mobile Optimization**: CDN for mobile assets
+- **Real-time Features**: WebSocket server setup
+- **Analytics Storage**: Enhanced database for metrics
 
 ---
 
-## 🔧 **OPERATIONAL PRIORITIES** (Secondary Focus)
+## 📈 **Success Metrics**
 
-### **Infrastructure Maturity**
+### **User Engagement**
 
-- **Service Migration**: Complete transition from monolith to microservices
-- **API Gateway**: Centralized routing and authentication
-- **Load Balancing**: Horizontal scaling capabilities
-- **Security Hardening**: Enhanced authentication and data protection
-
-### **Performance Optimization**
-
-- **Database Optimization**: Query performance and indexing
-- **Caching Strategy**: Multi-layer caching implementation  
-- **CDN Integration**: Global content delivery
-- **Bundle Optimization**: Frontend performance improvements
-
-### **Monitoring Enhancement**
-
-- **Application Metrics**: Detailed performance monitoring
-- **User Analytics**: Usage pattern analysis
-- **Error Tracking**: Comprehensive error monitoring
-- **Alerting System**: Proactive issue detection
-
----
-
-## 📈 **SUCCESS METRICS**
-
-### **User Engagement** (Feature-Focused)
-
+- Feature adoption rates (speech, mobile, social)
 - Daily active users and session duration
-- Practice completion rates and streak maintenance
-- Feature adoption (new game modes, avatar customization)
-- User retention at 7/30/90 days
+- Social feature participation rates
 
-### **Learning Effectiveness** (Feature-Focused)
+### **Learning Effectiveness**
 
-- Vocabulary retention and mastery progression
-- Accuracy improvements over time
-- User-reported confidence gains
-- Real-world application success
+- Vocabulary retention improvement with speech
+- Mobile usage patterns and engagement
+- AI-generated content effectiveness
 
-### **Technical Performance** (Operations-Focused)
+### **Technical Performance**
 
-- System availability and response times
-- Service health and error rates
-- Database performance and optimization
-- Infrastructure cost efficiency
-
----
-
-## 🎯 **FEATURE ROADMAP PRIORITIES**
-
-### **Immediate (Next 30 days)**
-
-1. **Speech Integration**: Add text-to-speech for pronunciation
-2. **Mobile PWA**: Implement offline-capable mobile experience
-3. **Social Features**: Basic friend system and leaderboards
-4. **Advanced Analytics**: User progress insights dashboard
-
-### **Short-term (Next 90 days)**
-
-1. **AI Content Generation**: Smarter practice material creation
-2. **Voice Recognition**: Pronunciation practice with feedback
-3. **Advanced Game Modes**: Story-based and contextual exercises
-4. **Performance Dashboard**: Comprehensive learning analytics
-
-### **Medium-term (Next 180 days)**
-
-1. **Cultural Content**: Serbian culture integration
-2. **Advanced AI**: Personalized learning path optimization
-3. **Community Features**: User-generated content and sharing
-4. **Multi-platform**: Native mobile app development
-
----
-
-## 🛠️ **TECHNICAL DEBT & REFACTORING**
-
-### **Code Quality** (Ongoing)
-
-- Service interface standardization
-- API documentation completion
-- Test coverage improvement
-- Code style consistency
-
-### **Architecture Evolution** (Gradual)
-
-- Complete microservice migration
-- Event-driven architecture implementation
-- Database schema optimization
-- Security framework enhancement
-
----
-
-## 💡 **INNOVATION EXPERIMENTS**
-
-### **Emerging Technologies**
-
-- **AR/VR Integration**: Immersive vocabulary learning
-- **AI Tutoring**: Conversational learning assistant
-- **Biometric Feedback**: Learning state optimization
-- **Community AI**: Crowd-sourced content improvement
-
-### **Learning Method Innovation**
-
-- **Contextual Learning**: Real-world scenario practice
-- **Emotional Memory**: Mood-based vocabulary association
-- **Micro-learning**: Ultra-short focused sessions
-- **Adaptive UI**: Interface that learns user preferences
-
----
-
-## 📝 **DEVELOPMENT PRINCIPLES**
-
-### **Feature-First Approach**
-
-- Prioritize user-facing improvements over infrastructure
-- Measure feature impact on learning outcomes
-- Rapid prototyping and user feedback integration
-- Data-driven feature development decisions
-
-### **Operational Excellence**
-
-- Maintain high availability during feature development
-- Implement monitoring for all new features
-- Ensure scalability of new implementations
-- Security-by-design for all user features
+- PWA performance metrics
+- Speech recognition accuracy
+- AI response times and quality
 
 ---
 
 **Last Updated**: February 8, 2025  
-**Next Review**: March 15, 2025  
-**Focus**: Feature development over operational complexity  
+**Focus**: 5 critical features for next 2 weeks  
 **Architecture Status**: Stable foundation, ready for rapid feature iteration
