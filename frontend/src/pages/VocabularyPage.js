@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
 import CustomModal from '../components/CustomModal';
+import AudioPlayer from '../components/AudioPlayer';
 import { useToast } from '../components/ToastNotification';
 import './VocabularyPage.css';
 
@@ -504,6 +505,20 @@ function VocabularyPage() {
                                 <header className="word-header">
                                     <h3 className="serbian-word">{word.serbian_word}</h3>
                                     <p className="english-translation">{word.english_translation}</p>
+
+                                    {/* Audio pronunciation button */}
+                                    <div style={{ marginTop: '8px' }}>
+                                        <AudioPlayer
+                                            word={word.serbian_word}
+                                            size="small"
+                                            showText={false}
+                                            style={{
+                                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                                minWidth: '40px',
+                                                padding: '6px 8px'
+                                            }}
+                                        />
+                                    </div>
                                 </header>
 
                                 <div className="word-meta">

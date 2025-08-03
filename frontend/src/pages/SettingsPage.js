@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
 import soundService from '../services/soundService';
+import settingsService from '../services/settingsService';
+import VoiceSelector from '../components/VoiceSelector';
+import { useAudio } from '../hooks/useAudio';
 import './SettingsPage.css';
 
 function SettingsPage() {
@@ -11,6 +14,7 @@ function SettingsPage() {
     const [masteryThreshold, setMasteryThreshold] = useState(5);
     const [practiceRoundCount, setPracticeRoundCount] = useState(10);
     const [soundsEnabled, setSoundsEnabled] = useState(true);
+    const [autoPlayVoice, setAutoPlayVoice] = useState(true);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
@@ -24,6 +28,9 @@ function SettingsPage() {
     const [avatarVariations, setAvatarVariations] = useState([]);
     const [avatarLoading, setAvatarLoading] = useState(false);
     const [showAvatarVariations, setShowAvatarVariations] = useState(false);
+
+    // TTS-related state
+    const { isReady, isEnabled, testTTS, getTTSStatus } = useAudio();
 
     useEffect(() => {
         loadSettings();
@@ -46,6 +53,10 @@ function SettingsPage() {
                 setMasteryThreshold(settings.mastery_threshold || 5);
                 setPracticeRoundCount(settings.practice_round_count || 10);
                 setSoundsEnabled(settings.sounds_enabled !== undefined ? settings.sounds_enabled : true);
+                setAutoPlayVoice(settings.auto_play_voice !== undefined ? settings.auto_play_voice : true);
+
+                // Initialize settings service with API settings
+                settingsService.initializeFromAPI(settings);
 
                 // Load selected sources from settings
                 if (settings.preferred_content_sources) {
@@ -200,6 +211,7 @@ function SettingsPage() {
                 mastery_threshold: masteryThreshold,
                 practice_round_count: practiceRoundCount,
                 sounds_enabled: soundsEnabled,
+                auto_play_voice: autoPlayVoice,
                 preferred_content_sources: selectedSources
             });
 
@@ -425,6 +437,126 @@ function SettingsPage() {
                             </div>
                         )}
                     </div>
+                </div>
+            </div>
+
+            <div className="settings-section">
+                <h2>Text-to-Speech Settings</h2>
+                <p className="settings-description">
+                    Configure Serbian pronunciation settings for vocabulary words. The text-to-speech feature helps you learn proper pronunciation.
+                </p>
+
+                <div className="tts-settings-section">
+                    <div className="setting-item">
+                        <div className="tts-status">
+                            <h3>TTS Status</h3>
+                            <div className="status-info">
+                                <div className={`status-indicator ${isReady ? 'ready' : 'loading'}`}>
+                                    {isReady ? '✅ Ready' : '⏳ Loading...'}
+                                </div>
+                                <div className={`status-indicator ${isEnabled ? 'enabled' : 'disabled'}`}>
+                                    {isEnabled ? '🔊 Enabled' : '🔇 Disabled'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {isReady && (
+                        <>
+                            <div className="setting-item">
+                                <label className="checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        checked={autoPlayVoice}
+                                        onChange={(e) => {
+                                            const newValue = e.target.checked;
+                                            setAutoPlayVoice(newValue);
+                                            settingsService.setAutoPlayVoice(newValue);
+                                        }}
+                                        className="checkbox-input"
+                                    />
+                                    <span className="checkbox-text">
+                                        Auto-play voice for vocabulary words
+                                    </span>
+                                </label>
+                                <p className="setting-description">
+                                    Automatically play Serbian pronunciation when vocabulary words are displayed, without needing to click the play button.
+                                </p>
+                            </div>
+
+                            <div className="setting-item">
+                                <VoiceSelector
+                                    size="medium"
+                                    onVoiceChange={(voice) => {
+                                        setMessage({ type: 'success', text: `Voice changed to ${voice}` });
+                                        setTimeout(() => setMessage({ type: '', text: '' }), 2000);
+                                    }}
+                                />
+                                <p className="setting-description">
+                                    Choose between different Serbian voice options for pronunciation.
+                                </p>
+                            </div>
+
+                            <div className="setting-item">
+                                <h3>Test TTS</h3>
+                                <div className="tts-test-buttons" style={{ marginTop: '10px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            const success = await testTTS();
+                                            setMessage({
+                                                type: success ? 'success' : 'error',
+                                                text: success ? 'TTS test successful!' : 'TTS test failed. Please check your browser settings.'
+                                            });
+                                            setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+                                        }}
+                                        className="btn btn-primary"
+                                        style={{ marginRight: '10px', fontSize: '14px', padding: '8px 16px' }}
+                                        disabled={!isReady}
+                                    >
+                                        🎤 Test Serbian Pronunciation
+                                    </button>
+                                </div>
+                                <p className="setting-description">
+                                    Test the text-to-speech functionality with a sample Serbian phrase.
+                                </p>
+                            </div>
+
+                            <div className="setting-item">
+                                <h3>TTS Information</h3>
+                                <div className="tts-info" style={{
+                                    padding: '12px',
+                                    backgroundColor: '#f8f9fa',
+                                    borderRadius: '6px',
+                                    fontSize: '14px'
+                                }}>
+                                    <p><strong>🗣️ Service:</strong> ResponsiveVoice.js</p>
+                                    <p><strong>🌐 Language:</strong> Serbian (sr)</p>
+                                    <p><strong>📊 Status:</strong> {getTTSStatus().responsiveVoiceAvailable ? 'Available' : 'Not Available'}</p>
+                                    <p><strong>🎯 Usage:</strong> Pronunciation practice for vocabulary words</p>
+                                </div>
+                                <p className="setting-description">
+                                    Text-to-speech is provided by ResponsiveVoice.js with high-quality Serbian voices.
+                                </p>
+                            </div>
+                        </>
+                    )}
+
+                    {!isReady && (
+                        <div className="setting-item">
+                            <div className="tts-loading" style={{
+                                padding: '20px',
+                                textAlign: 'center',
+                                backgroundColor: '#fff3cd',
+                                borderRadius: '6px',
+                                border: '1px solid #ffeaa7'
+                            }}>
+                                <p style={{ margin: '0', color: '#856404' }}>
+                                    ⏳ Loading text-to-speech service... Please wait.
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

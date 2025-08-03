@@ -3,6 +3,7 @@ import apiService from '../services/api';
 import soundService from '../services/soundService';
 import { Link } from 'react-router-dom';
 import CustomModal from '../components/CustomModal';
+import { useAutoPlayVoice } from '../hooks/useAutoPlayVoice';
 import './PracticePage.css';
 
 function PracticePage() {
@@ -38,6 +39,22 @@ function PracticePage() {
     const [letterStates, setLetterStates] = useState([]); // Track correct/incorrect letter positions
     const [mistakeCount, setMistakeCount] = useState(0);
     const [maxMistakes] = useState(3);
+
+    // Auto-play voice hook
+    const { autoPlayWord } = useAutoPlayVoice();
+
+    // Auto-play pronunciation when a new Serbian word is displayed
+    useEffect(() => {
+        if (practiceWords.length > 0 && currentWordIndex < practiceWords.length) {
+            const currentWord = practiceWords[currentWordIndex];
+
+            // Auto-play for Serbian words in translation and letters modes
+            if (currentWord && currentWord.serbian_word &&
+                (currentWord.game_mode === 'translation' || currentWord.game_mode === 'letters')) {
+                autoPlayWord(currentWord.serbian_word);
+            }
+        }
+    }, [practiceWords, currentWordIndex, autoPlayWord]);
 
     // Load user settings
     const loadUserSettings = async () => {
@@ -274,6 +291,14 @@ function PracticePage() {
         // Play sound effect
         if (correct) {
             soundService.playCorrect();
+
+            // Auto-play pronunciation for reverse mode when answer is correct
+            if (currentWord.game_mode === 'reverse' && currentWord.correct_answer) {
+                // Delay the auto-play slightly to let the correct sound finish
+                setTimeout(() => {
+                    autoPlayWord(currentWord.correct_answer);
+                }, 500);
+            }
         } else {
             soundService.playIncorrect();
         }
@@ -289,14 +314,26 @@ function PracticePage() {
                 );
                 // Handle both new format (with english translation) and old format (serbian only)
                 const sentenceData = sentenceResponse.data;
+                let sentence;
                 if (sentenceData.sentence && typeof sentenceData.sentence === 'object') {
                     // New format: {serbian: "...", english: "..."}
-                    setExampleSentence(sentenceData.sentence);
+                    sentence = sentenceData.sentence;
+                    setExampleSentence(sentence);
                 } else if (typeof sentenceData.sentence === 'string') {
                     // Old format: just serbian text
-                    setExampleSentence({ serbian: sentenceData.sentence, english: '' });
+                    sentence = { serbian: sentenceData.sentence, english: '' };
+                    setExampleSentence(sentence);
                 } else {
-                    setExampleSentence({ serbian: '', english: '' });
+                    sentence = { serbian: '', english: '' };
+                    setExampleSentence(sentence);
+                }
+
+                // Auto-play the Serbian example sentence
+                if (sentence && sentence.serbian) {
+                    // Delay the sentence pronunciation to let other audio finish
+                    setTimeout(() => {
+                        autoPlayWord(sentence.serbian, 1000); // 1 second delay for sentence
+                    }, 1500);
                 }
             } catch (err) {
                 console.error('Error fetching example sentence:', err);
@@ -665,6 +702,7 @@ function PracticePage() {
                             }}>
                                 {currentWord.question}
                             </h2>
+
                         </div>
                     </div>
 
