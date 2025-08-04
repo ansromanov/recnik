@@ -41,7 +41,52 @@ function PracticePage() {
     const [maxMistakes] = useState(3);
 
     // Auto-play voice hook
-    const { autoPlayWord } = useAutoPlayVoice();
+    const { autoPlayWord, isAutoPlayEnabled } = useAutoPlayVoice();
+
+    // Debug states for audio
+    const [audioDebugInfo, setAudioDebugInfo] = useState('');
+    const [ttsStatus, setTtsStatus] = useState({});
+
+    // Manual play function with debugging
+    const handleManualPlay = async (word) => {
+        console.log('🔊 Manual play triggered for word:', word);
+        console.log('🔊 Auto-play enabled:', isAutoPlayEnabled());
+        console.log('🔊 Current word data:', currentWord);
+
+        setAudioDebugInfo(`Playing: ${word}`);
+
+        try {
+            // Get the actual word to play based on game mode
+            const wordToPlay = currentWord.game_mode === 'audio'
+                ? (currentWord.serbian_word || currentWord.audio_word || word)
+                : word;
+
+            console.log('🔊 Word to play:', wordToPlay);
+            await autoPlayWord(wordToPlay);
+            setAudioDebugInfo(`Successfully played: ${wordToPlay}`);
+        } catch (error) {
+            console.error('🔊 Manual play error:', error);
+            setAudioDebugInfo(`Error playing: ${word} - ${error.message}`);
+        }
+    };
+
+    // Update TTS status periodically for debugging
+    useEffect(() => {
+        const updateTTSStatus = () => {
+            if (typeof window !== 'undefined' && window.responsiveVoice) {
+                setTtsStatus({
+                    responsiveVoiceLoaded: typeof window.responsiveVoice !== 'undefined',
+                    voiceSupport: window.responsiveVoice.voiceSupport ? window.responsiveVoice.voiceSupport() : false,
+                    isAutoPlayEnabled: isAutoPlayEnabled(),
+                    currentVoice: window.responsiveVoice.getVoices ? window.responsiveVoice.getVoices().length : 0
+                });
+            }
+        };
+
+        updateTTSStatus();
+        const interval = setInterval(updateTTSStatus, 2000);
+        return () => clearInterval(interval);
+    }, [isAutoPlayEnabled]);
 
     // Auto-play pronunciation when a new Serbian word is displayed
     useEffect(() => {
@@ -52,6 +97,21 @@ function PracticePage() {
             if (currentWord && currentWord.serbian_word &&
                 (currentWord.game_mode === 'translation' || currentWord.game_mode === 'letters')) {
                 autoPlayWord(currentWord.serbian_word);
+            }
+
+            // Auto-play for audio mode - play the hidden Serbian word immediately
+            if (currentWord && currentWord.game_mode === 'audio') {
+                // Try different possible field names for the Serbian word
+                const audioWord = currentWord.serbian_word || currentWord.audio_word || currentWord.question;
+                console.log('🔊 Audio mode - word to play:', audioWord, 'from currentWord:', currentWord);
+
+                if (audioWord) {
+                    // Delay slightly to let the interface load, then auto-play the audio
+                    setTimeout(() => {
+                        console.log('🔊 Auto-playing audio word:', audioWord);
+                        autoPlayWord(audioWord);
+                    }, 500);
+                }
             }
         }
     }, [practiceWords, currentWordIndex, autoPlayWord]);
@@ -259,6 +319,8 @@ function PracticePage() {
                 return 'English → Serbian';
             case 'letters':
                 return 'Make Word from Letters';
+            case 'audio':
+                return 'Audio Guessing';
             default:
                 return 'Translation Practice';
         }
@@ -548,6 +610,35 @@ function PracticePage() {
                                     Example: "ćaku" → "kuća" (house)
                                 </p>
                             </div>
+
+                            <div
+                                className="game-mode-card"
+                                onClick={() => handleGameModeSelect('audio')}
+                                style={{
+                                    padding: '25px',
+                                    border: '2px solid #e0e0e0',
+                                    borderRadius: '12px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s ease',
+                                    backgroundColor: '#fff'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.target.style.borderColor = '#dc3545';
+                                    e.target.style.backgroundColor = '#f8f9fa';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.target.style.borderColor = '#e0e0e0';
+                                    e.target.style.backgroundColor = '#fff';
+                                }}
+                            >
+                                <h3 style={{ margin: '0 0 10px 0', color: '#dc3545' }}>🔊 Audio Guessing</h3>
+                                <p style={{ margin: '0', color: '#666' }}>
+                                    Listen to Serbian audio and choose the correct English translation
+                                </p>
+                                <p style={{ margin: '10px 0 0 0', fontSize: '14px', color: '#999' }}>
+                                    Word and picture revealed only after correct answer
+                                </p>
+                            </div>
                         </div>
 
                         <div style={{ marginTop: '40px', textAlign: 'center' }}>
@@ -628,8 +719,8 @@ function PracticePage() {
 
     return (
         <div className="practice-page-container">
-            {/* Background image */}
-            {wordImage && (
+            {/* Background image - hidden in audio mode until correct answer */}
+            {wordImage && (currentWord.game_mode !== 'audio' || showResult && isCorrect) && (
                 <div
                     className={`word-background-image ${imageLoading ? 'loading' : 'loaded'}`}
                     style={{
@@ -638,8 +729,8 @@ function PracticePage() {
                 />
             )}
 
-            {/* Image attribution */}
-            {wordImage && wordImage.photographer && (
+            {/* Image attribution - hidden in audio mode until correct answer */}
+            {wordImage && wordImage.photographer && (currentWord.game_mode !== 'audio' || showResult && isCorrect) && (
                 <div className="image-attribution">
                     Photo by <a href={`https://unsplash.com/@${wordImage.unsplash_id}`} target="_blank" rel="noopener noreferrer">
                         {wordImage.photographer}
@@ -670,41 +761,305 @@ function PracticePage() {
                         Word {currentWordIndex + 1} of {practiceWords.length}
                     </p>
 
-                    <div className="word-with-image" style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '20px',
-                        marginBottom: '20px',
-                        flexWrap: 'wrap',
-                        justifyContent: 'center'
-                    }}>
-                        {wordImage && (
-                            <img
-                                src={`data:image/jpeg;base64,${wordImage.data}`}
-                                alt={currentWord.serbian_word}
-                                style={{
-                                    width: '120px',
-                                    height: '120px',
-                                    objectFit: 'cover',
-                                    borderRadius: '12px',
-                                    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-                                    border: '3px solid #fff'
-                                }}
-                            />
-                        )}
-                        <div style={{ flex: '1', minWidth: '200px' }}>
-                            <h2 style={{
-                                fontSize: currentWord.game_mode === 'letters' ? '24px' : '32px',
-                                letterSpacing: currentWord.game_mode === 'letters' ? '3px' : 'normal',
-                                fontFamily: currentWord.game_mode === 'letters' ? 'monospace' : 'inherit',
-                                margin: '0',
-                                textAlign: wordImage ? 'left' : 'center'
-                            }}>
-                                {currentWord.question}
-                            </h2>
+                    {/* Audio mode special interface */}
+                    {currentWord.game_mode === 'audio' ? (
+                        <div className="audio-game-container" style={{ textAlign: 'center', marginBottom: '30px' }}>
+                            {/* Enhanced Audio play section */}
+                            <div style={{ marginBottom: '30px' }}>
+                                <div style={{
+                                    padding: '40px',
+                                    backgroundColor: showResult && isCorrect ? '#e8f5e9' : '#f8f9fa',
+                                    borderRadius: '20px',
+                                    marginBottom: '20px',
+                                    border: showResult && isCorrect ? '3px solid #4CAF50' : '3px dashed #007bff',
+                                    transition: 'all 0.3s ease'
+                                }}>
+                                    <div style={{
+                                        fontSize: '48px',
+                                        marginBottom: '15px',
+                                        animation: autoPlayWord ? 'pulse 1.5s infinite' : 'none'
+                                    }}>
+                                        {showResult && isCorrect ? '🎉' : '🔊'}
+                                    </div>
 
+                                    {/* Main play button with enhanced states */}
+                                    <button
+                                        className="btn"
+                                        onClick={() => {
+                                            const wordToPlay = showResult && isCorrect
+                                                ? (currentWord.serbian_word || currentWord.hidden_word)
+                                                : (currentWord.serbian_word || currentWord.audio_word || currentWord.question);
+                                            console.log('🔊 Play button clicked, playing:', wordToPlay);
+                                            handleManualPlay(wordToPlay);
+                                        }}
+                                        style={{
+                                            fontSize: '18px',
+                                            padding: '15px 30px',
+                                            backgroundColor: showResult && isCorrect ? '#4CAF50' : '#007bff',
+                                            border: 'none',
+                                            borderRadius: '50px',
+                                            boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                                            transition: 'all 0.3s ease',
+                                            marginBottom: '10px'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.target.style.transform = 'translateY(-2px)';
+                                            e.target.style.boxShadow = '0 6px 12px rgba(0,0,0,0.3)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.target.style.transform = 'translateY(0)';
+                                            e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+                                        }}
+                                    >
+                                        🔄 {showResult && isCorrect ? 'Play Again' : 'Play Audio Again'}
+                                    </button>
+
+                                    {/* Audio visualization bars */}
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        alignItems: 'end',
+                                        gap: '3px',
+                                        height: '30px',
+                                        marginBottom: '15px'
+                                    }}>
+                                        {[...Array(8)].map((_, i) => (
+                                            <div
+                                                key={i}
+                                                style={{
+                                                    width: '4px',
+                                                    height: `${Math.random() * 20 + 10}px`,
+                                                    backgroundColor: showResult && isCorrect ? '#4CAF50' : '#007bff',
+                                                    borderRadius: '2px',
+                                                    animation: 'audioWave 1.2s infinite ease-in-out',
+                                                    animationDelay: `${i * 0.1}s`
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+
+                                    <p style={{
+                                        marginTop: '15px',
+                                        color: showResult && isCorrect ? '#2e7d32' : '#666',
+                                        fontSize: '16px',
+                                        fontWeight: showResult && isCorrect ? 'bold' : 'normal'
+                                    }}>
+                                        {showResult && isCorrect
+                                            ? '🎯 Perfect! You identified the word correctly!'
+                                            : '🎧 Listen carefully and choose the correct English translation'
+                                        }
+                                    </p>
+
+                                    {/* Playback counter */}
+                                    <div style={{
+                                        marginTop: '10px',
+                                        fontSize: '14px',
+                                        color: '#888'
+                                    }}>
+                                        💡 Tip: You can replay the audio as many times as you need
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Enhanced revealed content after correct answer */}
+                            {showResult && isCorrect && (
+                                <div className="revealed-content" style={{
+                                    padding: '25px',
+                                    backgroundColor: '#e8f5e9',
+                                    borderRadius: '15px',
+                                    marginBottom: '20px',
+                                    border: '3px solid #4CAF50',
+                                    boxShadow: '0 8px 16px rgba(76, 175, 80, 0.2)',
+                                    animation: 'slideInUp 0.5s ease-out'
+                                }}>
+                                    <div style={{
+                                        textAlign: 'center',
+                                        marginBottom: '20px'
+                                    }}>
+                                        <h3 style={{
+                                            color: '#2e7d32',
+                                            margin: '0 0 10px 0',
+                                            fontSize: '22px'
+                                        }}>
+                                            🎉 Congratulations! The word was:
+                                        </h3>
+                                    </div>
+
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '25px',
+                                        justifyContent: 'center',
+                                        flexWrap: 'wrap'
+                                    }}>
+                                        {wordImage && (
+                                            <div style={{ textAlign: 'center' }}>
+                                                <img
+                                                    src={`data:image/jpeg;base64,${wordImage.data}`}
+                                                    alt={currentWord.hidden_word}
+                                                    style={{
+                                                        width: '140px',
+                                                        height: '140px',
+                                                        objectFit: 'cover',
+                                                        borderRadius: '15px',
+                                                        boxShadow: '0 6px 12px rgba(0,0,0,0.15)',
+                                                        border: '4px solid #4CAF50'
+                                                    }}
+                                                />
+                                                <p style={{
+                                                    fontSize: '12px',
+                                                    color: '#888',
+                                                    margin: '8px 0 0 0'
+                                                }}>
+                                                    Visual representation
+                                                </p>
+                                            </div>
+                                        )}
+                                        <div style={{ textAlign: 'center' }}>
+                                            <h2 style={{
+                                                fontSize: '32px',
+                                                margin: '0 0 8px 0',
+                                                color: '#2e7d32',
+                                                fontWeight: 'bold'
+                                            }}>
+                                                {currentWord.hidden_word}
+                                            </h2>
+                                            <p style={{
+                                                fontSize: '20px',
+                                                color: '#555',
+                                                margin: '0 0 15px 0',
+                                                fontStyle: 'italic'
+                                            }}>
+                                                "{currentWord.hidden_translation}"
+                                            </p>
+
+                                            {/* Pronunciation button for revealed word */}
+                                            <button
+                                                className="btn btn-sm"
+                                                onClick={() => {
+                                                    const wordToPlay = currentWord.serbian_word || currentWord.hidden_word;
+                                                    console.log('🔊 Pronounce again clicked:', wordToPlay);
+                                                    handleManualPlay(wordToPlay);
+                                                }}
+                                                style={{
+                                                    fontSize: '14px',
+                                                    padding: '8px 16px',
+                                                    backgroundColor: '#4CAF50',
+                                                    border: 'none',
+                                                    borderRadius: '20px',
+                                                    color: 'white'
+                                                }}
+                                            >
+                                                🔊 Pronounce Again
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Wrong answer feedback for audio mode */}
+                            {showResult && !isCorrect && (
+                                <div style={{
+                                    padding: '20px',
+                                    backgroundColor: '#ffebee',
+                                    borderRadius: '12px',
+                                    marginBottom: '20px',
+                                    border: '2px solid #f44336',
+                                    textAlign: 'center'
+                                }}>
+                                    <div style={{ fontSize: '24px', marginBottom: '10px' }}>❌</div>
+                                    <p style={{
+                                        color: '#c62828',
+                                        fontSize: '18px',
+                                        margin: '0 0 15px 0',
+                                        fontWeight: 'bold'
+                                    }}>
+                                        Not quite right! Try listening again.
+                                    </p>
+                                    <button
+                                        className="btn"
+                                        onClick={() => autoPlayWord(currentWord.audio_word)}
+                                        style={{
+                                            fontSize: '16px',
+                                            padding: '10px 20px',
+                                            backgroundColor: '#f44336',
+                                            border: 'none',
+                                            borderRadius: '25px',
+                                            color: 'white'
+                                        }}
+                                    >
+                                        🔊 Listen Again
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Debug information for audio issues */}
+                            {process.env.NODE_ENV === 'development' && (
+                                <div style={{
+                                    marginTop: '20px',
+                                    padding: '15px',
+                                    backgroundColor: '#f8f9fa',
+                                    borderRadius: '8px',
+                                    fontSize: '12px',
+                                    fontFamily: 'monospace',
+                                    border: '1px solid #dee2e6'
+                                }}>
+                                    <h5 style={{ marginBottom: '10px', fontSize: '14px' }}>🔧 Debug Info:</h5>
+                                    <div><strong>Audio Debug:</strong> {audioDebugInfo}</div>
+                                    <div><strong>ResponsiveVoice:</strong> {ttsStatus.responsiveVoiceLoaded ? '✅ Loaded' : '❌ Not loaded'}</div>
+                                    <div><strong>Voice Support:</strong> {ttsStatus.voiceSupport ? '✅ Supported' : '❌ Not supported'}</div>
+                                    <div><strong>Auto-play Enabled:</strong> {ttsStatus.isAutoPlayEnabled ? '✅ Yes' : '❌ No'}</div>
+                                    <div><strong>Available Voices:</strong> {ttsStatus.currentVoice || 0}</div>
+                                    <div><strong>Current Word Data:</strong></div>
+                                    <pre style={{ marginTop: '5px', fontSize: '10px', backgroundColor: '#e9ecef', padding: '8px', borderRadius: '4px' }}>
+                                        {JSON.stringify({
+                                            serbian_word: currentWord?.serbian_word,
+                                            audio_word: currentWord?.audio_word,
+                                            hidden_word: currentWord?.hidden_word,
+                                            question: currentWord?.question,
+                                            game_mode: currentWord?.game_mode
+                                        }, null, 2)}
+                                    </pre>
+                                </div>
+                            )}
                         </div>
-                    </div>
+                    ) : (
+                        /* Regular word display for other modes */
+                        <div className="word-with-image" style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '20px',
+                            marginBottom: '20px',
+                            flexWrap: 'wrap',
+                            justifyContent: 'center'
+                        }}>
+                            {wordImage && (
+                                <img
+                                    src={`data:image/jpeg;base64,${wordImage.data}`}
+                                    alt={currentWord.serbian_word}
+                                    style={{
+                                        width: '120px',
+                                        height: '120px',
+                                        objectFit: 'cover',
+                                        borderRadius: '12px',
+                                        boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                                        border: '3px solid #fff'
+                                    }}
+                                />
+                            )}
+                            <div style={{ flex: '1', minWidth: '200px' }}>
+                                <h2 style={{
+                                    fontSize: currentWord.game_mode === 'letters' ? '24px' : '32px',
+                                    letterSpacing: currentWord.game_mode === 'letters' ? '3px' : 'normal',
+                                    fontFamily: currentWord.game_mode === 'letters' ? 'monospace' : 'inherit',
+                                    margin: '0',
+                                    textAlign: wordImage ? 'left' : 'center'
+                                }}>
+                                    {currentWord.question}
+                                </h2>
+                            </div>
+                        </div>
+                    )}
 
                     {currentWord.category_name && (
                         <span className="category-badge">
@@ -784,18 +1139,22 @@ function PracticePage() {
                             {/* Action buttons */}
                             <div className="letter-game-actions">
                                 <button
-                                    className="btn btn-warning"
-                                    onClick={handleBackspace}
-                                    disabled={showResult || userWord.length === 0}
+                                    className="btn"
+                                    onClick={() => {
+                                        const wordToPlay = currentWord.serbian_word || currentWord.audio_word || currentWord.question;
+                                        console.log('🔊 Listen again clicked:', wordToPlay);
+                                        handleManualPlay(wordToPlay);
+                                    }}
+                                    style={{
+                                        fontSize: '16px',
+                                        padding: '10px 20px',
+                                        backgroundColor: '#f44336',
+                                        border: 'none',
+                                        borderRadius: '25px',
+                                        color: 'white'
+                                    }}
                                 >
-                                    ⌫ Backspace
-                                </button>
-                                <button
-                                    className="btn btn-secondary"
-                                    onClick={handleClearWord}
-                                    disabled={showResult || userWord.length === 0}
-                                >
-                                    🗑️ Clear
+                                    🔊 Listen Again
                                 </button>
                                 {userWord.length === currentWord.correct_answer.length && !showResult && (
                                     <button

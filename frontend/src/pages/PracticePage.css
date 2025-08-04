@@ -504,6 +504,115 @@
     }
 }
 
+/* Audio Game Mode Enhancements */
+
+/* Audio visualization bars animation */
+@keyframes audioWave {
+
+    0%,
+    100% {
+        height: 10px;
+        opacity: 0.3;
+    }
+
+    50% {
+        height: 25px;
+        opacity: 1;
+    }
+}
+
+/* Slide in animation for revealed content */
+@keyframes slideInUp {
+    0% {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Pulse animation for audio icon */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 0.7;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Audio game container styles */
+.audio-game-container {
+    position: relative;
+}
+
+/* Enhanced button hover effects for audio mode */
+.audio-game-container .btn {
+    position: relative;
+    overflow: hidden;
+    transform: translateZ(0);
+}
+
+.audio-game-container .btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.audio-game-container .btn:hover::before {
+    left: 100%;
+}
+
+/* Revealed content animations */
+.revealed-content {
+    animation: slideInUp 0.5s ease-out;
+}
+
+.revealed-content img {
+    transition: all 0.3s ease;
+}
+
+.revealed-content img:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Audio mode specific responsive adjustments */
+@media (max-width: 768px) {
+    .audio-game-container {
+        padding: 0 10px;
+    }
+
+    .revealed-content {
+        padding: 20px 15px !important;
+    }
+
+    .revealed-content img {
+        width: 100px !important;
+        height: 100px !important;
+    }
+
+    .revealed-content h2 {
+        font-size: 24px !important;
+    }
+}
+
 /* Extra small screens */
 @media (max-width: 480px) {
     .letter-slot {
@@ -524,5 +633,25 @@
 
     .word-progress {
         gap: 6px;
+    }
+
+    /* Audio mode mobile adjustments */
+    .audio-game-container .btn {
+        padding: 12px 24px !important;
+        font-size: 16px !important;
+    }
+
+    .revealed-content {
+        padding: 15px 10px !important;
+    }
+
+    .revealed-content>div {
+        flex-direction: column !important;
+        gap: 15px !important;
+    }
+
+    .revealed-content img {
+        width: 80px !important;
+        height: 80px !important;
     }
 }

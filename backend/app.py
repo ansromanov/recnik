@@ -1378,6 +1378,31 @@ def get_practice_words():
                     }
                 )
 
+            elif game_mode == "audio":
+                # Audio guessing → Listen to Serbian word and choose English translation
+                # Similar to translation mode but word/image hidden until correct answer
+                incorrect_words = (
+                    Word.query.filter(Word.id != word.id)
+                    .order_by(func.random())
+                    .limit(3)
+                    .all()
+                )
+                incorrect_options = [w.english_translation for w in incorrect_words]
+                all_options = [word.english_translation] + incorrect_options
+                random.shuffle(all_options)
+
+                word_dict.update(
+                    {
+                        "question": "Listen to the audio and choose the correct English translation",
+                        "question_type": "audio_guess",
+                        "options": all_options,
+                        "correct_answer": word.english_translation,
+                        "audio_word": word.serbian_word,  # Word to be played as audio
+                        "hidden_word": word.serbian_word,  # Hidden until correct
+                        "hidden_translation": word.english_translation,  # For verification
+                    }
+                )
+
             practice_words.append(word_dict)
 
         return jsonify(practice_words)
