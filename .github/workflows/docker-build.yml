@@ -161,166 +161,64 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate deployment manifest
+        id: manifest
         run: |
-          # Determine the tag based on event type
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            TAG="pr-${{ github.event.number }}"
-          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            TAG="main"
-          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
-            TAG="develop"
-          elif [[ "${{ github.ref }}" =~ ^refs/tags/v.* ]]; then
-            TAG="${{ github.ref_name }}"
-          else
-            TAG="${{ github.ref_name }}"
-          fi
+          # Use the dedicated script to generate deployment manifest
+          manifest_file=$(./scripts/generate-deployment-manifest.sh \
+            --event "${{ github.event_name }}" \
+            --ref "${{ github.ref }}" \
+            --ref-name "${{ github.ref_name }}" \
+            --sha "${{ github.sha }}" \
+            --pr-number "${{ github.event.number }}" \
+            --registry "${{ env.REGISTRY }}" \
+            --image-name "${{ env.IMAGE_NAME }}")
 
-          # Create deployment manifest with image references
-          cat > deployment-manifest.yml << EOF
-          # Serbian Vocabulary App - Deployment Manifest
-          # Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          # Commit: ${{ github.sha }}
-          # Branch/Tag: ${{ github.ref_name }}
-          # Tag: ${TAG}
-
-          version: "3.8"
-
-          services:
-            backend:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:${TAG}
-
-            frontend:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:${TAG}
-
-            auth-service:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/auth-service:${TAG}
-
-            vocabulary-service:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/vocabulary-service:${TAG}
-
-            news-service:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/news-service:${TAG}
-
-            image-sync-service:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/image-sync-service:${TAG}
-          EOF
+          echo "manifest-file=${manifest_file}" >> $GITHUB_OUTPUT
 
       - name: Upload deployment manifest
         uses: actions/upload-artifact@v4
         with:
           name: deployment-manifest-${{ github.sha }}
-          path: deployment-manifest.yml
+          path: ${{ steps.manifest.outputs.manifest-file }}
           retention-days: 30
 
-  # Security scanning
-  security-scan:
-    needs: [changes, build-and-push]
-    if: ${{ always() && needs.build-and-push.result == 'success' }}
+  # Get services for cleanup
+  cleanup-matrix:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.set-services.outputs.services }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set services matrix
+        id: set-services
+        run: |
+          # Get all services from the build matrix script
+          services_json=$(./scripts/generate-build-matrix.sh \
+            --event workflow_dispatch)
+
+          echo "Services to clean up: $services_json"
+          echo "services=$services_json" >> $GITHUB_OUTPUT
+
+  # Cleanup old images (only on main branch)
+  cleanup:
+    needs: [build-and-push, cleanup-matrix]
+    if: ${{ always() && github.ref == 'refs/heads/main' && needs.build-and-push.result == 'success' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        service: ${{ fromJson(needs.changes.outputs.matrix) }}
-
-    permissions:
-      contents: read
-      packages: read
-      security-events: write
-
-    steps:
-      - name: Determine image tag
-        id: tag
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "tag=pr-${{ github.event.number }}" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "tag=main" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
-            echo "tag=develop" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" =~ ^refs/tags/v.* ]]; then
-            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:${{ steps.tag.outputs.tag }}
-          format: 'sarif'
-          output: 'trivy-results-${{ matrix.service }}.sarif'
-
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
-        if: always()
-        with:
-          sarif_file: 'trivy-results-${{ matrix.service }}.sarif'
-          category: 'trivy-${{ matrix.service }}'
-
-  # Cleanup old images (only on main branch)
-  cleanup:
-    needs: [build-and-push]
-    if: ${{ always() && github.ref == 'refs/heads/main' && needs.build-and-push.result == 'success' }}
-    runs-on: ubuntu-latest
+        service: ${{ fromJson(needs.cleanup-matrix.outputs.services) }}
     permissions:
       contents: read
       packages: write
 
     steps:
-      - name: Delete old images
+      - name: Clean up old images for ${{ matrix.service }}
         uses: actions/delete-package-versions@v4
         with:
-          package-name: '${{ github.repository }}/backend'
-          package-type: 'container'
-          min-versions-to-keep: 10
-          delete-only-untagged-versions: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Delete old frontend images
-        uses: actions/delete-package-versions@v4
-        with:
-          package-name: '${{ github.repository }}/frontend'
-          package-type: 'container'
-          min-versions-to-keep: 10
-          delete-only-untagged-versions: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Delete old auth-service images
-        uses: actions/delete-package-versions@v4
-        with:
-          package-name: '${{ github.repository }}/auth-service'
-          package-type: 'container'
-          min-versions-to-keep: 10
-          delete-only-untagged-versions: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Delete old vocabulary-service images
-        uses: actions/delete-package-versions@v4
-        with:
-          package-name: '${{ github.repository }}/vocabulary-service'
-          package-type: 'container'
-          min-versions-to-keep: 10
-          delete-only-untagged-versions: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Delete old news-service images
-        uses: actions/delete-package-versions@v4
-        with:
-          package-name: '${{ github.repository }}/news-service'
-          package-type: 'container'
-          min-versions-to-keep: 10
-          delete-only-untagged-versions: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Delete old image-sync-service images
-        uses: actions/delete-package-versions@v4
-        with:
-          package-name: '${{ github.repository }}/image-sync-service'
+          package-name: '${{ github.repository }}/${{ matrix.service }}'
           package-type: 'container'
           min-versions-to-keep: 10
           delete-only-untagged-versions: true

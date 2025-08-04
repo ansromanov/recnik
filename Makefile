@@ -22,6 +22,8 @@ help:
 	@echo "  build-matrix-test - Test build matrix script with various scenarios"
 	@echo "  service-config  - Show service configuration script help"
 	@echo "  service-config-test - Test service configuration script with various formats"
+	@echo "  deployment-manifest - Show deployment manifest script help"
+	@echo "  deployment-manifest-test - Test deployment manifest script with various scenarios"
 
 # Setup development environment
 setup-dev:
@@ -169,3 +171,27 @@ service-config-test:
 	@./scripts/get-service-config.sh --service auth-service --output-format yaml 2>/dev/null
 	@echo ""
 	@echo "✅ Service configuration testing complete!"
+
+# Deployment manifest generation for CI/CD
+deployment-manifest:
+	@echo "📋 Deployment manifest script help:"
+	@./scripts/generate-deployment-manifest.sh --help
+
+deployment-manifest-test:
+	@echo "🧪 Testing deployment manifest script..."
+	@echo "Pull request manifest:"
+	@./scripts/generate-deployment-manifest.sh --event pull_request --pr-number 1 --sha abc123 --output-file test-pr-manifest.yml 2>/dev/null
+	@cat test-pr-manifest.yml
+	@rm -f test-pr-manifest.yml
+	@echo ""
+	@echo "Main branch manifest:"
+	@./scripts/generate-deployment-manifest.sh --event push --ref refs/heads/main --ref-name main --sha def456 --output-file test-main-manifest.yml 2>/dev/null
+	@cat test-main-manifest.yml
+	@rm -f test-main-manifest.yml
+	@echo ""
+	@echo "Specific services only:"
+	@./scripts/generate-deployment-manifest.sh --event push --ref refs/heads/main --ref-name main --sha def456 --services backend,frontend --output-file test-services-manifest.yml 2>/dev/null
+	@cat test-services-manifest.yml
+	@rm -f test-services-manifest.yml
+	@echo ""
+	@echo "✅ Deployment manifest testing complete!"
