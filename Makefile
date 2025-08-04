@@ -5,18 +5,21 @@
 # Default target
 help:
 	@echo "Available commands:"
-	@echo "  setup-dev     - Setup development environment with all tools"
-	@echo "  install       - Install production dependencies"
-	@echo "  install-dev   - Install development dependencies"
-	@echo "  format        - Format code with Black"
-	@echo "  lint          - Lint code with Ruff"
-	@echo "  type-check    - Type check with MyPy"
-	@echo "  security      - Security scan with Bandit"
-	@echo "  test          - Run tests with pytest"
-	@echo "  test-cov      - Run tests with coverage report"
-	@echo "  check-all     - Run all quality checks (format, lint, type-check, security, test)"
-	@echo "  pre-commit    - Install and run pre-commit hooks"
-	@echo "  clean         - Clean cache and temporary files"
+	@echo "  setup-dev       - Setup development environment with all tools"
+	@echo "  install         - Install production dependencies"
+	@echo "  install-dev     - Install development dependencies"
+	@echo "  format          - Format code with Black"
+	@echo "  lint            - Lint code with Ruff"
+	@echo "  type-check      - Type check with MyPy"
+	@echo "  security        - Security scan with Bandit"
+	@echo "  test            - Run tests with pytest"
+	@echo "  test-cov        - Run tests with coverage report"
+	@echo "  check-all       - Run all quality checks (format, lint, type-check, security, test)"
+	@echo "  pre-commit      - Install and run pre-commit hooks"
+	@echo "  clean           - Clean cache and temporary files"
+	@echo "  build-matrix    - Show build matrix script help"
+	@echo "  build-matrix-all - Generate matrix for all services"
+	@echo "  build-matrix-test - Test build matrix script with various scenarios"
 
 # Setup development environment
 setup-dev:
@@ -121,3 +124,27 @@ ci-install:
 
 ci-check: lint type-check security test-cov
 	@echo "🤖 CI checks complete!"
+
+# Build matrix generation for CI/CD
+build-matrix:
+	@echo "🔍 Generating build matrix..."
+	@./scripts/generate-build-matrix.sh --help
+
+build-matrix-all:
+	@echo "🏗️ All services matrix:"
+	@./scripts/generate-build-matrix.sh --event workflow_dispatch
+
+build-matrix-test:
+	@echo "🧪 Testing build matrix script..."
+	@echo "All services (workflow_dispatch):"
+	@./scripts/generate-build-matrix.sh --event workflow_dispatch
+	@echo ""
+	@echo "Backend only (pull_request):"
+	@./scripts/generate-build-matrix.sh --event pull_request --backend true
+	@echo ""
+	@echo "Frontend + Auth service (pull_request):"
+	@./scripts/generate-build-matrix.sh --event pull_request --frontend true --auth-service true
+	@echo ""
+	@echo "No changes (pull_request):"
+	@./scripts/generate-build-matrix.sh --event pull_request
+	@echo "✅ Build matrix testing complete!"

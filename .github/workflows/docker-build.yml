@@ -52,39 +52,18 @@ jobs:
       - name: Set build matrix
         id: set-matrix
         run: |
-          services=()
+          # Use the dedicated script to generate build matrix
+          matrix_json=$(./scripts/generate-build-matrix.sh \
+            --event "${{ github.event_name }}" \
+            --ref "${{ github.ref }}" \
+            --backend "${{ steps.changes.outputs.backend }}" \
+            --frontend "${{ steps.changes.outputs.frontend }}" \
+            --auth-service "${{ steps.changes.outputs.auth-service }}" \
+            --vocab-service "${{ steps.changes.outputs.vocabulary-service }}" \
+            --news-service "${{ steps.changes.outputs.news-service }}" \
+            --image-service "${{ steps.changes.outputs.image-sync-service }}")
 
-          # Always build on tags, main branch, or workflow_dispatch
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || \
-             [[ "${{ github.ref }}" == "refs/heads/main" ]] || \
-             [[ "${{ github.ref }}" =~ ^refs/tags/v.* ]]; then
-            services=("backend" "frontend" "auth-service" "vocabulary-service" "news-service" "image-sync-service")
-          else
-            # Build only changed services for other events
-            if [[ "${{ steps.changes.outputs.backend }}" == "true" ]]; then
-              services+=("backend")
-            fi
-            if [[ "${{ steps.changes.outputs.frontend }}" == "true" ]]; then
-              services+=("frontend")
-            fi
-            if [[ "${{ steps.changes.outputs.auth-service }}" == "true" ]]; then
-              services+=("auth-service")
-            fi
-            if [[ "${{ steps.changes.outputs.vocabulary-service }}" == "true" ]]; then
-              services+=("vocabulary-service")
-            fi
-            if [[ "${{ steps.changes.outputs.news-service }}" == "true" ]]; then
-              services+=("news-service")
-            fi
-            if [[ "${{ steps.changes.outputs.image-sync-service }}" == "true" ]]; then
-              services+=("image-sync-service")
-            fi
-          fi
-
-          # Convert array to JSON
-          matrix_json=$(printf '%s\n' "${services[@]}" | jq -R . | jq -s .)
-          echo "matrix=${matrix_json}" >> $GITHUB_OUTPUT
-          echo "Services to build: ${services[*]}"
+          echo "matrix=$matrix_json" >> $GITHUB_OUTPUT
 
   # Main build job
   build-and-push:
