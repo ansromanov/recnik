@@ -82,9 +82,7 @@ def test_process_text():
 
     # Set up OpenAI API key (you'll need to provide a valid key)
     print("\n⚙️  Setting up OpenAI API key...")
-    settings_data = {
-        "openai_api_key": "your-openai-api-key-here"  # Replace with actual key
-    }
+    settings_data = {"openai_api_key": "your-openai-api-key-here"}  # Replace with actual key
 
     try:
         settings_response = requests.put(
@@ -98,9 +96,7 @@ def test_process_text():
             print("✅ OpenAI API key configured")
         else:
             print(f"⚠️  Could not set API key: {settings_response.text}")
-            print(
-                "📝 Note: You'll need to set a valid OpenAI API key to test the LLM processing"
-            )
+            print("📝 Note: You'll need to set a valid OpenAI API key to test the LLM processing")
 
     except Exception as e:
         print(f"⚠️  Settings error: {e}")
@@ -151,9 +147,7 @@ def test_process_text():
                         for orig, converted in found_conversions.items():
                             expected = expected_conversions.get(orig, "unknown")
                             status = "✅" if converted == expected else "❌"
-                            print(
-                                f"      {status} {orig} → {converted} (expected: {expected})"
-                            )
+                            print(f"      {status} {orig} → {converted} (expected: {expected})")
 
             elif process_response.status_code == 400:
                 error_data = process_response.json()
@@ -162,9 +156,7 @@ def test_process_text():
                 else:
                     print(f"   ❌ Processing failed for {test_name}: {error_data}")
             else:
-                print(
-                    f"   ❌ Processing failed for {test_name}: {process_response.text}"
-                )
+                print(f"   ❌ Processing failed for {test_name}: {process_response.text}")
 
         except Exception as e:
             print(f"   ❌ Processing error for {test_name}: {e}")
@@ -173,9 +165,7 @@ def test_process_text():
     print("\n📝 Summary:")
     print(f"   • Tested {len(test_texts)} different text types")
     print(f"   • Expected infinitive conversions: {len(expected_conversions)}")
-    print(
-        "   • To test with real API key, replace 'your-openai-api-key-here' with actual key"
-    )
+    print("   • To test with real API key, replace 'your-openai-api-key-here' with actual key")
 
 
 if __name__ == "__main__":

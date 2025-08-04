@@ -85,17 +85,13 @@ class RateLimitedImageService:
 
         # Check rate limit before making request
         if not self._can_make_request():
-            print(
-                f"Rate limit reached. Current requests this hour: {self._get_rate_limit_info()}"
-            )
+            print(f"Rate limit reached. Current requests this hour: {self._get_rate_limit_info()}")
             return []
 
         try:
             # Increment rate limit counter
             request_count = self._increment_rate_limit()
-            print(
-                f"Making Unsplash API request #{request_count} this hour for query: {query}"
-            )
+            print(f"Making Unsplash API request #{request_count} this hour for query: {query}")
 
             params = {
                 "query": query,
@@ -121,9 +117,7 @@ class RateLimitedImageService:
             for photo in data.get("results", []):
                 try:
                     urls = photo.get("urls", {})
-                    image_url = (
-                        urls.get("small") or urls.get("regular") or urls.get("thumb")
-                    )
+                    image_url = urls.get("small") or urls.get("regular") or urls.get("thumb")
 
                     if not image_url:
                         continue
@@ -155,9 +149,7 @@ class RateLimitedImageService:
         try:
             image_url = image_info["url"]
 
-            response = requests.get(
-                image_url, headers=self.headers, timeout=15, stream=True
-            )
+            response = requests.get(image_url, headers=self.headers, timeout=15, stream=True)
             response.raise_for_status()
 
             content_type = response.headers.get("content-type", "")
@@ -242,9 +234,7 @@ class RateLimitedImageService:
                 self._add_to_background_queue(serbian_word, english_translation)
                 return
 
-            print(
-                f"Background processing: Searching for {serbian_word} with query: {query}"
-            )
+            print(f"Background processing: Searching for {serbian_word} with query: {query}")
             images = self._search_unsplash_images(query, max_results=2)
 
             if not images:
@@ -277,9 +267,7 @@ class RateLimitedImageService:
 
         try:
             # Cache for 30 days (aggressive caching)
-            self.redis_client.setex(
-                cache_key, 30 * 24 * 60 * 60, json.dumps(cache_data)
-            )
+            self.redis_client.setex(cache_key, 30 * 24 * 60 * 60, json.dumps(cache_data))
             if best_image:
                 print(f"✅ Cached image for {serbian_word}")
             else:
@@ -366,9 +354,7 @@ class RateLimitedImageService:
             return
 
         self.should_stop_background = False
-        self.background_thread = threading.Thread(
-            target=self._background_processor, daemon=True
-        )
+        self.background_thread = threading.Thread(target=self._background_processor, daemon=True)
         self.background_thread.start()
 
     def stop_background_processor(self):
@@ -465,8 +451,7 @@ class RateLimitedImageService:
                 "requests_this_hour": current_requests,
                 "max_requests_per_hour": self.max_requests_per_hour,
                 "is_processing": is_processing,
-                "processor_running": self.background_thread
-                and self.background_thread.is_alive(),
+                "processor_running": self.background_thread and self.background_thread.is_alive(),
             }
         except Exception as e:
             return {"error": str(e)}
@@ -522,17 +507,13 @@ class RateLimitedImageService:
                 if total_sample_size > 0:
                     avg_size = total_sample_size / sample_size
                     estimated_total_size = avg_size * total_keys
-                    cache_info["cache_size_mb"] = round(
-                        estimated_total_size / (1024 * 1024), 2
-                    )
+                    cache_info["cache_size_mb"] = round(estimated_total_size / (1024 * 1024), 2)
 
                 # Extrapolate success/failure rates
                 if sample_size > 0:
                     success_rate = successful_caches / sample_size
                     cache_info["successful_caches"] = int(total_keys * success_rate)
-                    cache_info["failed_caches"] = (
-                        total_keys - cache_info["successful_caches"]
-                    )
+                    cache_info["failed_caches"] = total_keys - cache_info["successful_caches"]
 
             return cache_info
         except Exception as e:

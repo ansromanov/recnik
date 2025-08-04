@@ -63,9 +63,7 @@ class ImageQueuePopulator:
             print(f"Error checking queue for {serbian_word}: {e}")
             return False
 
-    def _add_word_to_queue(
-        self, serbian_word, english_translation, word_type="vocabulary"
-    ):
+    def _add_word_to_queue(self, serbian_word, english_translation, word_type="vocabulary"):
         """Add a word to the image processing queue"""
         # Skip if already cached or in queue
         if self._is_word_already_cached(serbian_word):
@@ -104,9 +102,7 @@ class ImageQueuePopulator:
         with self.app.app_context():
             try:
                 # Get all unique words from user vocabularies
-                user_vocab_words = (
-                    db.session.query(Word).join(UserVocabulary).distinct().all()
-                )
+                user_vocab_words = db.session.query(Word).join(UserVocabulary).distinct().all()
 
                 added_count = 0
                 total_count = len(user_vocab_words)
@@ -119,9 +115,7 @@ class ImageQueuePopulator:
                     ):
                         added_count += 1
 
-                print(
-                    f"✅ Added {added_count}/{total_count} user vocabulary words to queue"
-                )
+                print(f"✅ Added {added_count}/{total_count} user vocabulary words to queue")
                 return added_count
 
             except Exception as e:
@@ -268,9 +262,7 @@ class ImageQueuePopulator:
             try:
                 self.run_population_cycle()
 
-                print(
-                    f"\n⏰ Waiting {interval_minutes} minutes until next population cycle..."
-                )
+                print(f"\n⏰ Waiting {interval_minutes} minutes until next population cycle...")
                 time.sleep(interval_minutes * 60)
 
             except KeyboardInterrupt:
@@ -298,15 +290,11 @@ def main():
         default=60,
         help="Minutes between population cycles (default: 60)",
     )
-    parser.add_argument(
-        "--top100-only", action="store_true", help="Only populate top 100 words"
-    )
+    parser.add_argument("--top100-only", action="store_true", help="Only populate top 100 words")
     parser.add_argument(
         "--vocab-only", action="store_true", help="Only populate user vocabulary words"
     )
-    parser.add_argument(
-        "--recent-only", action="store_true", help="Only populate recent words"
-    )
+    parser.add_argument("--recent-only", action="store_true", help="Only populate recent words")
 
     args = parser.parse_args()
 

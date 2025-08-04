@@ -159,9 +159,7 @@ class TranslationCache:
 
                         # Update the cache with new access time
                         cache_key = word_to_key[word]
-                        self.redis.setex(
-                            cache_key, self.ttl, json.dumps(translation_data)
-                        )
+                        self.redis.setex(cache_key, self.ttl, json.dumps(translation_data))
 
                         results[word] = translation_data
                         self._update_stats(hit=True)
@@ -217,13 +215,9 @@ class TranslationCache:
 
             # Update statistics
             successful_caches = sum(1 for result in results if result)
-            self.redis.hincrby(
-                "translation_cache_stats", "total_translations", successful_caches
-            )
+            self.redis.hincrby("translation_cache_stats", "total_translations", successful_caches)
 
-            logger.info(
-                f"Batch cache set: {successful_caches}/{len(translations)} successful"
-            )
+            logger.info(f"Batch cache set: {successful_caches}/{len(translations)} successful")
             return successful_caches
 
         except Exception as e:
@@ -269,9 +263,7 @@ class TranslationCache:
             sample_size = min(10, len(cache_keys))
             if sample_size > 0:
                 sample_keys = cache_keys[:sample_size]
-                total_sample_memory = sum(
-                    len(self.redis.get(key) or "") for key in sample_keys
-                )
+                total_sample_memory = sum(len(self.redis.get(key) or "") for key in sample_keys)
                 avg_memory_per_key = total_sample_memory / sample_size
                 estimated_total_memory = avg_memory_per_key * cache_size
             else:
@@ -284,11 +276,7 @@ class TranslationCache:
                 "cache_size": cache_size,
                 "estimated_memory_mb": round(estimated_total_memory / (1024 * 1024), 2),
                 "cache_efficiency": (
-                    "Excellent"
-                    if hit_rate > 80
-                    else "Good"
-                    if hit_rate > 60
-                    else "Poor"
+                    "Excellent" if hit_rate > 80 else "Good" if hit_rate > 60 else "Poor"
                 ),
             }
 
@@ -368,9 +356,7 @@ class TranslationCache:
                     cached_data = self.redis.get(key)
                     if cached_data:
                         data = json.loads(cached_data)
-                        last_accessed = data.get(
-                            "last_accessed", data.get("cached_at", 0)
-                        )
+                        last_accessed = data.get("last_accessed", data.get("cached_at", 0))
                         if last_accessed < cutoff_time:
                             old_keys.append(key)
                 except:

@@ -22,9 +22,7 @@ def test_api():
         categories = response.json()
         print(f"Found {len(categories)} categories")
         # Show categories with top_100_count > 0
-        top_100_categories = [
-            cat for cat in categories if cat.get("top_100_count", 0) > 0
-        ]
+        top_100_categories = [cat for cat in categories if cat.get("top_100_count", 0) > 0]
         print(f"Categories with Top 100 words: {len(top_100_categories)}")
         for cat in top_100_categories[:3]:
             print(f"  - {cat['name']}: {cat['top_100_count']} words")
@@ -82,9 +80,7 @@ def test_api():
             response = requests.get(f"{BASE_URL}/api/categories", headers=headers)
             print(f"Status: {response.status_code}")
         else:
-            print(
-                f"Registration failed: {response.json() if response.text else 'No response'}"
-            )
+            print(f"Registration failed: {response.json() if response.text else 'No response'}")
 
 
 if __name__ == "__main__":

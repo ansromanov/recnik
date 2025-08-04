@@ -120,9 +120,7 @@ def login():
 @jwt_required()
 def get_current_user():
     user_id = get_jwt_identity()
-    logger.info(
-        "Get current user", extra={"endpoint": "/api/auth/me", "user_id": user_id}
-    )
+    logger.info("Get current user", extra={"endpoint": "/api/auth/me", "user_id": user_id})
 
     return auth_controller.get_current_user(user_id)
 
@@ -131,9 +129,7 @@ def get_current_user():
 @jwt_required()
 def get_settings():
     user_id = get_jwt_identity()
-    logger.info(
-        "Get user settings", extra={"endpoint": "/api/settings", "user_id": user_id}
-    )
+    logger.info("Get user settings", extra={"endpoint": "/api/settings", "user_id": user_id})
 
     return auth_controller.get_settings(user_id)
 
@@ -157,6 +153,4 @@ if __name__ == "__main__":
         extra={"port": port, "environment": os.getenv("ENVIRONMENT", "development")},
     )
 
-    app.run(
-        host="0.0.0.0", port=port, debug=os.getenv("DEBUG", "false").lower() == "true"
-    )
+    app.run(host="0.0.0.0", port=port, debug=os.getenv("DEBUG", "false").lower() == "true")

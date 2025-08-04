@@ -45,9 +45,7 @@ class ImageServiceClient:
         # Return immediately - image will be available later
         return None
 
-    def _add_to_background_queue(
-        self, serbian_word, english_translation=None, priority=False
-    ):
+    def _add_to_background_queue(self, serbian_word, english_translation=None, priority=False):
         """Add word to background processing queue for the image sync service"""
         try:
             queue_item = {
@@ -65,9 +63,7 @@ class ImageServiceClient:
                 print(f"Queued {serbian_word} for high-priority image processing")
             else:
                 # Regular items go to the regular queue
-                self.redis_client.lpush(
-                    self.background_queue_key, json.dumps(queue_item)
-                )
+                self.redis_client.lpush(self.background_queue_key, json.dumps(queue_item))
                 print(f"Queued {serbian_word} for image processing")
         except Exception as e:
             print(f"Error adding {serbian_word} to queue: {e}")
@@ -94,9 +90,7 @@ class ImageServiceClient:
                 except:
                     pass
 
-                self._add_to_background_queue(
-                    serbian_word, english_translation, priority
-                )
+                self._add_to_background_queue(serbian_word, english_translation, priority)
                 added_count += 1
 
         priority_text = "high-priority " if priority else ""
@@ -182,17 +176,13 @@ class ImageServiceClient:
                 if total_sample_size > 0:
                     avg_size = total_sample_size / sample_size
                     estimated_total_size = avg_size * total_keys
-                    cache_info["cache_size_mb"] = round(
-                        estimated_total_size / (1024 * 1024), 2
-                    )
+                    cache_info["cache_size_mb"] = round(estimated_total_size / (1024 * 1024), 2)
 
                 # Extrapolate success/failure rates
                 if sample_size > 0:
                     success_rate = successful_caches / sample_size
                     cache_info["successful_caches"] = int(total_keys * success_rate)
-                    cache_info["failed_caches"] = (
-                        total_keys - cache_info["successful_caches"]
-                    )
+                    cache_info["failed_caches"] = total_keys - cache_info["successful_caches"]
 
             return cache_info
         except Exception as e:

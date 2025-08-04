@@ -121,9 +121,7 @@ def process_text():
         # Split text into words (basic tokenization for Serbian)
         words = [
             word
-            for word in re.split(
-                r"\s+", re.sub(r'[.,!?;:\'"«»()[\]{}]', " ", text.lower())
-            )
+            for word in re.split(r"\s+", re.sub(r'[.,!?;:\'"«»()[\]{}]', " ", text.lower()))
             if len(word) > 1
         ]
 
@@ -167,11 +165,7 @@ Respond in JSON format: {{"serbian_infinitive": "word in infinitive/base form", 
                 try:
                     parsed = json.loads(response)
                     category = next(
-                        (
-                            c
-                            for c in categories
-                            if c["name"].lower() == parsed["category"].lower()
-                        ),
+                        (c for c in categories if c["name"].lower() == parsed["category"].lower()),
                         None,
                     )
 
@@ -184,9 +178,7 @@ Respond in JSON format: {{"serbian_infinitive": "word in infinitive/base form", 
                                 "serbian_word": serbian_word,
                                 "english_translation": parsed["translation"],
                                 "category_id": category["id"] if category else 1,
-                                "category_name": (
-                                    category["name"] if category else "Common Words"
-                                ),
+                                "category_name": (category["name"] if category else "Common Words"),
                                 "original_form": word,
                             }
                         )
@@ -224,11 +216,7 @@ Respond in JSON format: {{"serbian_infinitive": "word in infinitive/base form", 
         existing_words = set(row["serbian_word"] for row in cur.fetchall())
         cur.close()
 
-        new_words = [
-            word
-            for word in processed_words
-            if word["serbian_word"] not in existing_words
-        ]
+        new_words = [word for word in processed_words if word["serbian_word"] not in existing_words]
 
         return jsonify(
             {
@@ -548,14 +536,10 @@ def get_user_stats():
         cur.execute("SELECT COUNT(*) as count FROM words")
         total_words = cur.fetchone()["count"]
 
-        cur.execute(
-            "SELECT COUNT(*) as count FROM user_vocabulary WHERE times_practiced > 0"
-        )
+        cur.execute("SELECT COUNT(*) as count FROM user_vocabulary WHERE times_practiced > 0")
         learned_words = cur.fetchone()["count"]
 
-        cur.execute(
-            "SELECT COUNT(*) as count FROM user_vocabulary WHERE mastery_level >= 80"
-        )
+        cur.execute("SELECT COUNT(*) as count FROM user_vocabulary WHERE mastery_level >= 80")
         mastered_words = cur.fetchone()["count"]
 
         cur.execute(
@@ -794,9 +778,7 @@ def get_news():
                     feeds_to_use = [{"url": category_url, "name": source_feed["name"]}]
                 else:
                     for key, feed in all_rss_feeds.items():
-                        category_url = feed["categories"].get(
-                            category, feed["categories"]["all"]
-                        )
+                        category_url = feed["categories"].get(category, feed["categories"]["all"])
                         feeds_to_use.append({"url": category_url, "name": feed["name"]})
 
                 articles = []
@@ -824,31 +806,24 @@ def get_news():
                             content = clean_html_content(content)
 
                             article_link = (
-                                item.link
-                                if hasattr(item, "link")
-                                else item.get("guid", "")
+                                item.link if hasattr(item, "link") else item.get("guid", "")
                             )
 
                             articles.append(
                                 {
                                     "title": (
-                                        item.title
-                                        if hasattr(item, "title")
-                                        else "Bez naslova"
+                                        item.title if hasattr(item, "title") else "Bez naslova"
                                     ),
                                     "content": content or "Sadržaj nije dostupan.",
                                     "source": feed_info["name"],
                                     "date": (
-                                        datetime(*item.published_parsed[:6]).strftime(
-                                            "%d.%m.%Y"
-                                        )
+                                        datetime(*item.published_parsed[:6]).strftime("%d.%m.%Y")
                                         if hasattr(item, "published_parsed")
                                         else datetime.now().strftime("%d.%m.%Y")
                                     ),
                                     "category": (
                                         item.categories[0].term
-                                        if hasattr(item, "categories")
-                                        and item.categories
+                                        if hasattr(item, "categories") and item.categories
                                         else "Vesti"
                                     ),
                                     "link": article_link,
@@ -871,9 +846,7 @@ def get_news():
                     for i, article in enumerate(articles):
                         if article["needsFullContent"] and article["link"]:
                             full_content = fetch_full_article(article["link"])
-                            if full_content and len(full_content) > len(
-                                article["content"]
-                            ):
+                            if full_content and len(full_content) > len(article["content"]):
                                 articles[i]["content"] = full_content
                                 articles[i]["fullContentFetched"] = True
                                 articles[i]["needsFullContent"] = False

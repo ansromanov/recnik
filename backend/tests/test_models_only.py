@@ -45,9 +45,7 @@ def test_basic_model_functionality():
         assert user.check_password("testpass")
 
         # Test word creation
-        word = Word(
-            serbian_word="test", english_translation="test", category_id=category.id
-        )
+        word = Word(serbian_word="test", english_translation="test", category_id=category.id)
         db.session.add(word)
         db.session.commit()
 

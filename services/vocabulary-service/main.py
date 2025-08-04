@@ -55,9 +55,7 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 }
 
 # JWT configuration
-app.config["JWT_SECRET_KEY"] = os.getenv(
-    "JWT_SECRET_KEY", "vocabulary-service-secret-key"
-)
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "vocabulary-service-secret-key")
 
 # Initialize database
 db.init_app(app)
@@ -178,6 +176,4 @@ if __name__ == "__main__":
         extra={"port": port, "environment": os.getenv("ENVIRONMENT", "development")},
     )
 
-    app.run(
-        host="0.0.0.0", port=port, debug=os.getenv("DEBUG", "false").lower() == "true"
-    )
+    app.run(host="0.0.0.0", port=port, debug=os.getenv("DEBUG", "false").lower() == "true")

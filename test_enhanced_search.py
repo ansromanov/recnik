@@ -80,9 +80,7 @@ def test_enhanced_search():
             if response.status_code == 200:
                 data = response.json()
                 print("✅ Search successful")
-                print(
-                    f"   - Vocabulary results: {len(data.get('vocabulary_results', []))}"
-                )
+                print(f"   - Vocabulary results: {len(data.get('vocabulary_results', []))}")
                 print(f"   - All results: {len(data.get('all_results', []))}")
                 print(f"   - Has results: {data.get('has_results', False)}")
 
@@ -90,15 +88,9 @@ def test_enhanced_search():
                 suggestion = data.get("suggestion")
                 if suggestion:
                     print("   - Suggestion available: Yes")
-                    print(
-                        f"   - LLM processed: {suggestion.get('llm_processed', False)}"
-                    )
-                    print(
-                        f"   - Suggested Serbian: {suggestion.get('suggested_serbian', 'N/A')}"
-                    )
-                    print(
-                        f"   - Suggested English: {suggestion.get('suggested_english', 'N/A')}"
-                    )
+                    print(f"   - LLM processed: {suggestion.get('llm_processed', False)}")
+                    print(f"   - Suggested Serbian: {suggestion.get('suggested_serbian', 'N/A')}")
+                    print(f"   - Suggested English: {suggestion.get('suggested_english', 'N/A')}")
                     print(f"   - Confidence: {suggestion.get('confidence', 'N/A')}")
                     print(f"   - Word type: {suggestion.get('word_type', 'N/A')}")
                     print(f"   - Message: {suggestion.get('message', 'N/A')}")

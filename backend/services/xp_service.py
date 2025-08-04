@@ -82,9 +82,7 @@ class XPService:
         cumulative_xp = 0
 
         while True:
-            next_level_xp = int(
-                self.BASE_XP * (self.XP_MULTIPLIER ** (current_level - 1))
-            )
+            next_level_xp = int(self.BASE_XP * (self.XP_MULTIPLIER ** (current_level - 1)))
             if cumulative_xp + next_level_xp > total_xp:
                 xp_to_next = (cumulative_xp + next_level_xp) - total_xp
                 return current_level, xp_to_next
@@ -204,8 +202,7 @@ class XPService:
 
             # Get user's already unlocked achievements
             unlocked_achievement_ids = set(
-                ua.achievement_id
-                for ua in UserAchievement.query.filter_by(user_id=user_id).all()
+                ua.achievement_id for ua in UserAchievement.query.filter_by(user_id=user_id).all()
             )
 
             new_achievements = []
@@ -244,9 +241,7 @@ class XPService:
             logger.error(f"Error checking achievements for user {user_id}: {e}")
             return []
 
-    def _check_achievement_criteria(
-        self, user_id: int, achievement: Achievement
-    ) -> bool:
+    def _check_achievement_criteria(self, user_id: int, achievement: Achievement) -> bool:
         """Check if user meets the criteria for a specific achievement"""
         try:
             criteria = achievement.unlock_criteria
@@ -273,8 +268,7 @@ class XPService:
                     and_(
                         PracticeSession.user_id == user_id,
                         PracticeSession.total_questions > 0,
-                        PracticeSession.correct_answers
-                        == PracticeSession.total_questions,
+                        PracticeSession.correct_answers == PracticeSession.total_questions,
                     )
                 ).count()
                 return perfect_sessions > 0
@@ -282,9 +276,7 @@ class XPService:
             elif criteria_type == "streak_days":
                 target = criteria.get("target", 0)
                 daily_streak = UserStreak.query.filter(
-                    and_(
-                        UserStreak.user_id == user_id, UserStreak.streak_type == "daily"
-                    )
+                    and_(UserStreak.user_id == user_id, UserStreak.streak_type == "daily")
                 ).first()
                 current_streak = daily_streak.current_streak if daily_streak else 0
                 return current_streak >= target
@@ -364,9 +356,7 @@ class XPService:
             level_progress_xp = user_xp.total_xp - current_level_xp
             level_total_xp = next_level_xp - current_level_xp
             level_progress_percentage = (
-                int((level_progress_xp / level_total_xp) * 100)
-                if level_total_xp > 0
-                else 0
+                int((level_progress_xp / level_total_xp) * 100) if level_total_xp > 0 else 0
             )
 
             # Get recent XP activities
@@ -407,12 +397,9 @@ class XPService:
                     "level_progress_percentage": level_progress_percentage,
                     "xp_to_next_level": user_xp.xp_to_next_level,
                 },
-                "recent_activities": [
-                    activity.to_dict() for activity in recent_activities
-                ],
+                "recent_activities": [activity.to_dict() for activity in recent_activities],
                 "daily_xp": [
-                    {"date": day.isoformat(), "xp": int(total_xp)}
-                    for day, total_xp in daily_xp
+                    {"date": day.isoformat(), "xp": int(total_xp)} for day, total_xp in daily_xp
                 ],
                 "xp_streak": xp_streak,
                 "today_xp": self._get_today_xp(user_id),
@@ -459,11 +446,7 @@ class XPService:
             today = date.today()
             result = (
                 db.session.query(func.sum(XPActivity.xp_earned))
-                .filter(
-                    and_(
-                        XPActivity.user_id == user_id, XPActivity.activity_date == today
-                    )
-                )
+                .filter(and_(XPActivity.user_id == user_id, XPActivity.activity_date == today))
                 .scalar()
             )
             return int(result) if result else 0
@@ -509,29 +492,21 @@ class XPService:
                 if achievement.id in earned_ids:
                     # Find the user achievement for this one
                     user_achievement = next(
-                        ua
-                        for ua in earned_achievements
-                        if ua.achievement_id == achievement.id
+                        ua for ua in earned_achievements if ua.achievement_id == achievement.id
                     )
-                    achievements_by_category[category]["earned"].append(
-                        user_achievement.to_dict()
-                    )
+                    achievements_by_category[category]["earned"].append(user_achievement.to_dict())
                     achievements_by_category[category]["earned_count"] += 1
                 else:
                     # Check progress towards this achievement
                     progress = self._get_achievement_progress(user_id, achievement)
                     achievement_dict = achievement.to_dict()
                     achievement_dict["progress"] = progress
-                    achievements_by_category[category]["available"].append(
-                        achievement_dict
-                    )
+                    achievements_by_category[category]["available"].append(achievement_dict)
 
             # Calculate total stats
             total_achievements = len(all_achievements)
             total_earned = len(earned_achievements)
-            total_xp_from_achievements = sum(
-                ua.achievement.xp_reward for ua in earned_achievements
-            )
+            total_xp_from_achievements = sum(ua.achievement.xp_reward for ua in earned_achievements)
 
             return {
                 "achievements_by_category": achievements_by_category,
@@ -566,9 +541,7 @@ class XPService:
             }
 
             if criteria_type == "vocabulary_count":
-                progress["current"] = UserVocabulary.query.filter_by(
-                    user_id=user_id
-                ).count()
+                progress["current"] = UserVocabulary.query.filter_by(user_id=user_id).count()
                 progress[
                     "description"
                 ] = f"{progress['current']}/{progress['target']} words in vocabulary"
@@ -586,21 +559,15 @@ class XPService:
 
             elif criteria_type == "streak_days":
                 daily_streak = UserStreak.query.filter(
-                    and_(
-                        UserStreak.user_id == user_id, UserStreak.streak_type == "daily"
-                    )
+                    and_(UserStreak.user_id == user_id, UserStreak.streak_type == "daily")
                 ).first()
                 progress["current"] = daily_streak.current_streak if daily_streak else 0
-                progress[
-                    "description"
-                ] = f"{progress['current']}/{progress['target']} day streak"
+                progress["description"] = f"{progress['current']}/{progress['target']} day streak"
 
             elif criteria_type == "level_reached":
                 user_xp = UserXP.query.filter_by(user_id=user_id).first()
                 progress["current"] = user_xp.current_level if user_xp else 1
-                progress[
-                    "description"
-                ] = f"Level {progress['current']}/{progress['target']}"
+                progress["description"] = f"Level {progress['current']}/{progress['target']}"
 
             # Calculate percentage
             if progress["target"] > 0:
@@ -638,9 +605,7 @@ class XPService:
             )
 
             leaderboard = []
-            for rank, (user_id, total_xp, current_level, username) in enumerate(
-                top_users, 1
-            ):
+            for rank, (user_id, total_xp, current_level, username) in enumerate(top_users, 1):
                 leaderboard.append(
                     {
                         "rank": rank,
@@ -684,9 +649,7 @@ class XPService:
                 "total_questions": total_questions,
                 "correct_answers": correct_answers,
                 "accuracy": (
-                    (correct_answers / total_questions * 100)
-                    if total_questions > 0
-                    else 0
+                    (correct_answers / total_questions * 100) if total_questions > 0 else 0
                 ),
                 "session_duration": session_duration,
                 "perfect_session": perfect_bonus > 0,
@@ -724,15 +687,11 @@ class XPService:
             logger.error(f"Error recording vocabulary XP for user {user_id}: {e}")
             return {"success": False, "error": str(e)}
 
-    def record_streak_xp(
-        self, user_id: int, streak_type: str, streak_days: int
-    ) -> dict:
+    def record_streak_xp(self, user_id: int, streak_type: str, streak_days: int) -> dict:
         """Record XP for maintaining streaks"""
         try:
             if streak_type == "daily":
-                xp_amount = min(
-                    streak_days * self.XP_VALUES["daily_streak"], 200
-                )  # Cap daily XP
+                xp_amount = min(streak_days * self.XP_VALUES["daily_streak"], 200)  # Cap daily XP
             elif streak_type == "weekly":
                 xp_amount = self.XP_VALUES["weekly_streak"]
             elif streak_type == "monthly":

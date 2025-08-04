@@ -75,9 +75,7 @@ def test_image_service():
                 print(f"   - Source: {result.get('source', 'unknown')}")
                 print(f"   - Cached at: {result.get('cached_at', 'unknown')}")
             else:
-                error_msg = (
-                    result.get("error", "Unknown error") if result else "No result"
-                )
+                error_msg = result.get("error", "Unknown error") if result else "No result"
                 print(f"❌ Failed to get image: {error_msg}")
 
         except Exception as e:

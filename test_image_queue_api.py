@@ -61,9 +61,7 @@ def test_image_queue_population():
 def get_queue_status():
     """Get current queue status from Redis"""
     print("\n4. Checking queue status via backend logs...")
-    print(
-        "(Queue status is visible in the queue-populator and image-sync-service logs)"
-    )
+    print("(Queue status is visible in the queue-populator and image-sync-service logs)")
 
     return {
         "message": "Check docker-compose logs queue-populator and image-sync-service for current status"

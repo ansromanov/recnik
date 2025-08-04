@@ -52,9 +52,7 @@ def fix_orphaned_vocabulary(user_id):
                         ),
                         {"user_id": user_id},
                     )
-                    print(
-                        f"Assigned {orphaned_count} vocabulary entries to user {user_id}"
-                    )
+                    print(f"Assigned {orphaned_count} vocabulary entries to user {user_id}")
 
                 # Verify the update
                 result = conn.execute(

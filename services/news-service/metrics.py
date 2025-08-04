@@ -98,9 +98,7 @@ def get_request_metrics(redis_client):
         # These would be tracked by middleware in production
         request_metrics = {
             "news_requests_today": get_daily_count(redis_client, "news_requests"),
-            "content_generation_requests_today": get_daily_count(
-                redis_client, "content_requests"
-            ),
+            "content_generation_requests_today": get_daily_count(redis_client, "content_requests"),
             "error_rate_percent": get_error_rate(redis_client),
             "avg_response_time_ms": get_avg_response_time(redis_client),
         }

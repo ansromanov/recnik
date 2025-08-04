@@ -38,9 +38,7 @@ class AvatarService:
 
         return seed
 
-    def get_avatar_url(
-        self, seed: str, style: Optional[str] = None, size: int = 128
-    ) -> str:
+    def get_avatar_url(self, seed: str, style: Optional[str] = None, size: int = 128) -> str:
         """Generate avatar URL using DiceBear API"""
         if not style or style not in self.avatar_styles:
             style = self.default_style
@@ -86,9 +84,7 @@ class AvatarService:
         """Get a random avatar style"""
         return random.choice(self.avatar_styles)
 
-    def create_user_avatar(
-        self, username: str, style: Optional[str] = None
-    ) -> dict[str, Any]:
+    def create_user_avatar(self, username: str, style: Optional[str] = None) -> dict[str, Any]:
         """Create a new avatar for a user"""
         # Generate unique seed
         seed = self.generate_avatar_seed(username)
@@ -144,9 +140,7 @@ class AvatarService:
         variations = []
 
         # Get variations with different styles
-        styles_to_use = random.sample(
-            self.avatar_styles, min(count, len(self.avatar_styles))
-        )
+        styles_to_use = random.sample(self.avatar_styles, min(count, len(self.avatar_styles)))
 
         for style in styles_to_use:
             avatar_url = self.get_avatar_url(seed, style)
@@ -160,9 +154,7 @@ class AvatarService:
 
         return variations
 
-    def validate_uploaded_avatar(
-        self, file_data: bytes, content_type: str
-    ) -> dict[str, Any]:
+    def validate_uploaded_avatar(self, file_data: bytes, content_type: str) -> dict[str, Any]:
         """Validate uploaded avatar file"""
         # Check file size (max 5MB)
         max_size = 5 * 1024 * 1024  # 5MB
@@ -202,9 +194,7 @@ class AvatarService:
 
         return {"valid": True, "size": len(file_data), "content_type": content_type}
 
-    def get_initials_avatar(
-        self, username: str, background_color: Optional[str] = None
-    ) -> str:
+    def get_initials_avatar(self, username: str, background_color: Optional[str] = None) -> str:
         """Generate simple initials-based avatar as fallback"""
         # Extract initials from username
         initials = username[:2].upper() if len(username) >= 2 else username.upper()

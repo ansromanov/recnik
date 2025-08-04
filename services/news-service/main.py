@@ -125,9 +125,7 @@ def generate_vocabulary_context():
     if not topic:
         return jsonify({"error": "Topic is required"}), 400
 
-    return content_controller.generate_vocabulary_context(
-        topic, target_words, content_type
-    )
+    return content_controller.generate_vocabulary_context(topic, target_words, content_type)
 
 
 @app.route("/api/content/types")
@@ -150,6 +148,4 @@ if __name__ == "__main__":
         db.create_all()
 
     port = int(os.getenv("PORT", 5002))
-    app.run(
-        host="0.0.0.0", port=port, debug=os.getenv("DEBUG", "false").lower() == "true"
-    )
+    app.run(host="0.0.0.0", port=port, debug=os.getenv("DEBUG", "false").lower() == "true")

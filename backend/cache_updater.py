@@ -200,11 +200,7 @@ def fetch_feed_articles(source_key, category, feed_url, max_articles=10):
             # Get content from various possible fields
             content = ""
             if hasattr(item, "content") and item.content:
-                content = (
-                    item.content[0].value
-                    if isinstance(item.content, list)
-                    else item.content
-                )
+                content = item.content[0].value if isinstance(item.content, list) else item.content
             elif hasattr(item, "description"):
                 content = item.description
             elif hasattr(item, "summary"):
@@ -283,9 +279,7 @@ def update_news_cache():
                         json.dumps(existing_articles[:50]),  # Keep top 50
                     )
                 else:
-                    redis_client.setex(
-                        source_cache_key, CACHE_EXPIRY, json.dumps(articles)
-                    )
+                    redis_client.setex(source_cache_key, CACHE_EXPIRY, json.dumps(articles))
 
         # Store all articles combined
         redis_client.setex(
@@ -297,9 +291,7 @@ def update_news_cache():
         # Store last update timestamp
         redis_client.set("news:last_update", datetime.now().isoformat())
 
-        logger.info(
-            f"News cache updated successfully. Total articles: {len(all_articles)}"
-        )
+        logger.info(f"News cache updated successfully. Total articles: {len(all_articles)}")
 
     except Exception as e:
         logger.error(f"Error updating news cache: {e}")

@@ -54,9 +54,7 @@ def run_migration():
                     )
                 except Exception as e:
                     if "already exists" in str(e):
-                        print(
-                            "Foreign key constraint for user_vocabulary already exists"
-                        )
+                        print("Foreign key constraint for user_vocabulary already exists")
                     else:
                         raise
 
@@ -85,9 +83,7 @@ def run_migration():
                     )
                 except Exception as e:
                     if "already exists" in str(e):
-                        print(
-                            "Foreign key constraint for practice_sessions already exists"
-                        )
+                        print("Foreign key constraint for practice_sessions already exists")
                     else:
                         raise
 
@@ -105,9 +101,7 @@ def run_migration():
                     )
                 except Exception as e:
                     if "does not exist" in str(e):
-                        print(
-                            "Unique constraint on word_id doesn't exist, skipping drop"
-                        )
+                        print("Unique constraint on word_id doesn't exist, skipping drop")
                     else:
                         raise
 

@@ -277,9 +277,7 @@ OUTPUT FORMAT (JSON):
 # Routes
 @app.route("/api/health")
 def health_check():
-    return jsonify(
-        {"status": "ok", "message": "Serbian Vocabulary API is running with ORM"}
-    )
+    return jsonify({"status": "ok", "message": "Serbian Vocabulary API is running with ORM"})
 
 
 @app.route("/api/captcha/site-key")
@@ -288,9 +286,7 @@ def get_captcha_site_key():
     return jsonify(
         {
             "site_key": config.RECAPTCHA_SITE_KEY,
-            "captcha_enabled": bool(
-                config.RECAPTCHA_SITE_KEY and config.RECAPTCHA_SECRET_KEY
-            ),
+            "captcha_enabled": bool(config.RECAPTCHA_SITE_KEY and config.RECAPTCHA_SECRET_KEY),
         }
     )
 
@@ -311,9 +307,7 @@ def register():
 
         # Verify CAPTCHA
         if config.RECAPTCHA_SECRET_KEY:  # Only verify if CAPTCHA is configured
-            captcha_result = captcha_service.verify_captcha(
-                captcha_response, request.remote_addr
-            )
+            captcha_result = captcha_service.verify_captcha(captcha_response, request.remote_addr)
             if not captcha_result["success"]:
                 return jsonify({"error": captcha_result["error"]}), 400
 
@@ -368,9 +362,7 @@ def login():
 
         # Verify CAPTCHA
         if config.RECAPTCHA_SECRET_KEY:  # Only verify if CAPTCHA is configured
-            captcha_result = captcha_service.verify_captcha(
-                captcha_response, request.remote_addr
-            )
+            captcha_result = captcha_service.verify_captcha(captcha_response, request.remote_addr)
             if not captcha_result["success"]:
                 return jsonify({"error": captcha_result["error"]}), 400
 
@@ -454,11 +446,7 @@ def update_settings():
                 user.settings.auto_advance_timeout = timeout
             else:
                 return (
-                    jsonify(
-                        {
-                            "error": "Auto-advance timeout must be between 1 and 10 seconds"
-                        }
-                    ),
+                    jsonify({"error": "Auto-advance timeout must be between 1 and 10 seconds"}),
                     400,
                 )
 
@@ -471,9 +459,7 @@ def update_settings():
             else:
                 return (
                     jsonify(
-                        {
-                            "error": "Mastery threshold must be between 3 and 10 correct answers"
-                        }
+                        {"error": "Mastery threshold must be between 3 and 10 correct answers"}
                     ),
                     400,
                 )
@@ -487,9 +473,7 @@ def update_settings():
             else:
                 return (
                     jsonify(
-                        {
-                            "error": "Practice round count must be between 5 and 30 words per session"
-                        }
+                        {"error": "Practice round count must be between 5 and 30 words per session"}
                     ),
                     400,
                 )
@@ -521,9 +505,7 @@ def get_categories():
             cat_dict = cat.to_dict()
 
             # Count top 100 words in this category
-            top_100_count = Word.query.filter_by(
-                category_id=cat.id, is_top_100=True
-            ).count()
+            top_100_count = Word.query.filter_by(category_id=cat.id, is_top_100=True).count()
             cat_dict["top_100_count"] = top_100_count
 
             # If user is logged in, count how many top 100 words they've added
@@ -572,17 +554,13 @@ def get_words():
             word_dict = word.to_dict()
 
             # Get user-specific vocabulary data
-            user_vocab = UserVocabulary.query.filter_by(
-                user_id=user_id, word_id=word.id
-            ).first()
+            user_vocab = UserVocabulary.query.filter_by(user_id=user_id, word_id=word.id).first()
 
             if user_vocab:
                 word_dict["mastery_level"] = user_vocab.mastery_level
                 word_dict["times_practiced"] = user_vocab.times_practiced
                 word_dict["last_practiced"] = (
-                    user_vocab.last_practiced.isoformat()
-                    if user_vocab.last_practiced
-                    else None
+                    user_vocab.last_practiced.isoformat() if user_vocab.last_practiced else None
                 )
                 word_dict["is_in_vocabulary"] = True
             else:
@@ -647,9 +625,7 @@ def search_words():
                     word_dict["mastery_level"] = user_vocab.mastery_level
                     word_dict["times_practiced"] = user_vocab.times_practiced
                     word_dict["last_practiced"] = (
-                        user_vocab.last_practiced.isoformat()
-                        if user_vocab.last_practiced
-                        else None
+                        user_vocab.last_practiced.isoformat() if user_vocab.last_practiced else None
                     )
                     word_dict["is_in_vocabulary"] = True
                     vocabulary_results.append(word_dict)
@@ -680,9 +656,7 @@ def search_words():
                     word_dict["mastery_level"] = user_vocab.mastery_level
                     word_dict["times_practiced"] = user_vocab.times_practiced
                     word_dict["last_practiced"] = (
-                        user_vocab.last_practiced.isoformat()
-                        if user_vocab.last_practiced
-                        else None
+                        user_vocab.last_practiced.isoformat() if user_vocab.last_practiced else None
                     )
             else:
                 word_dict["mastery_level"] = 0
@@ -705,9 +679,7 @@ def search_words():
                 suggestion = generate_word_suggestion(query_term, api_key)
             else:
                 # Fallback to simple heuristics if no API key
-                is_likely_serbian = any(
-                    c in query_term.lower() for c in ["č", "ć", "š", "ž", "đ"]
-                )
+                is_likely_serbian = any(c in query_term.lower() for c in ["č", "ć", "š", "ž", "đ"])
 
                 suggestion = {
                     "search_term": query_term,
@@ -752,9 +724,7 @@ def add_suggested_word():
 
         if not serbian_word or not english_translation:
             return (
-                jsonify(
-                    {"error": "Both Serbian word and English translation are required"}
-                ),
+                jsonify({"error": "Both Serbian word and English translation are required"}),
                 400,
             )
 
@@ -893,12 +863,8 @@ def process_text():
 
         # Get the excluded word strings
         if excluded_word_ids:
-            excluded_words_objs = Word.query.filter(
-                Word.id.in_(excluded_word_ids)
-            ).all()
-            excluded_words = set(
-                word.serbian_word.lower() for word in excluded_words_objs
-            )
+            excluded_words_objs = Word.query.filter(Word.id.in_(excluded_word_ids)).all()
+            excluded_words = set(word.serbian_word.lower() for word in excluded_words_objs)
         else:
             excluded_words = set()
 
@@ -1009,9 +975,7 @@ def add_words():
                         continue
                     else:
                         # Add existing word to user's vocabulary
-                        user_vocab = UserVocabulary(
-                            user_id=user_id, word_id=existing_word.id
-                        )
+                        user_vocab = UserVocabulary(user_id=user_id, word_id=existing_word.id)
                         db.session.add(user_vocab)
                         added_to_vocabulary.append(existing_word.to_dict())
                         continue
@@ -1035,13 +999,9 @@ def add_words():
                 added_to_vocabulary.append(new_word.to_dict())
 
             except Exception as e:
-                print(
-                    f'Error processing word "{word_data.get("serbian_word", "unknown")}": {e}'
-                )
+                print(f'Error processing word "{word_data.get("serbian_word", "unknown")}": {e}')
                 # Continue processing other words instead of failing the entire request
-                skipped_words.append(
-                    {"word": word_data, "reason": f"processing_error: {e!s}"}
-                )
+                skipped_words.append({"word": word_data, "reason": f"processing_error: {e!s}"})
                 continue
 
         # Commit all changes at once
@@ -1082,9 +1042,7 @@ def add_words():
         # Add XP information to response
         if xp_result and xp_result.get("success"):
             response_data["xp_awarded"] = xp_result.get("xp_awarded", 0)
-            response_data["level_up_occurred"] = xp_result.get(
-                "level_up_occurred", False
-            )
+            response_data["level_up_occurred"] = xp_result.get("level_up_occurred", False)
             response_data["new_level"] = xp_result.get("new_level")
             response_data["new_achievements"] = xp_result.get("new_achievements", [])
 
@@ -1102,15 +1060,11 @@ def get_practice_words():
         user_id = int(get_jwt_identity())
         limit = int(request.args.get("limit", 10))
         difficulty = request.args.get("difficulty")
-        game_mode = request.args.get(
-            "mode", "translation"
-        )  # translation, reverse, letters
+        game_mode = request.args.get("mode", "translation")  # translation, reverse, letters
 
         # Get user's mastery threshold setting
         user = User.query.get(user_id)
-        mastery_threshold = (
-            user.settings.mastery_threshold if user and user.settings else 5
-        )
+        mastery_threshold = user.settings.mastery_threshold if user and user.settings else 5
 
         # First, let's check if the user has any vocabulary at all
         user_vocab_count = UserVocabulary.query.filter_by(user_id=user_id).count()
@@ -1192,16 +1146,12 @@ def get_practice_words():
                                 "serbian_word": word.serbian_word,
                                 "english_translation": word.english_translation,
                                 "category_name": (
-                                    word.category.name
-                                    if word.category
-                                    else "Common Words"
+                                    word.category.name if word.category else "Common Words"
                                 ),
                             }
                         )
 
-                print(
-                    f"Sentence cache status: {cache_hit_count}/{len(words)} words already cached"
-                )
+                print(f"Sentence cache status: {cache_hit_count}/{len(words)} words already cached")
 
                 # ENHANCED aggressive caching strategy for maximum performance improvement
                 if words_to_cache:
@@ -1225,10 +1175,8 @@ def get_practice_words():
                         # Phase 2: Background pre-cache extended batch for future sessions
                         if extended_batch:
                             try:
-                                extended_cached = (
-                                    sentence_cache_service.warm_cache_for_words(
-                                        extended_batch, api_key, batch_size=2
-                                    )
+                                extended_cached = sentence_cache_service.warm_cache_for_words(
+                                    extended_batch, api_key, batch_size=2
                                 )
                                 print(
                                     f"Phase 2: Background pre-cached {extended_cached}/{len(extended_batch)} future practice words"
@@ -1240,9 +1188,7 @@ def get_practice_words():
 
                         # Phase 3: Super-aggressive mode - cache words from same categories
                         try:
-                            if (
-                                immediate_cached > 0
-                            ):  # Only if immediate caching succeeded
+                            if immediate_cached > 0:  # Only if immediate caching succeeded
                                 # Get category IDs from successfully cached words
                                 cached_categories = set()
                                 for word in words[:immediate_cached]:
@@ -1261,9 +1207,7 @@ def get_practice_words():
                                                 [w.id for w in words[: limit + 10]]
                                             ),  # Avoid duplicates
                                         )
-                                        .limit(
-                                            5
-                                        )  # Additional 5 words for super coverage
+                                        .limit(5)  # Additional 5 words for super coverage
                                         .all()
                                     )
 
@@ -1287,18 +1231,18 @@ def get_practice_words():
                                                 )
 
                                         if similar_words_data:
-                                            similar_cached = sentence_cache_service.warm_cache_for_words(
-                                                similar_words_data,
-                                                api_key,
-                                                batch_size=1,
+                                            similar_cached = (
+                                                sentence_cache_service.warm_cache_for_words(
+                                                    similar_words_data,
+                                                    api_key,
+                                                    batch_size=1,
+                                                )
                                             )
                                             print(
                                                 f"Phase 3: Super-cached {similar_cached} similar category words for maximum coverage"
                                             )
                         except Exception as super_error:
-                            print(
-                                f"Phase 3 super-caching failed (non-critical): {super_error}"
-                            )
+                            print(f"Phase 3 super-caching failed (non-critical): {super_error}")
 
                     except Exception as cache_error:
                         print(f"Sentence caching failed: {cache_error}")
@@ -1316,9 +1260,7 @@ def get_practice_words():
         practice_words = []
         for word in words:
             # Get user-specific vocabulary data
-            user_vocab = UserVocabulary.query.filter_by(
-                user_id=user_id, word_id=word.id
-            ).first()
+            user_vocab = UserVocabulary.query.filter_by(user_id=user_id, word_id=word.id).first()
 
             word_dict = word.to_dict()
             if user_vocab:
@@ -1337,10 +1279,7 @@ def get_practice_words():
             if game_mode == "translation":
                 # Serbian → English (existing functionality)
                 incorrect_words = (
-                    Word.query.filter(Word.id != word.id)
-                    .order_by(func.random())
-                    .limit(3)
-                    .all()
+                    Word.query.filter(Word.id != word.id).order_by(func.random()).limit(3).all()
                 )
                 incorrect_options = [w.english_translation for w in incorrect_words]
                 all_options = [word.english_translation] + incorrect_options
@@ -1358,10 +1297,7 @@ def get_practice_words():
             elif game_mode == "reverse":
                 # English → Serbian
                 incorrect_words = (
-                    Word.query.filter(Word.id != word.id)
-                    .order_by(func.random())
-                    .limit(3)
-                    .all()
+                    Word.query.filter(Word.id != word.id).order_by(func.random()).limit(3).all()
                 )
                 incorrect_options = [w.serbian_word for w in incorrect_words]
                 all_options = [word.serbian_word] + incorrect_options
@@ -1406,10 +1342,7 @@ def get_practice_words():
                 # Audio guessing → Listen to Serbian word and choose English translation
                 # Similar to translation mode but word/image hidden until correct answer
                 incorrect_words = (
-                    Word.query.filter(Word.id != word.id)
-                    .order_by(func.random())
-                    .limit(3)
-                    .all()
+                    Word.query.filter(Word.id != word.id).order_by(func.random()).limit(3).all()
                 )
                 incorrect_options = [w.english_translation for w in incorrect_words]
                 all_options = [word.english_translation] + incorrect_options
@@ -1539,9 +1472,7 @@ def generate_example_sentence():
                             sentence_cache_service.warm_cache_for_words(
                                 similar_words_data, api_key, batch_size=1
                             )
-                            print(
-                                f"Background pre-cached {len(similar_words_data)} similar words"
-                            )
+                            print(f"Background pre-cached {len(similar_words_data)} similar words")
 
                 except Exception as bg_error:
                     print(f"Background caching failed (non-critical): {bg_error}")
@@ -1561,9 +1492,7 @@ def generate_example_sentence():
                 return jsonify({"error": "Failed to generate sentences"}), 500
 
         except Exception as cache_error:
-            print(
-                f"Error with sentence caching, falling back to direct generation: {cache_error}"
-            )
+            print(f"Error with sentence caching, falling back to direct generation: {cache_error}")
 
             # FALLBACK PATH: Direct generation without caching (least preferred)
             completion = openai.ChatCompletion.create(
@@ -1628,9 +1557,7 @@ def submit_practice_result():
         response_time_seconds = data.get("response_time_seconds")
 
         # Verify session belongs to user
-        session = PracticeSession.query.filter_by(
-            id=session_id, user_id=user_id
-        ).first()
+        session = PracticeSession.query.filter_by(id=session_id, user_id=user_id).first()
 
         if not session:
             return jsonify({"error": "Invalid session"}), 403
@@ -1645,9 +1572,7 @@ def submit_practice_result():
         db.session.add(result)
 
         # Update user vocabulary stats
-        user_vocab = UserVocabulary.query.filter_by(
-            user_id=user_id, word_id=word_id
-        ).first()
+        user_vocab = UserVocabulary.query.filter_by(user_id=user_id, word_id=word_id).first()
 
         if user_vocab:
             user_vocab.times_practiced += 1
@@ -1655,9 +1580,7 @@ def submit_practice_result():
 
             # Get user's mastery threshold setting
             user = User.query.get(user_id)
-            mastery_threshold = (
-                user.settings.mastery_threshold if user and user.settings else 5
-            )
+            mastery_threshold = user.settings.mastery_threshold if user and user.settings else 5
 
         # Calculate mastery level based on correct answers vs threshold
         # Mastery level = (times_correct / mastery_threshold) * 100, capped at 100%
@@ -1666,9 +1589,7 @@ def submit_practice_result():
 
         # Calculate mastery as percentage of correct answers toward threshold
         # This gives a more accurate representation of progress toward mastery
-        user_vocab.mastery_level = min(
-            (user_vocab.times_correct / mastery_threshold) * 100, 100
-        )
+        user_vocab.mastery_level = min((user_vocab.times_correct / mastery_threshold) * 100, 100)
 
         # Optional: Reduce mastery slightly on incorrect answers to encourage consistency
         if not was_correct and user_vocab.mastery_level > 0:
@@ -1693,9 +1614,7 @@ def complete_practice_session():
         duration_seconds = data.get("duration_seconds")
 
         # Get session and verify it belongs to user
-        session = PracticeSession.query.filter_by(
-            id=session_id, user_id=user_id
-        ).first()
+        session = PracticeSession.query.filter_by(id=session_id, user_id=user_id).first()
 
         if not session:
             return jsonify({"error": "Session not found"}), 404
@@ -1729,18 +1648,14 @@ def complete_practice_session():
             "total_questions": total_questions,
             "correct_answers": correct_answers,
             "accuracy": (
-                round((correct_answers / total_questions) * 100)
-                if total_questions > 0
-                else 0
+                round((correct_answers / total_questions) * 100) if total_questions > 0 else 0
             ),
         }
 
         # Add XP information to response
         if xp_result.get("success"):
             response_data["xp_awarded"] = xp_result.get("xp_awarded", 0)
-            response_data["level_up_occurred"] = xp_result.get(
-                "level_up_occurred", False
-            )
+            response_data["level_up_occurred"] = xp_result.get("level_up_occurred", False)
             response_data["new_level"] = xp_result.get("new_level")
             response_data["new_achievements"] = xp_result.get("new_achievements", [])
 
@@ -1776,9 +1691,7 @@ def get_user_stats():
         # User's mastered words (using user's configurable mastery threshold)
         # Get user's mastery threshold setting to calculate mastered words properly
         user = User.query.get(user_id)
-        mastery_threshold = (
-            user.settings.mastery_threshold if user and user.settings else 5
-        )
+        mastery_threshold = user.settings.mastery_threshold if user and user.settings else 5
 
         # Words are considered mastered when they reach 100% mastery level
         # (The practice logic already handles this correctly by awarding 100/threshold points per correct answer)
@@ -2004,9 +1917,7 @@ def get_top_100_words_by_category(category_id):
                     word_dict["mastery_level"] = user_vocab.mastery_level
                     word_dict["times_practiced"] = user_vocab.times_practiced
                     word_dict["last_practiced"] = (
-                        user_vocab.last_practiced.isoformat()
-                        if user_vocab.last_practiced
-                        else None
+                        user_vocab.last_practiced.isoformat() if user_vocab.last_practiced else None
                     )
             else:
                 word_dict["mastery_level"] = 0
@@ -2050,9 +1961,7 @@ def add_top_100_words_to_vocabulary():
                 continue
 
             # Check if already in user's vocabulary
-            existing = UserVocabulary.query.filter_by(
-                user_id=user_id, word_id=word_id
-            ).first()
+            existing = UserVocabulary.query.filter_by(user_id=user_id, word_id=word_id).first()
 
             if existing:
                 already_in_vocabulary.append(word.to_dict())
@@ -2166,9 +2075,7 @@ def get_news():
                     feeds_to_use = [{"url": category_url, "name": source_feed["name"]}]
                 else:
                     for key, feed in all_rss_feeds.items():
-                        category_url = feed["categories"].get(
-                            category, feed["categories"]["all"]
-                        )
+                        category_url = feed["categories"].get(category, feed["categories"]["all"])
                         feeds_to_use.append({"url": category_url, "name": feed["name"]})
 
                 articles = []
@@ -2183,9 +2090,7 @@ def get_news():
                         }
 
                         # Parse the feed with proper encoding handling
-                        feed = feedparser.parse(
-                            feed_info["url"], request_headers=headers
-                        )
+                        feed = feedparser.parse(feed_info["url"], request_headers=headers)
 
                         # Ensure proper encoding
                         if hasattr(feed, "encoding"):
@@ -2222,31 +2127,24 @@ def get_news():
                             content = clean_html_content(content)
 
                             article_link = (
-                                item.link
-                                if hasattr(item, "link")
-                                else item.get("guid", "")
+                                item.link if hasattr(item, "link") else item.get("guid", "")
                             )
 
                             articles.append(
                                 {
                                     "title": (
-                                        item.title
-                                        if hasattr(item, "title")
-                                        else "Bez naslova"
+                                        item.title if hasattr(item, "title") else "Bez naslova"
                                     ),
                                     "content": content or "Sadržaj nije dostupan.",
                                     "source": feed_info["name"],
                                     "date": (
-                                        datetime(*item.published_parsed[:6]).strftime(
-                                            "%d.%m.%Y"
-                                        )
+                                        datetime(*item.published_parsed[:6]).strftime("%d.%m.%Y")
                                         if hasattr(item, "published_parsed")
                                         else datetime.now().strftime("%d.%m.%Y")
                                     ),
                                     "category": (
                                         item.categories[0].term
-                                        if hasattr(item, "categories")
-                                        and item.categories
+                                        if hasattr(item, "categories") and item.categories
                                         else "Vesti"
                                     ),
                                     "link": article_link,
@@ -2269,9 +2167,7 @@ def get_news():
                     for i, article in enumerate(articles):
                         if article["needsFullContent"] and article["link"]:
                             full_content = fetch_full_article(article["link"])
-                            if full_content and len(full_content) > len(
-                                article["content"]
-                            ):
+                            if full_content and len(full_content) > len(article["content"]):
                                 articles[i]["content"] = full_content
                                 articles[i]["fullContentFetched"] = True
                                 articles[i]["needsFullContent"] = False
@@ -2322,9 +2218,7 @@ def get_word_image(word_id):
         user_id = int(get_jwt_identity())
 
         # Verify the word belongs to the user's vocabulary
-        user_vocab = UserVocabulary.query.filter_by(
-            user_id=user_id, word_id=word_id
-        ).first()
+        user_vocab = UserVocabulary.query.filter_by(user_id=user_id, word_id=word_id).first()
 
         if not user_vocab:
             return jsonify({"error": "Word not found in your vocabulary"}), 404
@@ -2335,9 +2229,7 @@ def get_word_image(word_id):
             return jsonify({"error": "Word not found"}), 404
 
         # Get image from service
-        image_data = image_service.get_word_image(
-            word.serbian_word, word.english_translation
-        )
+        image_data = image_service.get_word_image(word.serbian_word, word.english_translation)
 
         if image_data and "error" not in image_data:
             return jsonify({"success": True, "image": image_data})
@@ -2507,9 +2399,7 @@ def get_image_immediate():
             return jsonify({"error": "Serbian word is required"}), 400
 
         # Use immediate processing method
-        image_data = image_service.get_word_image_immediate(
-            serbian_word, english_translation
-        )
+        image_data = image_service.get_word_image_immediate(serbian_word, english_translation)
 
         if image_data and "error" not in image_data:
             return jsonify({"success": True, "image": image_data})
@@ -2616,9 +2506,7 @@ def exclude_word_from_vocabulary(word_id):
         reason = data.get("reason", "manual_removal")
 
         # Check if word exists in user's vocabulary
-        user_vocab = UserVocabulary.query.filter_by(
-            user_id=user_id, word_id=word_id
-        ).first()
+        user_vocab = UserVocabulary.query.filter_by(user_id=user_id, word_id=word_id).first()
 
         if not user_vocab:
             return jsonify({"error": "Word not found in your vocabulary"}), 404
@@ -2629,9 +2517,7 @@ def exclude_word_from_vocabulary(word_id):
             return jsonify({"error": "Word not found"}), 404
 
         # Check if already excluded
-        existing_excluded = ExcludedWord.query.filter_by(
-            user_id=user_id, word_id=word_id
-        ).first()
+        existing_excluded = ExcludedWord.query.filter_by(user_id=user_id, word_id=word_id).first()
 
         if existing_excluded:
             return jsonify({"error": "Word is already excluded"}), 400
@@ -2666,9 +2552,7 @@ def remove_from_excluded_words(excluded_word_id):
     try:
         user_id = int(get_jwt_identity())
 
-        excluded_word = ExcludedWord.query.filter_by(
-            id=excluded_word_id, user_id=user_id
-        ).first()
+        excluded_word = ExcludedWord.query.filter_by(id=excluded_word_id, user_id=user_id).first()
 
         if not excluded_word:
             return jsonify({"error": "Excluded word not found"}), 404
@@ -2738,9 +2622,7 @@ def bulk_exclude_words():
                 continue
 
             # Add to excluded words
-            excluded_word = ExcludedWord(
-                user_id=user_id, word_id=word.id, reason=reason
-            )
+            excluded_word = ExcludedWord(user_id=user_id, word_id=word.id, reason=reason)
             db.session.add(excluded_word)
             excluded_count += 1
 
@@ -2856,9 +2738,7 @@ def warm_text_processing_cache():
                     "serbian_word": word.serbian_word,
                     "english_translation": word.english_translation,
                     "category_id": word.category_id,
-                    "category_name": (
-                        word.category.name if word.category else "Common Words"
-                    ),
+                    "category_name": (word.category.name if word.category else "Common Words"),
                 }
             )
 
@@ -3009,9 +2889,7 @@ def populate_sentence_cache():
                 {
                     "serbian_word": word.serbian_word,
                     "english_translation": word.english_translation,
-                    "category_name": (
-                        word.category.name if word.category else "Common Words"
-                    ),
+                    "category_name": (word.category.name if word.category else "Common Words"),
                 }
             )
 
@@ -3027,9 +2905,7 @@ def populate_sentence_cache():
             )
 
         # Populate cache
-        result = sentence_cache_service.populate_user_vocabulary_cache(
-            words_data, api_key
-        )
+        result = sentence_cache_service.populate_user_vocabulary_cache(words_data, api_key)
 
         return jsonify(
             {
@@ -3121,9 +2997,7 @@ def warm_sentence_cache():
                     {
                         "serbian_word": word.serbian_word,
                         "english_translation": word.english_translation,
-                        "category_name": (
-                            word.category.name if word.category else "Common Words"
-                        ),
+                        "category_name": (word.category.name if word.category else "Common Words"),
                     }
                 )
 
@@ -3168,9 +3042,7 @@ def get_word_cached_sentences(word_id):
         user_id = int(get_jwt_identity())
 
         # Verify the word belongs to the user's vocabulary
-        user_vocab = UserVocabulary.query.filter_by(
-            user_id=user_id, word_id=word_id
-        ).first()
+        user_vocab = UserVocabulary.query.filter_by(user_id=user_id, word_id=word_id).first()
 
         if not user_vocab:
             return jsonify({"error": "Word not found in your vocabulary"}), 404
@@ -3296,9 +3168,7 @@ def bulk_populate_sentence_cache():
                 {
                     "serbian_word": word.serbian_word,
                     "english_translation": word.english_translation,
-                    "category_name": (
-                        word.category.name if word.category else "Common Words"
-                    ),
+                    "category_name": (word.category.name if word.category else "Common Words"),
                 }
             )
 
@@ -3313,9 +3183,7 @@ def bulk_populate_sentence_cache():
                     batch, api_key, batch_size=1
                 )
                 total_processed += batch_processed
-                batch_results.append(
-                    {"batch": i // batch_size + 1, "processed": batch_processed}
-                )
+                batch_results.append({"batch": i // batch_size + 1, "processed": batch_processed})
                 print(
                     f"Bulk cache: Processed batch {i // batch_size + 1}/{(len(words_data) + batch_size - 1) // batch_size}, {batch_processed}/{len(batch)} words"
                 )
@@ -3418,9 +3286,7 @@ def supercharge_sentence_cache():
                     {
                         "serbian_word": word.serbian_word,
                         "english_translation": word.english_translation,
-                        "category_name": (
-                            word.category.name if word.category else "Common Words"
-                        ),
+                        "category_name": (word.category.name if word.category else "Common Words"),
                         "priority_score": (word.user_vocabulary[0].times_practiced * 2)
                         + (
                             100 - word.user_vocabulary[0].mastery_level
@@ -3500,24 +3366,16 @@ def supercharge_sentence_cache():
                 )
 
         processing_end_time = datetime.utcnow()
-        processing_duration = (
-            processing_end_time - processing_start_time
-        ).total_seconds()
+        processing_duration = (processing_end_time - processing_start_time).total_seconds()
 
         # Calculate final statistics
         final_cached_count = already_cached_count + total_processed
         cache_coverage = (final_cached_count / len(all_user_words)) * 100
 
         # Estimate performance improvement
-        estimated_api_savings = (
-            total_processed * 2.5
-        )  # Average sentences per word * future usage
+        estimated_api_savings = total_processed * 2.5  # Average sentences per word * future usage
         performance_rating = (
-            "MAXIMUM"
-            if cache_coverage >= 95
-            else "HIGH"
-            if cache_coverage >= 80
-            else "GOOD"
+            "MAXIMUM" if cache_coverage >= 95 else "HIGH" if cache_coverage >= 80 else "GOOD"
         )
 
         return jsonify(
@@ -3531,9 +3389,7 @@ def supercharge_sentence_cache():
                 "final_cached_count": final_cached_count,
                 "cache_coverage_percent": round(cache_coverage, 1),
                 "processing_time_seconds": round(processing_duration, 1),
-                "batches_processed": len(
-                    [b for b in batch_results if b.get("processed", 0) > 0]
-                ),
+                "batches_processed": len([b for b in batch_results if b.get("processed", 0) > 0]),
                 "total_batches": total_batches,
                 "batch_results": batch_results,
                 "performance_rating": performance_rating,
@@ -3767,11 +3623,7 @@ Write the summary:"""
         reading_time = max(1, round(actual_word_count / 200))
 
         # Extract topic from article (simple heuristic)
-        topic = (
-            article_text.split(".")[0][:100]
-            if "." in article_text
-            else article_text[:100]
-        )
+        topic = article_text.split(".")[0][:100] if "." in article_text else article_text[:100]
 
         return jsonify(
             {
@@ -3817,9 +3669,7 @@ def generate_vocabulary_context():
         if not topic:
             return jsonify({"error": "Topic is required"}), 400
 
-        target_words_str = (
-            ", ".join(target_words) if target_words else "any relevant vocabulary"
-        )
+        target_words_str = ", ".join(target_words) if target_words else "any relevant vocabulary"
 
         # Create prompt
         prompt = f"""Create a {content_type} in Serbian about: {topic}
@@ -4161,9 +4011,7 @@ def get_avatar_variations():
 
         variations = avatar_service.get_avatar_variations(seed, count)
 
-        return jsonify(
-            {"success": True, "variations": variations, "current_seed": seed}
-        )
+        return jsonify({"success": True, "variations": variations, "current_seed": seed})
 
     except Exception as e:
         print(f"Error getting avatar variations: {e}")
@@ -4222,9 +4070,7 @@ def upload_avatar():
         content_type = file.content_type
 
         # Validate uploaded file
-        validation_result = avatar_service.validate_uploaded_avatar(
-            file_data, content_type
-        )
+        validation_result = avatar_service.validate_uploaded_avatar(file_data, content_type)
 
         if not validation_result["valid"]:
             return jsonify({"error": validation_result["error"]}), 400
@@ -4319,9 +4165,7 @@ def select_avatar():
 
         # Use provided seed or current user seed or generate new one
         if not seed:
-            seed = user.avatar_seed or avatar_service.generate_avatar_seed(
-                user.username
-            )
+            seed = user.avatar_seed or avatar_service.generate_avatar_seed(user.username)
 
         # Generate avatar URL with selected style
         avatar_url = avatar_service.get_avatar_url(seed, style)

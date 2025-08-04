@@ -60,9 +60,7 @@ def app():
             for word_data in words:
                 try:
                     serbian_word = word_data.get("serbian_word", "").strip()
-                    english_translation = word_data.get(
-                        "english_translation", ""
-                    ).strip()
+                    english_translation = word_data.get("english_translation", "").strip()
 
                     if not serbian_word or not english_translation:
                         continue
@@ -89,9 +87,7 @@ def app():
                             continue
                         else:
                             # Add existing word to user's vocabulary
-                            user_vocab = UserVocabulary(
-                                user_id=user_id, word_id=existing_word.id
-                            )
+                            user_vocab = UserVocabulary(user_id=user_id, word_id=existing_word.id)
                             db.session.add(user_vocab)
                             added_to_vocabulary.append(existing_word.to_dict())
                             continue
@@ -118,9 +114,7 @@ def app():
                     print(
                         f'Error processing word "{word_data.get("serbian_word", "unknown")}": {e}'
                     )
-                    skipped_words.append(
-                        {"word": word_data, "reason": f"processing_error: {e!s}"}
-                    )
+                    skipped_words.append({"word": word_data, "reason": f"processing_error: {e!s}"})
                     continue
 
             # Commit all changes at once
@@ -179,9 +173,7 @@ def db_session(app_context):
             test_user_id = test_user.id
 
             # Clean up user vocabulary entries for the test user that might have been added during tests
-            db.session.query(UserVocabulary).filter(
-                UserVocabulary.user_id == test_user_id
-            ).delete()
+            db.session.query(UserVocabulary).filter(UserVocabulary.user_id == test_user_id).delete()
 
             # Clean up any additional users created during tests (keep test user)
             db.session.query(User).filter(User.id != test_user_id).delete()
@@ -253,9 +245,7 @@ def _seed_test_data():
         if existing_cat:
             categories.append(existing_cat)
         else:
-            category = Category(
-                name=cat_data["name"], description=cat_data["description"]
-            )
+            category = Category(name=cat_data["name"], description=cat_data["description"])
             db.session.add(category)
             db.session.flush()  # Flush to get the ID
             categories.append(category)

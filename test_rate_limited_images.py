@@ -125,9 +125,7 @@ def test_rate_limited_service():
     if result is None:
         print("✅ Correctly returned None - word queued for background processing")
     else:
-        print(
-            f"✅ Found cached image for 'knjiga': {result.get('search_query', 'unknown query')}"
-        )
+        print(f"✅ Found cached image for 'knjiga': {result.get('search_query', 'unknown query')}")
 
     # Show final status
     print("\n📈 Final Status:")
@@ -157,9 +155,7 @@ def test_rate_limited_service():
 
     if status.get("queue_length", 0) > 0:
         estimated_time = status.get("queue_length", 0) * 2  # 2 minutes per word
-        print(
-            f"\n⏰ Estimated processing time: ~{estimated_time} minutes for current queue"
-        )
+        print(f"\n⏰ Estimated processing time: ~{estimated_time} minutes for current queue")
 
     # Stop background processor for clean shutdown
     print("\n🛑 Stopping background processor...")

@@ -1021,9 +1021,7 @@ def populate_top_100_words():
                         similar = result.fetchone()
 
                         if similar:
-                            print(
-                                f"Similar word exists: {serbian_word} (different translation)"
-                            )
+                            print(f"Similar word exists: {serbian_word} (different translation)")
 
                         # Insert the word
                         conn.execute(
@@ -1068,9 +1066,7 @@ if __name__ == "__main__":
     # First, we need to add the is_top_100 column if it doesn't exist
     with engine.connect() as conn:
         try:
-            conn.execute(
-                text("ALTER TABLE words ADD COLUMN is_top_100 BOOLEAN DEFAULT FALSE")
-            )
+            conn.execute(text("ALTER TABLE words ADD COLUMN is_top_100 BOOLEAN DEFAULT FALSE"))
             conn.commit()
             print("Added is_top_100 column to words table")
         except Exception as e:

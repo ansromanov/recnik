@@ -71,9 +71,7 @@ class TestModels:
         db_session.add(category)
         db_session.flush()
 
-        word = Word(
-            serbian_word="test", english_translation="test", category_id=category.id
-        )
+        word = Word(serbian_word="test", english_translation="test", category_id=category.id)
         db_session.add(word)
         db_session.flush()
 
@@ -165,9 +163,7 @@ class TestAddWords:
         # Test missing authentication
         response = client.post(
             "/api/words",
-            data=json.dumps(
-                {"words": [{"serbian_word": "test", "english_translation": "test"}]}
-            ),
+            data=json.dumps({"words": [{"serbian_word": "test", "english_translation": "test"}]}),
             content_type="application/json",
         )
         assert response.status_code == 401

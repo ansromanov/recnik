@@ -34,9 +34,7 @@ def setup_logger(name, level=None):
     # File handler (if logs directory exists)
     logs_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
     if os.path.exists(logs_dir):
-        log_file = os.path.join(
-            logs_dir, f"news-service-{datetime.now().strftime('%Y%m%d')}.log"
-        )
+        log_file = os.path.join(logs_dir, f"news-service-{datetime.now().strftime('%Y%m%d')}.log")
         file_handler = logging.FileHandler(log_file)
         file_handler.setLevel(level)
         file_handler.setFormatter(formatter)

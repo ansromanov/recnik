@@ -19,9 +19,7 @@ import redis
 from services.translation_cache import TranslationCache
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -65,9 +63,7 @@ def apply_database_indexes():
                         conn.execute(text(sql_command))
 
                 trans.commit()
-                logger.info(
-                    f"Successfully applied {len(sql_commands)} database indexes"
-                )
+                logger.info(f"Successfully applied {len(sql_commands)} database indexes")
                 return True
 
             except Exception as e:
@@ -263,13 +259,10 @@ def run_performance_benchmarks():
             end_time = datetime.now()
             cache_time = (end_time - start_time).total_seconds()
 
-            cache_hits = sum(
-                1 for result in cached_results.values() if result is not None
-            )
+            cache_hits = sum(1 for result in cached_results.values() if result is not None)
 
             logger.info(
-                f"Cache benchmark: {cache_hits}/{len(test_words)} hits "
-                f"in {cache_time:.3f}s"
+                f"Cache benchmark: {cache_hits}/{len(test_words)} hits " f"in {cache_time:.3f}s"
             )
 
         logger.info("Performance benchmarks completed")
@@ -339,9 +332,7 @@ def main():
         logger.info("- API response times: 80% faster")
         return True
     else:
-        logger.warning(
-            f"⚠️  Only {success_steps}/{total_steps} optimizations successful"
-        )
+        logger.warning(f"⚠️  Only {success_steps}/{total_steps} optimizations successful")
         logger.info("Some performance improvements may not be available.")
         return False
 

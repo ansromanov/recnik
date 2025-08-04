@@ -125,7 +125,9 @@ OUTPUT FORMAT (JSON):
 
 IMPORTANT: Always convert to proper base forms. This is critical for vocabulary learning!"""
 
-        user_prompt = f"Extract and convert to infinitive/base forms from this Serbian text:\n\n{text[:2500]}"
+        user_prompt = (
+            f"Extract and convert to infinitive/base forms from this Serbian text:\n\n{text[:2500]}"
+        )
 
         try:
             completion = openai.ChatCompletion.create(
@@ -199,18 +201,14 @@ IMPORTANT: Always convert to proper base forms. This is critical for vocabulary 
                     ).strip(),
                     "category_id": category.get("id", 1) if category else 1,
                     "category_name": (
-                        category.get("name", "Common Words")
-                        if category
-                        else "Common Words"
+                        category.get("name", "Common Words") if category else "Common Words"
                     ),
                     "original_form": word_data.get("original_form", "").strip(),
                 }
             )
 
         return {
-            "total_words": filtering_summary.get(
-                "total_raw_words", len(processed_words)
-            ),
+            "total_words": filtering_summary.get("total_raw_words", len(processed_words)),
             "existing_words": 0,  # Always 0 since we're not checking for existing words
             "new_words": len(processed_words),
             "translations": processed_words,
@@ -325,9 +323,7 @@ def test_text_processor():
             category = word["category_name"]
 
             if original and original != base_form:
-                print(
-                    f"   {i + 1}. {original} → {base_form} ({translation}) [{category}]"
-                )
+                print(f"   {i + 1}. {original} → {base_form} ({translation}) [{category}]")
             else:
                 print(f"   {i + 1}. {base_form} ({translation}) [{category}]")
 

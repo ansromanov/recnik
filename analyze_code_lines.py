@@ -88,17 +88,13 @@ class CodeAnalyzer:
 
         return cmd
 
-    def count_lines_for_type(
-        self, technology: str, patterns: list[str]
-    ) -> tuple[int, int]:
+    def count_lines_for_type(self, technology: str, patterns: list[str]) -> tuple[int, int]:
         """Count lines for a specific file type, returning (production_lines, test_lines)"""
         try:
             find_cmd = self._build_find_command(patterns)
 
             # Execute find command
-            find_result = subprocess.run(
-                find_cmd, capture_output=True, text=True, check=True
-            )
+            find_result = subprocess.run(find_cmd, capture_output=True, text=True, check=True)
 
             if not find_result.stdout.strip():
                 return (0, 0)
@@ -153,9 +149,7 @@ class CodeAnalyzer:
                     if "total" in total_line:
                         return int(total_line.split()[0])
                     else:
-                        return sum(
-                            int(line.split()[0]) for line in lines if line.strip()
-                        )
+                        return sum(int(line.split()[0]) for line in lines if line.strip())
 
             prod_lines = count_files(prod_files)
             test_lines = count_files(test_files)
@@ -210,9 +204,7 @@ class CodeAnalyzer:
         print("=" * 65)
         print(f"📍 Repository: {self.root_path.absolute()}")
         print(f"📝 Total Lines of Code: {total:,}")
-        print(
-            f"💻 Production Code: {total_prod:,} lines ({(total_prod / total) * 100:.1f}%)"
-        )
+        print(f"💻 Production Code: {total_prod:,} lines ({(total_prod / total) * 100:.1f}%)")
         print(f"🧪 Test Code: {total_test:,} lines ({(total_test / total) * 100:.1f}%)")
 
         # Test coverage ratio insight
@@ -232,17 +224,13 @@ class CodeAnalyzer:
 
         print()
         print("📈 Key Insights:")
-        self._generate_insights(
-            sorted_data, total, total_results, prod_results, test_results
-        )
+        self._generate_insights(sorted_data, total, total_results, prod_results, test_results)
 
         print()
         print("🏗️  Architecture Breakdown:")
         self._generate_architecture_breakdown(total_results, total)
 
-    def _generate_architecture_breakdown(
-        self, results: dict[str, int], total: int
-    ) -> None:
+    def _generate_architecture_breakdown(self, results: dict[str, int], total: int) -> None:
         """Generate architecture-specific breakdown"""
         # Define architecture categories
         backend_techs = [
@@ -295,9 +283,7 @@ class CodeAnalyzer:
         tech_dict = dict(sorted_results)
 
         # Dominant technology insight
-        print(
-            f"• {dominant_tech} dominates with {dominant_percentage:.1f}% of the codebase"
-        )
+        print(f"• {dominant_tech} dominates with {dominant_percentage:.1f}% of the codebase")
 
         # Test coverage analysis
         total_prod = sum(prod_results.values())
@@ -305,21 +291,13 @@ class CodeAnalyzer:
         if total_prod > 0:
             test_ratio = total_test / total_prod
             if test_ratio >= 0.5:
-                print(
-                    f"• Excellent test coverage with {test_ratio:.2f}:1 test-to-code ratio"
-                )
+                print(f"• Excellent test coverage with {test_ratio:.2f}:1 test-to-code ratio")
             elif test_ratio >= 0.3:
-                print(
-                    f"• Good test coverage with {test_ratio:.2f}:1 test-to-code ratio"
-                )
+                print(f"• Good test coverage with {test_ratio:.2f}:1 test-to-code ratio")
             elif test_ratio >= 0.1:
-                print(
-                    f"• Moderate test coverage with {test_ratio:.2f}:1 test-to-code ratio"
-                )
+                print(f"• Moderate test coverage with {test_ratio:.2f}:1 test-to-code ratio")
             elif test_ratio > 0:
-                print(
-                    f"• Limited test coverage with {test_ratio:.2f}:1 test-to-code ratio"
-                )
+                print(f"• Limited test coverage with {test_ratio:.2f}:1 test-to-code ratio")
             else:
                 print("• No test files detected")
 
@@ -328,9 +306,7 @@ class CodeAnalyzer:
             tech for tech, count in sorted_results if count > total * 0.1
         ]  # >10% of total
         if len(significant_techs) > 1:
-            print(
-                f"• Multi-technology stack with {len(significant_techs)} major components"
-            )
+            print(f"• Multi-technology stack with {len(significant_techs)} major components")
 
         # Documentation presence
         docs_techs = ["Markdown", "JSON"]
@@ -344,9 +320,7 @@ class CodeAnalyzer:
         infra_total = sum(tech_dict.get(tech, 0) for tech in infra_techs)
         if infra_total > total * 0.05:  # >5% of total
             infra_pct = (infra_total / total) * 100
-            print(
-                f"• Comprehensive DevOps setup ({infra_pct:.1f}% infrastructure code)"
-            )
+            print(f"• Comprehensive DevOps setup ({infra_pct:.1f}% infrastructure code)")
 
         # Frontend presence
         frontend_techs = ["JavaScript", "TypeScript", "CSS", "HTML"]
@@ -419,9 +393,7 @@ def show_diff(current_results, previous_results):
 
     # Overall changes
     total_diff = current_summary["total_lines"] - previous_summary["total_lines"]
-    prod_diff = (
-        current_summary["production_lines"] - previous_summary["production_lines"]
-    )
+    prod_diff = current_summary["production_lines"] - previous_summary["production_lines"]
     test_diff = current_summary["test_lines"] - previous_summary["test_lines"]
 
     print("📈 Overall Changes:")
@@ -450,9 +422,7 @@ def show_diff(current_results, previous_results):
 
     if changes:
         print("🔍 Technology Changes:")
-        changes.sort(
-            key=lambda x: abs(x[3]), reverse=True
-        )  # Sort by absolute difference
+        changes.sort(key=lambda x: abs(x[3]), reverse=True)  # Sort by absolute difference
 
         for tech, prev_count, curr_count, diff in changes:
             if prev_count == 0:
@@ -483,12 +453,8 @@ def main():
     )
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
     parser.add_argument("--csv", action="store_true", help="Output results as CSV")
-    parser.add_argument(
-        "--write", action="store_true", help="Save results to JSON file"
-    )
-    parser.add_argument(
-        "--diff", action="store_true", help="Show diff with previous results"
-    )
+    parser.add_argument("--write", action="store_true", help="Save results to JSON file")
+    parser.add_argument("--diff", action="store_true", help="Show diff with previous results")
     parser.add_argument(
         "--output",
         default="code_analysis_results.json",
@@ -537,9 +503,7 @@ def main():
     elif args.csv:
         print("Technology,Total Lines,Production Lines,Test Lines,Percentage")
         total = sum(total_results.values())
-        for tech, lines in sorted(
-            total_results.items(), key=lambda x: x[1], reverse=True
-        ):
+        for tech, lines in sorted(total_results.items(), key=lambda x: x[1], reverse=True):
             percentage = (lines / total) * 100
             prod_lines = prod_results.get(tech, 0)
             test_lines = test_results.get(tech, 0)

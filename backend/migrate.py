@@ -47,9 +47,7 @@ def seed_categories():
     with app.app_context():
         existing_categories = Category.query.count()
         if existing_categories > 0:
-            print(
-                f"Categories already exist ({existing_categories} found). Skipping seed."
-            )
+            print(f"Categories already exist ({existing_categories} found). Skipping seed.")
             return
 
         default_categories = [

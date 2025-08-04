@@ -52,9 +52,7 @@ class StreakService:
                 activity_date = date.today()
 
             # Check if this activity qualifies for streak
-            streak_qualifying = self._is_qualifying_activity(
-                activity_type, activity_count
-            )
+            streak_qualifying = self._is_qualifying_activity(activity_type, activity_count)
 
             # Get or create today's activity record
             existing_activity = StreakActivity.query.filter_by(
@@ -71,9 +69,7 @@ class StreakService:
                     existing_activity.activity_type += f",{activity_type}"
 
                 # Re-check if it now qualifies for streak using the primary activity type
-                primary_activity_type = existing_types[
-                    0
-                ]  # Use first (primary) activity type
+                primary_activity_type = existing_types[0]  # Use first (primary) activity type
                 existing_activity.streak_qualifying = self._is_qualifying_activity(
                     primary_activity_type, existing_activity.activity_count
                 )
@@ -113,15 +109,9 @@ class StreakService:
 
     def _is_qualifying_activity(self, activity_type: str, activity_count: int) -> bool:
         """Check if an activity qualifies for streak maintenance"""
-        if (
-            "practice_session" in activity_type
-            and activity_count >= self.MIN_PRACTICE_QUESTIONS
-        ):
+        if "practice_session" in activity_type and activity_count >= self.MIN_PRACTICE_QUESTIONS:
             return True
-        if (
-            "vocabulary_added" in activity_type
-            and activity_count >= self.MIN_VOCABULARY_WORDS
-        ):
+        if "vocabulary_added" in activity_type and activity_count >= self.MIN_VOCABULARY_WORDS:
             return True
         return False
 
@@ -136,15 +126,11 @@ class StreakService:
 
         return updates
 
-    def _update_streak(
-        self, user_id: int, streak_type: str, activity_date: date
-    ) -> Optional[dict]:
+    def _update_streak(self, user_id: int, streak_type: str, activity_date: date) -> Optional[dict]:
         """Update a specific streak type for a user"""
         try:
             # Get or create streak record
-            streak = UserStreak.query.filter_by(
-                user_id=user_id, streak_type=streak_type
-            ).first()
+            streak = UserStreak.query.filter_by(user_id=user_id, streak_type=streak_type).first()
 
             if not streak:
                 streak = UserStreak(
@@ -156,9 +142,7 @@ class StreakService:
                 db.session.add(streak)
 
             # Calculate expected previous activity date
-            expected_prev_date = self._get_previous_period_date(
-                streak_type, activity_date
-            )
+            expected_prev_date = self._get_previous_period_date(streak_type, activity_date)
 
             # Check if streak should continue or reset
             if streak.last_activity_date is None:
@@ -245,9 +229,7 @@ class StreakService:
                 is_active, days_until_break = self._check_streak_status(streak, today)
 
                 # Calculate progress percentage (towards next milestone)
-                progress_percentage = self._calculate_progress_percentage(
-                    streak.current_streak
-                )
+                progress_percentage = self._calculate_progress_percentage(streak.current_streak)
 
                 streak_data[streak_type] = {
                     **streak_info,
@@ -270,9 +252,7 @@ class StreakService:
             logger.error(f"Error getting streaks for user {user_id}: {e}")
             return {"error": str(e)}
 
-    def _check_streak_status(
-        self, streak: UserStreak, current_date: date
-    ) -> tuple[bool, int]:
+    def _check_streak_status(self, streak: UserStreak, current_date: date) -> tuple[bool, int]:
         """Check if a streak is still active and days until it breaks"""
         if not streak.last_activity_date:
             return False, 0
@@ -346,15 +326,11 @@ class StreakService:
     def _get_today_activity_count(self, user_id: int) -> int:
         """Get total activity count for today"""
         today = date.today()
-        activity = StreakActivity.query.filter_by(
-            user_id=user_id, activity_date=today
-        ).first()
+        activity = StreakActivity.query.filter_by(user_id=user_id, activity_date=today).first()
 
         return activity.activity_count if activity else 0
 
-    def get_streak_leaderboard(
-        self, streak_type: str = "daily", limit: int = 10
-    ) -> list[dict]:
+    def get_streak_leaderboard(self, streak_type: str = "daily", limit: int = 10) -> list[dict]:
         """Get leaderboard for a specific streak type"""
         try:
             top_streaks = (
@@ -424,9 +400,7 @@ class StreakService:
             reset_count = 0
 
             # Get all active streaks
-            active_streaks = UserStreak.query.filter(
-                UserStreak.current_streak > 0
-            ).all()
+            active_streaks = UserStreak.query.filter(UserStreak.current_streak > 0).all()
 
             for streak in active_streaks:
                 is_active, _ = self._check_streak_status(streak, today)
