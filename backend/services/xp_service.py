@@ -3,25 +3,24 @@ XP Service for handling experience points, levels, and achievement system.
 Provides functionality for XP calculation, level progression, and achievement unlocking.
 """
 
-from datetime import datetime, date, timedelta
-from typing import Dict, List, Optional, Tuple
-from sqlalchemy import and_, func
-from sqlalchemy.orm import sessionmaker
-from models import (
-    db,
-    UserXP,
-    XPActivity,
-    Achievement,
-    UserAchievement,
-    User,
-    UserVocabulary,
-    PracticeSession,
-    UserStreak,
-    Word,
-)
+from datetime import date, datetime, timedelta
 import logging
-import json
-import math
+from typing import Optional
+
+from sqlalchemy import and_, func
+
+from models import (
+    Achievement,
+    PracticeSession,
+    User,
+    UserAchievement,
+    UserStreak,
+    UserVocabulary,
+    UserXP,
+    Word,
+    XPActivity,
+    db,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +73,7 @@ class XPService:
 
         return total_xp
 
-    def calculate_level_from_xp(self, total_xp: int) -> Tuple[int, int]:
+    def calculate_level_from_xp(self, total_xp: int) -> tuple[int, int]:
         """Calculate current level and XP to next level from total XP"""
         if total_xp < self.BASE_XP:
             return 1, self.BASE_XP - total_xp
@@ -83,9 +82,7 @@ class XPService:
         cumulative_xp = 0
 
         while True:
-            next_level_xp = int(
-                self.BASE_XP * (self.XP_MULTIPLIER ** (current_level - 1))
-            )
+            next_level_xp = int(self.BASE_XP * (self.XP_MULTIPLIER ** (current_level - 1)))
             if cumulative_xp + next_level_xp > total_xp:
                 xp_to_next = (cumulative_xp + next_level_xp) - total_xp
                 return current_level, xp_to_next
@@ -102,9 +99,9 @@ class XPService:
         user_id: int,
         activity_type: str,
         xp_amount: int = None,
-        activity_details: Dict = None,
+        activity_details: dict = None,
         activity_date: Optional[date] = None,
-    ) -> Dict:
+    ) -> dict:
         """
         Award XP to a user for an activity
 
@@ -197,7 +194,7 @@ class XPService:
             logger.error(f"Error awarding XP to user {user_id}: {e}")
             return {"success": False, "error": str(e)}
 
-    def check_and_unlock_achievements(self, user_id: int) -> List[Dict]:
+    def check_and_unlock_achievements(self, user_id: int) -> list[dict]:
         """Check and unlock any achievements the user has earned"""
         try:
             # Get all active achievements
@@ -205,8 +202,7 @@ class XPService:
 
             # Get user's already unlocked achievements
             unlocked_achievement_ids = set(
-                ua.achievement_id
-                for ua in UserAchievement.query.filter_by(user_id=user_id).all()
+                ua.achievement_id for ua in UserAchievement.query.filter_by(user_id=user_id).all()
             )
 
             new_achievements = []
@@ -245,9 +241,7 @@ class XPService:
             logger.error(f"Error checking achievements for user {user_id}: {e}")
             return []
 
-    def _check_achievement_criteria(
-        self, user_id: int, achievement: Achievement
-    ) -> bool:
+    def _check_achievement_criteria(self, user_id: int, achievement: Achievement) -> bool:
         """Check if user meets the criteria for a specific achievement"""
         try:
             criteria = achievement.unlock_criteria
@@ -274,8 +268,7 @@ class XPService:
                     and_(
                         PracticeSession.user_id == user_id,
                         PracticeSession.total_questions > 0,
-                        PracticeSession.correct_answers
-                        == PracticeSession.total_questions,
+                        PracticeSession.correct_answers == PracticeSession.total_questions,
                     )
                 ).count()
                 return perfect_sessions > 0
@@ -283,9 +276,7 @@ class XPService:
             elif criteria_type == "streak_days":
                 target = criteria.get("target", 0)
                 daily_streak = UserStreak.query.filter(
-                    and_(
-                        UserStreak.user_id == user_id, UserStreak.streak_type == "daily"
-                    )
+                    and_(UserStreak.user_id == user_id, UserStreak.streak_type == "daily")
                 ).first()
                 current_streak = daily_streak.current_streak if daily_streak else 0
                 return current_streak >= target
@@ -354,7 +345,7 @@ class XPService:
             )
             return False
 
-    def get_user_xp_info(self, user_id: int) -> Dict:
+    def get_user_xp_info(self, user_id: int) -> dict:
         """Get comprehensive XP information for a user"""
         try:
             user_xp = self.get_or_create_user_xp(user_id)
@@ -365,9 +356,7 @@ class XPService:
             level_progress_xp = user_xp.total_xp - current_level_xp
             level_total_xp = next_level_xp - current_level_xp
             level_progress_percentage = (
-                int((level_progress_xp / level_total_xp) * 100)
-                if level_total_xp > 0
-                else 0
+                int((level_progress_xp / level_total_xp) * 100) if level_total_xp > 0 else 0
             )
 
             # Get recent XP activities
@@ -408,12 +397,9 @@ class XPService:
                     "level_progress_percentage": level_progress_percentage,
                     "xp_to_next_level": user_xp.xp_to_next_level,
                 },
-                "recent_activities": [
-                    activity.to_dict() for activity in recent_activities
-                ],
+                "recent_activities": [activity.to_dict() for activity in recent_activities],
                 "daily_xp": [
-                    {"date": day.isoformat(), "xp": int(total_xp)}
-                    for day, total_xp in daily_xp
+                    {"date": day.isoformat(), "xp": int(total_xp)} for day, total_xp in daily_xp
                 ],
                 "xp_streak": xp_streak,
                 "today_xp": self._get_today_xp(user_id),
@@ -460,11 +446,7 @@ class XPService:
             today = date.today()
             result = (
                 db.session.query(func.sum(XPActivity.xp_earned))
-                .filter(
-                    and_(
-                        XPActivity.user_id == user_id, XPActivity.activity_date == today
-                    )
-                )
+                .filter(and_(XPActivity.user_id == user_id, XPActivity.activity_date == today))
                 .scalar()
             )
             return int(result) if result else 0
@@ -473,7 +455,7 @@ class XPService:
             logger.error(f"Error getting today's XP for user {user_id}: {e}")
             return 0
 
-    def get_user_achievements(self, user_id: int) -> Dict:
+    def get_user_achievements(self, user_id: int) -> dict:
         """Get user's achievements and progress"""
         try:
             # Get earned achievements
@@ -510,29 +492,21 @@ class XPService:
                 if achievement.id in earned_ids:
                     # Find the user achievement for this one
                     user_achievement = next(
-                        ua
-                        for ua in earned_achievements
-                        if ua.achievement_id == achievement.id
+                        ua for ua in earned_achievements if ua.achievement_id == achievement.id
                     )
-                    achievements_by_category[category]["earned"].append(
-                        user_achievement.to_dict()
-                    )
+                    achievements_by_category[category]["earned"].append(user_achievement.to_dict())
                     achievements_by_category[category]["earned_count"] += 1
                 else:
                     # Check progress towards this achievement
                     progress = self._get_achievement_progress(user_id, achievement)
                     achievement_dict = achievement.to_dict()
                     achievement_dict["progress"] = progress
-                    achievements_by_category[category]["available"].append(
-                        achievement_dict
-                    )
+                    achievements_by_category[category]["available"].append(achievement_dict)
 
             # Calculate total stats
             total_achievements = len(all_achievements)
             total_earned = len(earned_achievements)
-            total_xp_from_achievements = sum(
-                ua.achievement.xp_reward for ua in earned_achievements
-            )
+            total_xp_from_achievements = sum(ua.achievement.xp_reward for ua in earned_achievements)
 
             return {
                 "achievements_by_category": achievements_by_category,
@@ -540,11 +514,11 @@ class XPService:
                 "stats": {
                     "total_achievements": total_achievements,
                     "total_earned": total_earned,
-                    "completion_percentage": int(
-                        (total_earned / total_achievements) * 100
-                    )
-                    if total_achievements > 0
-                    else 0,
+                    "completion_percentage": (
+                        int((total_earned / total_achievements) * 100)
+                        if total_achievements > 0
+                        else 0
+                    ),
                     "total_xp_from_achievements": total_xp_from_achievements,
                 },
             }
@@ -553,7 +527,7 @@ class XPService:
             logger.error(f"Error getting achievements for user {user_id}: {e}")
             return {"error": str(e)}
 
-    def _get_achievement_progress(self, user_id: int, achievement: Achievement) -> Dict:
+    def _get_achievement_progress(self, user_id: int, achievement: Achievement) -> dict:
         """Get progress towards a specific achievement"""
         try:
             criteria = achievement.unlock_criteria
@@ -567,9 +541,7 @@ class XPService:
             }
 
             if criteria_type == "vocabulary_count":
-                progress["current"] = UserVocabulary.query.filter_by(
-                    user_id=user_id
-                ).count()
+                progress["current"] = UserVocabulary.query.filter_by(user_id=user_id).count()
                 progress["description"] = (
                     f"{progress['current']}/{progress['target']} words in vocabulary"
                 )
@@ -587,21 +559,15 @@ class XPService:
 
             elif criteria_type == "streak_days":
                 daily_streak = UserStreak.query.filter(
-                    and_(
-                        UserStreak.user_id == user_id, UserStreak.streak_type == "daily"
-                    )
+                    and_(UserStreak.user_id == user_id, UserStreak.streak_type == "daily")
                 ).first()
                 progress["current"] = daily_streak.current_streak if daily_streak else 0
-                progress["description"] = (
-                    f"{progress['current']}/{progress['target']} day streak"
-                )
+                progress["description"] = f"{progress['current']}/{progress['target']} day streak"
 
             elif criteria_type == "level_reached":
                 user_xp = UserXP.query.filter_by(user_id=user_id).first()
                 progress["current"] = user_xp.current_level if user_xp else 1
-                progress["description"] = (
-                    f"Level {progress['current']}/{progress['target']}"
-                )
+                progress["description"] = f"Level {progress['current']}/{progress['target']}"
 
             # Calculate percentage
             if progress["target"] > 0:
@@ -622,7 +588,7 @@ class XPService:
                 "description": "Progress unavailable",
             }
 
-    def get_xp_leaderboard(self, limit: int = 10) -> List[Dict]:
+    def get_xp_leaderboard(self, limit: int = 10) -> list[dict]:
         """Get XP leaderboard"""
         try:
             top_users = (
@@ -639,9 +605,7 @@ class XPService:
             )
 
             leaderboard = []
-            for rank, (user_id, total_xp, current_level, username) in enumerate(
-                top_users, 1
-            ):
+            for rank, (user_id, total_xp, current_level, username) in enumerate(top_users, 1):
                 leaderboard.append(
                     {
                         "rank": rank,
@@ -665,7 +629,7 @@ class XPService:
         total_questions: int,
         correct_answers: int,
         session_duration: int = None,
-    ) -> Dict:
+    ) -> dict:
         """Record XP for a completed practice session"""
         try:
             # Base XP for completing session
@@ -684,9 +648,9 @@ class XPService:
             activity_details = {
                 "total_questions": total_questions,
                 "correct_answers": correct_answers,
-                "accuracy": (correct_answers / total_questions * 100)
-                if total_questions > 0
-                else 0,
+                "accuracy": (
+                    (correct_answers / total_questions * 100) if total_questions > 0 else 0
+                ),
                 "session_duration": session_duration,
                 "perfect_session": perfect_bonus > 0,
             }
@@ -702,7 +666,7 @@ class XPService:
             logger.error(f"Error recording practice session XP for user {user_id}: {e}")
             return {"success": False, "error": str(e)}
 
-    def record_vocabulary_addition_xp(self, user_id: int, words_added: int) -> Dict:
+    def record_vocabulary_addition_xp(self, user_id: int, words_added: int) -> dict:
         """Record XP for adding vocabulary words"""
         try:
             xp_amount = words_added * self.XP_VALUES["vocabulary_added"]
@@ -723,15 +687,11 @@ class XPService:
             logger.error(f"Error recording vocabulary XP for user {user_id}: {e}")
             return {"success": False, "error": str(e)}
 
-    def record_streak_xp(
-        self, user_id: int, streak_type: str, streak_days: int
-    ) -> Dict:
+    def record_streak_xp(self, user_id: int, streak_type: str, streak_days: int) -> dict:
         """Record XP for maintaining streaks"""
         try:
             if streak_type == "daily":
-                xp_amount = min(
-                    streak_days * self.XP_VALUES["daily_streak"], 200
-                )  # Cap daily XP
+                xp_amount = min(streak_days * self.XP_VALUES["daily_streak"], 200)  # Cap daily XP
             elif streak_type == "weekly":
                 xp_amount = self.XP_VALUES["weekly_streak"]
             elif streak_type == "monthly":

@@ -1,10 +1,12 @@
+from datetime import datetime
 import json
 import re
-from datetime import datetime, timedelta
-from flask import jsonify
+
 import feedparser
+from flask import jsonify
 import requests
-from models.news import NewsArticle, ContentItem
+
+from models.news import ContentItem
 
 
 class NewsController:
@@ -230,9 +232,7 @@ class NewsController:
                 return articles
 
             source_info = self.rss_feeds[source_key]
-            feed_url = source_info["categories"].get(
-                category, source_info["categories"]["all"]
-            )
+            feed_url = source_info["categories"].get(category, source_info["categories"]["all"])
 
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -260,9 +260,7 @@ class NewsController:
                 raw_content = ""
                 if hasattr(item, "content") and item.content:
                     raw_content = (
-                        item.content[0].value
-                        if isinstance(item.content, list)
-                        else item.content
+                        item.content[0].value if isinstance(item.content, list) else item.content
                     )
                 elif hasattr(item, "description"):
                     raw_content = item.description
@@ -284,28 +282,28 @@ class NewsController:
                     "source": source_info["name"],
                     "source_url": item.link if hasattr(item, "link") else "",
                     "category": category,
-                    "publish_date": datetime(*item.published_parsed[:6]).strftime(
-                        "%d.%m.%Y %H:%M"
-                    )
-                    if hasattr(item, "published_parsed")
-                    else datetime.now().strftime("%d.%m.%Y %H:%M"),
+                    "publish_date": (
+                        datetime(*item.published_parsed[:6]).strftime("%d.%m.%Y %H:%M")
+                        if hasattr(item, "published_parsed")
+                        else datetime.now().strftime("%d.%m.%Y %H:%M")
+                    ),
                     "word_count": word_count,
                     "reading_time_minutes": reading_time,
                     "difficulty_level": difficulty,
                     "is_formatted": True,
                     "has_full_content": len(formatted_content) > 300,
                     "content_type": "article",
-                    "date": datetime(*item.published_parsed[:6]).strftime("%d.%m.%Y")
-                    if hasattr(item, "published_parsed")
-                    else datetime.now().strftime("%d.%m.%Y"),
+                    "date": (
+                        datetime(*item.published_parsed[:6]).strftime("%d.%m.%Y")
+                        if hasattr(item, "published_parsed")
+                        else datetime.now().strftime("%d.%m.%Y")
+                    ),
                 }
 
                 articles.append(article)
 
         except Exception as e:
-            self.logger.error(
-                f"Error fetching articles from {source_key}/{category}: {e}"
-            )
+            self.logger.error(f"Error fetching articles from {source_key}/{category}: {e}")
 
         return articles
 
@@ -382,9 +380,7 @@ class NewsController:
                 if source == "all" or not source:
                     # Fetch from all sources
                     for source_key in self.rss_feeds.keys():
-                        articles = self.fetch_and_format_articles(
-                            source_key, category, 3
-                        )
+                        articles = self.fetch_and_format_articles(source_key, category, 3)
                         all_articles.extend(articles)
                 else:
                     # Fetch from specific source
@@ -396,18 +392,14 @@ class NewsController:
 
             # Filter by content type if specified
             if content_type != "all":
-                all_articles = [
-                    a for a in all_articles if a.get("content_type") == content_type
-                ]
+                all_articles = [a for a in all_articles if a.get("content_type") == content_type]
 
             # Cache the results
             cache_data = {
                 "articles": all_articles,
                 "last_update": datetime.now().isoformat(),
             }
-            self.redis_client.setex(
-                cache_key, self.cache_expiry, json.dumps(cache_data)
-            )
+            self.redis_client.setex(cache_key, self.cache_expiry, json.dumps(cache_data))
 
             return jsonify(
                 {

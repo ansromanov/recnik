@@ -3,8 +3,9 @@ Serbian Text Processing Service with LLM-based infinitive conversion
 """
 
 import json
+from typing import Any, Optional
+
 import openai
-from typing import List, Dict, Any, Optional
 
 
 class SerbianTextProcessor:
@@ -27,10 +28,10 @@ class SerbianTextProcessor:
     def process_text(
         self,
         text: str,
-        categories: List[Dict[str, Any]],
+        categories: list[dict[str, Any]],
         max_words: int = 20,
         temperature: float = 0.3,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Process Serbian text and extract vocabulary words with proper base forms.
 
@@ -63,7 +64,7 @@ class SerbianTextProcessor:
 CRITICAL REQUIREMENT - INFINITIVE CONVERSION:
 For verbs, you MUST convert all forms to infinitive:
 - Present tense forms: "radim, radiš, radi, radimo, radite, rade" → "raditi"
-- Past tense forms: "radio, radila, radilo" → "raditi" 
+- Past tense forms: "radio, radila, radilo" → "raditi"
 - Aorist forms: "radih, radi, radismo" → "raditi"
 - Imperative forms: "radi, radite" → "raditi"
 - Common verb patterns:
@@ -74,7 +75,7 @@ For verbs, you MUST convert all forms to infinitive:
 
 For nouns, convert to nominative singular:
 - "kuće, kućama" → "kuća"
-- "automobila, automobilom" → "automobil" 
+- "automobila, automobilom" → "automobil"
 - "gradova, gradovima" → "grad"
 - "ljudi, ljudima" → "čovek" (person/human)
 
@@ -93,7 +94,7 @@ FILTERING RULES:
 
 VERB INFINITIVE EXAMPLES:
 Input: "kupujem, kupuje, kupovao" → Output: "kupovati" (to buy)
-Input: "ide, idem, išao" → Output: "ići" (to go)  
+Input: "ide, idem, išao" → Output: "ići" (to go)
 Input: "voli, volim, voleo" → Output: "voleti" (to love)
 Input: "radi, radim, radio" → Output: "raditi" (to work)
 Input: "piše, pišem, pisao" → Output: "pisati" (to write)
@@ -116,7 +117,7 @@ OUTPUT FORMAT (JSON):
   ],
   "filtering_summary": {{
     "total_raw_words": number,
-    "filtered_out": number, 
+    "filtered_out": number,
     "processed_words": number,
     "exclusion_reasons": ["reasons for filtering"]
   }}
@@ -124,7 +125,9 @@ OUTPUT FORMAT (JSON):
 
 IMPORTANT: Always convert to proper base forms. This is critical for vocabulary learning!"""
 
-        user_prompt = f"Extract and convert to infinitive/base forms from this Serbian text:\n\n{text[:2500]}"
+        user_prompt = (
+            f"Extract and convert to infinitive/base forms from this Serbian text:\n\n{text[:2500]}"
+        )
 
         try:
             completion = openai.ChatCompletion.create(
@@ -155,13 +158,13 @@ IMPORTANT: Always convert to proper base forms. This is critical for vocabulary 
         except Exception as api_error:
             print(f"OpenAI API error: {api_error}")
             return {
-                "error": f"OpenAI API error: {str(api_error)}",
+                "error": f"OpenAI API error: {api_error!s}",
                 "processed_words": [],
             }
 
     def _process_llm_response(
-        self, parsed_response: Dict[str, Any], categories: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, parsed_response: dict[str, Any], categories: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         Process the LLM response and format it for the application.
 
@@ -197,17 +200,15 @@ IMPORTANT: Always convert to proper base forms. This is critical for vocabulary 
                         "english_translation", "Translation unavailable"
                     ).strip(),
                     "category_id": category.get("id", 1) if category else 1,
-                    "category_name": category.get("name", "Common Words")
-                    if category
-                    else "Common Words",
+                    "category_name": (
+                        category.get("name", "Common Words") if category else "Common Words"
+                    ),
                     "original_form": word_data.get("original_form", "").strip(),
                 }
             )
 
         return {
-            "total_words": filtering_summary.get(
-                "total_raw_words", len(processed_words)
-            ),
+            "total_words": filtering_summary.get("total_raw_words", len(processed_words)),
             "existing_words": 0,  # Always 0 since we're not checking for existing words
             "new_words": len(processed_words),
             "translations": processed_words,
@@ -215,8 +216,8 @@ IMPORTANT: Always convert to proper base forms. This is critical for vocabulary 
         }
 
     def _find_category(
-        self, category_name: str, categories: List[Dict[str, Any]]
-    ) -> Optional[Dict[str, Any]]:
+        self, category_name: str, categories: list[dict[str, Any]]
+    ) -> Optional[dict[str, Any]]:
         """
         Find a matching category from the category name.
 
@@ -246,7 +247,7 @@ IMPORTANT: Always convert to proper base forms. This is critical for vocabulary 
         # Return first category as default
         return categories[0] if categories else None
 
-    def test_infinitive_conversion(self) -> Dict[str, Any]:
+    def test_infinitive_conversion(self) -> dict[str, Any]:
         """
         Test the infinitive conversion functionality with sample Serbian text.
 
@@ -308,13 +309,13 @@ def test_text_processor():
         return
 
     print("✅ Text processing successful!")
-    print(f"📊 Results:")
+    print("📊 Results:")
     print(f"   • Total words: {result.get('total_words', 0)}")
     print(f"   • New words: {result.get('new_words', 0)}")
 
     translations = result.get("translations", [])
     if translations:
-        print(f"\n🎯 Processed words (showing infinitive/base forms):")
+        print("\n🎯 Processed words (showing infinitive/base forms):")
         for i, word in enumerate(translations[:10]):  # Show first 10
             original = word.get("original_form")
             base_form = word["serbian_word"]
@@ -322,9 +323,7 @@ def test_text_processor():
             category = word["category_name"]
 
             if original and original != base_form:
-                print(
-                    f"   {i + 1}. {original} → {base_form} ({translation}) [{category}]"
-                )
+                print(f"   {i + 1}. {original} → {base_form} ({translation}) [{category}]")
             else:
                 print(f"   {i + 1}. {base_form} ({translation}) [{category}]")
 

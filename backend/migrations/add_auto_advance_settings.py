@@ -32,12 +32,14 @@ def run_migration():
             try:
                 # Check if columns already exist
                 result = conn.execute(
-                    text("""
-                    SELECT column_name 
-                    FROM information_schema.columns 
-                    WHERE table_name = 'settings' 
+                    text(
+                        """
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = 'settings'
                     AND column_name IN ('auto_advance_enabled', 'auto_advance_timeout')
-                """)
+                """
+                    )
                 )
 
                 existing_columns = [row[0] for row in result]
@@ -46,10 +48,12 @@ def run_migration():
                 if "auto_advance_enabled" not in existing_columns:
                     print("Adding auto_advance_enabled column...")
                     conn.execute(
-                        text("""
-                        ALTER TABLE settings 
+                        text(
+                            """
+                        ALTER TABLE settings
                         ADD COLUMN auto_advance_enabled BOOLEAN NOT NULL DEFAULT FALSE
-                    """)
+                    """
+                        )
                     )
                     print("✓ Added auto_advance_enabled column")
                 else:
@@ -59,10 +63,12 @@ def run_migration():
                 if "auto_advance_timeout" not in existing_columns:
                     print("Adding auto_advance_timeout column...")
                     conn.execute(
-                        text("""
-                        ALTER TABLE settings 
+                        text(
+                            """
+                        ALTER TABLE settings
                         ADD COLUMN auto_advance_timeout INTEGER NOT NULL DEFAULT 3
-                    """)
+                    """
+                        )
                     )
                     print("✓ Added auto_advance_timeout column")
                 else:
@@ -94,12 +100,14 @@ def check_migration_status():
 
         with engine.connect() as conn:
             result = conn.execute(
-                text("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = 'settings' 
+                text(
+                    """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'settings'
                 AND column_name IN ('auto_advance_enabled', 'auto_advance_timeout')
-            """)
+            """
+                )
             )
 
             existing_columns = [row[0] for row in result]

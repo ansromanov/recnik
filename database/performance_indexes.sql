@@ -34,7 +34,7 @@ CREATE INDEX IF NOT EXISTS idx_user_vocab_mastery_practiced ON user_vocabulary(u
 
 -- Performance statistics
 -- Check index usage with these queries:
--- SELECT schemaname, tablename, indexname, idx_scan, idx_tup_read, idx_tup_fetch 
+-- SELECT schemaname, tablename, indexname, idx_scan, idx_tup_read, idx_tup_fetch
 -- FROM pg_stat_user_indexes ORDER BY idx_scan DESC;
 
 -- Check table sizes:

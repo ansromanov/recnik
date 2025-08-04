@@ -1,10 +1,11 @@
 import base64
 import hashlib
-import json
-import time
 import io
-from PIL import Image, ImageDraw, ImageFont
+import json
 import random
+import time
+
+from PIL import Image, ImageDraw, ImageFont
 
 
 class MockImageService:
@@ -117,9 +118,7 @@ class MockImageService:
 
             # Cache the result for 7 days
             try:
-                self.redis_client.setex(
-                    cache_key, 7 * 24 * 60 * 60, json.dumps(image_data)
-                )
+                self.redis_client.setex(cache_key, 7 * 24 * 60 * 60, json.dumps(image_data))
             except Exception as e:
                 print(f"Error writing to Redis cache: {e}")
 
@@ -128,7 +127,7 @@ class MockImageService:
         except Exception as e:
             print(f"Error generating placeholder image: {e}")
             return {
-                "error": f"Failed to generate image: {str(e)}",
+                "error": f"Failed to generate image: {e!s}",
                 "cached_at": int(time.time()),
             }
 
@@ -167,9 +166,7 @@ class MockImageService:
                 if total_sample_size > 0:
                     avg_size = total_sample_size / sample_size
                     estimated_total_size = avg_size * total_keys
-                    cache_info["cache_size_mb"] = round(
-                        estimated_total_size / (1024 * 1024), 2
-                    )
+                    cache_info["cache_size_mb"] = round(estimated_total_size / (1024 * 1024), 2)
 
             return cache_info
         except Exception as e:

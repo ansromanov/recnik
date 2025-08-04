@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from models.database import db
 
 
@@ -10,18 +11,14 @@ class NewsArticle(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(500), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    formatted_content = db.Column(
-        db.Text
-    )  # Properly formatted content with line breaks
+    formatted_content = db.Column(db.Text)  # Properly formatted content with line breaks
     summary = db.Column(db.Text)  # Auto-generated summary
     source = db.Column(db.String(100), nullable=False)
     source_url = db.Column(db.String(1000))
     category = db.Column(db.String(100), nullable=False)
     publish_date = db.Column(db.DateTime, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Content metadata
     word_count = db.Column(db.Integer)
@@ -44,9 +41,7 @@ class NewsArticle(db.Model):
             "source": self.source,
             "source_url": self.source_url,
             "category": self.category,
-            "publish_date": self.publish_date.isoformat()
-            if self.publish_date
-            else None,
+            "publish_date": (self.publish_date.isoformat() if self.publish_date else None),
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "word_count": self.word_count,
             "reading_time_minutes": self.reading_time_minutes,
@@ -65,9 +60,7 @@ class ContentItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(500), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    content_type = db.Column(
-        db.String(50), nullable=False
-    )  # dialogue, summary, story, etc.
+    content_type = db.Column(db.String(50), nullable=False)  # dialogue, summary, story, etc.
     topic = db.Column(db.String(200))
     difficulty_level = db.Column(db.String(20))  # beginner, intermediate, advanced
     target_words = db.Column(db.JSON)  # Array of words this content focuses on
@@ -83,9 +76,7 @@ class ContentItem(db.Model):
     source_article = db.relationship("NewsArticle", backref="generated_content")
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def to_dict(self):
         """Convert to dictionary for JSON serialization"""

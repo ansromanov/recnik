@@ -2,10 +2,10 @@
 Test models in isolation without requiring full Flask app
 """
 
-import pytest
 from flask import Flask
 from flask_jwt_extended import JWTManager
-from models import db, User, Category, Word, UserVocabulary, Settings
+
+from models import Category, Settings, User, UserVocabulary, Word, db
 
 
 def test_basic_model_functionality():
@@ -45,9 +45,7 @@ def test_basic_model_functionality():
         assert user.check_password("testpass")
 
         # Test word creation
-        word = Word(
-            serbian_word="test", english_translation="test", category_id=category.id
-        )
+        word = Word(serbian_word="test", english_translation="test", category_id=category.id)
         db.session.add(word)
         db.session.commit()
 

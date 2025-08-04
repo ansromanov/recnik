@@ -2,12 +2,12 @@
 Optimized Serbian Text Processing Service with Caching and Performance Features
 """
 
-import json
-import openai
 import hashlib
-import time
+import json
 import logging
-from typing import List, Dict, Any, Optional, Set, Tuple
+import time
+from typing import Any, Optional
+
 from .text_processor import SerbianTextProcessor
 from .translation_cache import TranslationCache
 
@@ -51,12 +51,12 @@ class OptimizedSerbianTextProcessor(SerbianTextProcessor):
     def process_text_optimized(
         self,
         text: str,
-        categories: List[Dict[str, Any]],
+        categories: list[dict[str, Any]],
         max_words: int = 20,
         temperature: float = 0.3,
         use_cache: bool = True,
-        excluded_words: Optional[Set[str]] = None,
-    ) -> Dict[str, Any]:
+        excluded_words: Optional[set[str]] = None,
+    ) -> dict[str, Any]:
         """
         Process Serbian text with caching and optimization features.
 
@@ -83,15 +83,11 @@ class OptimizedSerbianTextProcessor(SerbianTextProcessor):
                 cached_result = self._get_cached_result(cache_key)
                 if cached_result:
                     self.stats["cache_hits"] += 1
-                    logger.info(
-                        f"Cache HIT for text processing (key: {cache_key[:16]}...)"
-                    )
+                    logger.info(f"Cache HIT for text processing (key: {cache_key[:16]}...)")
 
                     # Apply current exclusions to cached result
                     if excluded_words:
-                        cached_result = self._apply_exclusions(
-                            cached_result, excluded_words
-                        )
+                        cached_result = self._apply_exclusions(cached_result, excluded_words)
 
                     return cached_result
 
@@ -115,7 +111,7 @@ class OptimizedSerbianTextProcessor(SerbianTextProcessor):
         except Exception as e:
             logger.error(f"Error in optimized text processing: {e}")
             return {
-                "error": f"Processing error: {str(e)}",
+                "error": f"Processing error: {e!s}",
                 "processed_words": [],
             }
         finally:
@@ -125,12 +121,12 @@ class OptimizedSerbianTextProcessor(SerbianTextProcessor):
 
     def batch_process_texts(
         self,
-        texts: List[str],
-        categories: List[Dict[str, Any]],
+        texts: list[str],
+        categories: list[dict[str, Any]],
         max_words: int = 20,
         temperature: float = 0.3,
-        excluded_words: Optional[Set[str]] = None,
-    ) -> List[Dict[str, Any]]:
+        excluded_words: Optional[set[str]] = None,
+    ) -> list[dict[str, Any]]:
         """
         Process multiple texts efficiently with batch optimization.
 
@@ -151,10 +147,7 @@ class OptimizedSerbianTextProcessor(SerbianTextProcessor):
         start_time = time.time()
 
         # Generate cache keys for all texts
-        cache_keys = [
-            self._generate_text_cache_key(text, max_words, temperature)
-            for text in texts
-        ]
+        cache_keys = [self._generate_text_cache_key(text, max_words, temperature) for text in texts]
 
         # Check cache for all texts
         cached_results = {}
@@ -200,7 +193,7 @@ class OptimizedSerbianTextProcessor(SerbianTextProcessor):
             except Exception as e:
                 logger.error(f"Error processing text {i}: {e}")
                 results[i] = {
-                    "error": f"Processing error: {str(e)}",
+                    "error": f"Processing error: {e!s}",
                     "processed_words": [],
                 }
 
@@ -209,7 +202,7 @@ class OptimizedSerbianTextProcessor(SerbianTextProcessor):
 
         return results
 
-    def preprocess_and_cache_common_words(self, common_texts: List[str]) -> int:
+    def preprocess_and_cache_common_words(self, common_texts: list[str]) -> int:
         """
         Preprocess common text patterns and cache them for faster future processing.
 
@@ -243,7 +236,7 @@ class OptimizedSerbianTextProcessor(SerbianTextProcessor):
         logger.info(f"Successfully cached {cached_count}/{len(common_texts)} texts")
         return cached_count
 
-    def get_processing_stats(self) -> Dict[str, Any]:
+    def get_processing_stats(self) -> dict[str, Any]:
         """
         Get processing performance statistics.
 
@@ -263,14 +256,10 @@ class OptimizedSerbianTextProcessor(SerbianTextProcessor):
                 "llm_calls": self.stats["llm_calls"],
                 "cache_hit_rate_percent": round(cache_hit_rate, 2),
                 "avg_processing_time_seconds": round(avg_processing_time, 3),
-                "total_processing_time_seconds": round(
-                    self.stats["processing_time"], 2
-                ),
+                "total_processing_time_seconds": round(self.stats["processing_time"], 2),
             },
             "cache_stats": cache_stats,
-            "performance_rating": self._get_performance_rating(
-                cache_hit_rate, avg_processing_time
-            ),
+            "performance_rating": self._get_performance_rating(cache_hit_rate, avg_processing_time),
         }
 
     def clear_processing_cache(self) -> int:
@@ -292,7 +281,7 @@ class OptimizedSerbianTextProcessor(SerbianTextProcessor):
             logger.error(f"Error clearing processing cache: {e}")
             return 0
 
-    def warm_cache_with_vocabulary(self, vocabulary_words: List[Dict[str, Any]]) -> int:
+    def warm_cache_with_vocabulary(self, vocabulary_words: list[dict[str, Any]]) -> int:
         """
         Warm the cache with existing vocabulary words for faster lookups.
 
@@ -321,16 +310,14 @@ class OptimizedSerbianTextProcessor(SerbianTextProcessor):
 
         return self.cache.warm_cache(translation_data)
 
-    def _generate_text_cache_key(
-        self, text: str, max_words: int, temperature: float
-    ) -> str:
+    def _generate_text_cache_key(self, text: str, max_words: int, temperature: float) -> str:
         """Generate a cache key for text processing requests."""
         # Create a hash of the text content and parameters
         content = f"{text.strip()[:1000]}|{max_words}|{temperature}"
         hash_key = hashlib.md5(content.encode("utf-8")).hexdigest()
         return f"text_processing:{hash_key}"
 
-    def _get_cached_result(self, cache_key: str) -> Optional[Dict[str, Any]]:
+    def _get_cached_result(self, cache_key: str) -> Optional[dict[str, Any]]:
         """Get cached result for a text processing request."""
         try:
             cached_data = self.redis.get(cache_key)
@@ -340,7 +327,7 @@ class OptimizedSerbianTextProcessor(SerbianTextProcessor):
             logger.error(f"Error getting cached result: {e}")
         return None
 
-    def _cache_result(self, cache_key: str, result: Dict[str, Any]) -> bool:
+    def _cache_result(self, cache_key: str, result: dict[str, Any]) -> bool:
         """Cache a text processing result."""
         try:
             # Add caching metadata
@@ -357,9 +344,7 @@ class OptimizedSerbianTextProcessor(SerbianTextProcessor):
             logger.error(f"Error caching result: {e}")
             return False
 
-    def _apply_exclusions(
-        self, result: Dict[str, Any], excluded_words: Set[str]
-    ) -> Dict[str, Any]:
+    def _apply_exclusions(self, result: dict[str, Any], excluded_words: set[str]) -> dict[str, Any]:
         """Apply word exclusions to processing result."""
         if not excluded_words or "translations" not in result:
             return result
@@ -393,7 +378,7 @@ class OptimizedSerbianTextProcessor(SerbianTextProcessor):
         else:
             return "Poor"
 
-    def analyze_text_patterns(self, texts: List[str]) -> Dict[str, Any]:
+    def analyze_text_patterns(self, texts: list[str]) -> dict[str, Any]:
         """
         Analyze patterns in text for optimization insights.
 
@@ -435,19 +420,15 @@ class OptimizedSerbianTextProcessor(SerbianTextProcessor):
             "total_words": len(all_words),
             "unique_words": len(word_freq),
             "most_common_words": common_words[:10],
-            "cache_benefit_estimate": "High"
-            if duplicate_rate > 20
-            else "Medium"
-            if duplicate_rate > 5
-            else "Low",
+            "cache_benefit_estimate": (
+                "High" if duplicate_rate > 20 else "Medium" if duplicate_rate > 5 else "Low"
+            ),
             "optimization_suggestions": self._get_optimization_suggestions(
                 duplicate_rate, avg_length
             ),
         }
 
-    def _get_optimization_suggestions(
-        self, duplicate_rate: float, avg_length: float
-    ) -> List[str]:
+    def _get_optimization_suggestions(self, duplicate_rate: float, avg_length: float) -> list[str]:
         """Get optimization suggestions based on text analysis."""
         suggestions = []
 
@@ -457,18 +438,14 @@ class OptimizedSerbianTextProcessor(SerbianTextProcessor):
             )
 
         if avg_length > 2000:
-            suggestions.append(
-                "Long texts detected - consider text chunking for better processing"
-            )
+            suggestions.append("Long texts detected - consider text chunking for better processing")
 
         if duplicate_rate < 5:
             suggestions.append(
                 "Low duplicate rate - focus on vocabulary caching instead of text caching"
             )
 
-        suggestions.append(
-            "Consider preprocessing common text patterns during off-peak hours"
-        )
+        suggestions.append("Consider preprocessing common text patterns during off-peak hours")
 
         return suggestions
 
@@ -493,6 +470,7 @@ def create_optimized_processor(openai_api_key: str, redis_client, **kwargs):
 def test_optimized_processor():
     """Test function for the optimized processor"""
     import os
+
     import redis
 
     api_key = os.getenv("OPENAI_API_KEY")
@@ -549,9 +527,7 @@ def test_optimized_processor():
     print("\n📈 Performance statistics:")
     stats = processor.get_processing_stats()
     print(f"   Cache hit rate: {stats['processing_stats']['cache_hit_rate_percent']}%")
-    print(
-        f"   Avg processing time: {stats['processing_stats']['avg_processing_time_seconds']}s"
-    )
+    print(f"   Avg processing time: {stats['processing_stats']['avg_processing_time_seconds']}s")
     print(f"   Performance rating: {stats['performance_rating']}")
 
     print("\n🎉 Optimized processor testing completed!")

@@ -21,7 +21,7 @@ Enhanced news service with proper formatting and LLM content generation capabili
 ### Content Types
 
 - `dialogue`: Conversational format between speakers
-- `summary`: Concise article summaries  
+- `summary`: Concise article summaries
 - `story`: Educational narratives
 - `interview`: Question-answer format
 - `vocabulary_exercise`: Vocabulary-focused content
@@ -53,7 +53,7 @@ Enhanced news service with proper formatting and LLM content generation capabili
 Required environment variables:
 
 - `DATABASE_URL` - PostgreSQL connection string
-- `REDIS_URL` - Redis connection string  
+- `REDIS_URL` - Redis connection string
 - `OPENAI_API_KEY` - OpenAI API key for content generation
 - `OPENAI_MODEL` - OpenAI model (default: gpt-3.5-turbo)
 - `PORT` - Service port (default: 5002)
@@ -114,7 +114,7 @@ Templates can be customized through the database `content_templates` table.
 - Word count, reading time, difficulty level
 - Processing flags for content state
 
-### content_items  
+### content_items
 
 - LLM-generated content storage
 - Topic, difficulty, target words tracking

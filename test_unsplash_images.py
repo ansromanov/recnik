@@ -6,8 +6,9 @@ This script tests the image service functionality without needing the full Flask
 
 import os
 import sys
-import redis
+
 from dotenv import load_dotenv
+import redis
 
 # Load environment variables
 load_dotenv()
@@ -64,7 +65,7 @@ def test_image_service():
             result = image_service.get_word_image(serbian_word, english_translation)
 
             if result and "error" not in result:
-                print(f"✅ Found image!")
+                print("✅ Found image!")
                 print(
                     f"   - Size: {result.get('width', 'unknown')}x{result.get('height', 'unknown')}"
                 )
@@ -74,16 +75,14 @@ def test_image_service():
                 print(f"   - Source: {result.get('source', 'unknown')}")
                 print(f"   - Cached at: {result.get('cached_at', 'unknown')}")
             else:
-                error_msg = (
-                    result.get("error", "Unknown error") if result else "No result"
-                )
+                error_msg = result.get("error", "Unknown error") if result else "No result"
                 print(f"❌ Failed to get image: {error_msg}")
 
         except Exception as e:
             print(f"❌ Exception occurred: {e}")
 
     # Test cache stats
-    print(f"\n📊 Cache Statistics:")
+    print("\n📊 Cache Statistics:")
     print("=" * 30)
     try:
         stats = image_service.get_cache_stats()

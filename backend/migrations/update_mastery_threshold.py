@@ -22,15 +22,11 @@ def update_mastery_threshold():
             old_settings = Settings.query.filter_by(mastery_threshold=10).all()
 
             if old_settings:
-                print(
-                    f"Found {len(old_settings)} users with old mastery threshold of 10"
-                )
+                print(f"Found {len(old_settings)} users with old mastery threshold of 10")
 
                 for setting in old_settings:
                     setting.mastery_threshold = 5
-                    print(
-                        f"Updated user {setting.user_id} mastery threshold from 10 to 5"
-                    )
+                    print(f"Updated user {setting.user_id} mastery threshold from 10 to 5")
 
                 db.session.commit()
                 print(f"Successfully updated {len(old_settings)} users")
@@ -38,14 +34,10 @@ def update_mastery_threshold():
                 print("No users found with old mastery threshold of 10")
 
             # Also update any users with mastery_threshold > 10 (edge case)
-            high_threshold_settings = Settings.query.filter(
-                Settings.mastery_threshold > 10
-            ).all()
+            high_threshold_settings = Settings.query.filter(Settings.mastery_threshold > 10).all()
 
             if high_threshold_settings:
-                print(
-                    f"Found {len(high_threshold_settings)} users with mastery threshold > 10"
-                )
+                print(f"Found {len(high_threshold_settings)} users with mastery threshold > 10")
 
                 for setting in high_threshold_settings:
                     setting.mastery_threshold = 5

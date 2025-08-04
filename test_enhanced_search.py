@@ -3,10 +3,8 @@
 Test script for the enhanced word search functionality with LLM integration
 """
 
-import requests
-import json
-import os
 from dotenv import load_dotenv
+import requests
 
 # Load environment variables
 load_dotenv()
@@ -80,33 +78,25 @@ def test_enhanced_search():
 
             if response.status_code == 200:
                 data = response.json()
-                print(f"✅ Search successful")
-                print(
-                    f"   - Vocabulary results: {len(data.get('vocabulary_results', []))}"
-                )
+                print("✅ Search successful")
+                print(f"   - Vocabulary results: {len(data.get('vocabulary_results', []))}")
                 print(f"   - All results: {len(data.get('all_results', []))}")
                 print(f"   - Has results: {data.get('has_results', False)}")
 
                 # Check suggestion
                 suggestion = data.get("suggestion")
                 if suggestion:
-                    print(f"   - Suggestion available: Yes")
-                    print(
-                        f"   - LLM processed: {suggestion.get('llm_processed', False)}"
-                    )
-                    print(
-                        f"   - Suggested Serbian: {suggestion.get('suggested_serbian', 'N/A')}"
-                    )
-                    print(
-                        f"   - Suggested English: {suggestion.get('suggested_english', 'N/A')}"
-                    )
+                    print("   - Suggestion available: Yes")
+                    print(f"   - LLM processed: {suggestion.get('llm_processed', False)}")
+                    print(f"   - Suggested Serbian: {suggestion.get('suggested_serbian', 'N/A')}")
+                    print(f"   - Suggested English: {suggestion.get('suggested_english', 'N/A')}")
                     print(f"   - Confidence: {suggestion.get('confidence', 'N/A')}")
                     print(f"   - Word type: {suggestion.get('word_type', 'N/A')}")
                     print(f"   - Message: {suggestion.get('message', 'N/A')}")
                     if suggestion.get("error"):
                         print(f"   - Error: {suggestion['error']}")
                 else:
-                    print(f"   - Suggestion available: No")
+                    print("   - Suggestion available: No")
 
             else:
                 print(f"❌ Search failed: {response.status_code} - {response.text}")
@@ -115,7 +105,7 @@ def test_enhanced_search():
             print(f"❌ Error during search: {e}")
 
     # 3. Test adding a suggested word
-    print(f"\n➕ Testing word addition...")
+    print("\n➕ Testing word addition...")
 
     test_word_data = {
         "serbian_word": "testirati",
@@ -143,11 +133,11 @@ def test_enhanced_search():
     except Exception as e:
         print(f"❌ Error adding word: {e}")
 
-    print(f"\n🎉 Enhanced search testing completed!")
-    print(f"\nTo fully test LLM functionality:")
-    print(f"1. Configure OpenAI API key in user settings")
-    print(f"2. Test with various Serbian word forms")
-    print(f"3. Check that suggestions show proper normalization")
+    print("\n🎉 Enhanced search testing completed!")
+    print("\nTo fully test LLM functionality:")
+    print("1. Configure OpenAI API key in user settings")
+    print("2. Test with various Serbian word forms")
+    print("3. Check that suggestions show proper normalization")
 
 
 if __name__ == "__main__":

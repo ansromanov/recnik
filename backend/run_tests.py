@@ -3,11 +3,11 @@
 Test runner script for Serbian Vocabulary Application
 """
 
-import os
-import sys
-import subprocess
 import argparse
+import os
 from pathlib import Path
+import subprocess
+import sys
 
 
 def run_command(cmd, cwd=None):
@@ -53,9 +53,7 @@ def run_tests(test_type="all", coverage=True, verbose=True, markers=None):
 
     # Add coverage if requested
     if coverage:
-        cmd_parts.extend(
-            ["--cov=.", "--cov-report=term-missing", "--cov-report=html:htmlcov"]
-        )
+        cmd_parts.extend(["--cov=.", "--cov-report=term-missing", "--cov-report=html:htmlcov"])
 
     # Add test markers if specified
     if markers:
@@ -115,12 +113,8 @@ def check_environment():
 
     # Check Python version
     python_version = sys.version_info
-    if python_version.major < 3 or (
-        python_version.major == 3 and python_version.minor < 8
-    ):
-        print(
-            f"❌ Python 3.8+ required, found {python_version.major}.{python_version.minor}"
-        )
+    if python_version.major < 3 or (python_version.major == 3 and python_version.minor < 8):
+        print(f"❌ Python 3.8+ required, found {python_version.major}.{python_version.minor}")
         return False
 
     print("✅ Environment looks good")
@@ -157,9 +151,7 @@ def generate_test_report():
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Run tests for Serbian Vocabulary Application"
-    )
+    parser = argparse.ArgumentParser(description="Run tests for Serbian Vocabulary Application")
 
     parser.add_argument(
         "--type",
@@ -193,9 +185,7 @@ def main():
         help="Pytest markers to filter tests (e.g., --markers unit redis)",
     )
 
-    parser.add_argument(
-        "test_path", nargs="?", help="Specific test file or path to run"
-    )
+    parser.add_argument("test_path", nargs="?", help="Specific test file or path to run")
 
     args = parser.parse_args()
 

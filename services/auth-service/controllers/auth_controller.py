@@ -4,10 +4,12 @@ Handles business logic for user authentication and settings
 """
 
 import uuid
+
 from flask import jsonify
 from flask_jwt_extended import create_access_token
-from models.user import User, Settings
+
 from models.database import db
+from models.user import Settings, User
 
 
 class AuthController:
@@ -71,13 +73,16 @@ class AuthController:
                 },
             )
 
-            return jsonify(
-                {
-                    "message": "User registered successfully",
-                    "access_token": access_token,
-                    "user": user.to_dict(),
-                }
-            ), 201
+            return (
+                jsonify(
+                    {
+                        "message": "User registered successfully",
+                        "access_token": access_token,
+                        "user": user.to_dict(),
+                    }
+                ),
+                201,
+            )
 
         except Exception as e:
             db.session.rollback()

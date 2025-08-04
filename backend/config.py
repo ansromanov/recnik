@@ -3,8 +3,8 @@ Configuration settings for Serbian Vocabulary App
 Simple configuration without overengineering
 """
 
-import os
 from datetime import timedelta
+import os
 
 # Database Configuration
 DATABASE_URL = os.getenv(

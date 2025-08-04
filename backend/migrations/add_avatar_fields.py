@@ -28,26 +28,32 @@ def run_migration():
 
                 # Add avatar_url column
                 conn.execute(
-                    text("""
-                    ALTER TABLE users 
+                    text(
+                        """
+                    ALTER TABLE users
                     ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500)
-                """)
+                """
+                    )
                 )
 
                 # Add avatar_type column with default value
                 conn.execute(
-                    text("""
-                    ALTER TABLE users 
+                    text(
+                        """
+                    ALTER TABLE users
                     ADD COLUMN IF NOT EXISTS avatar_type VARCHAR(20) DEFAULT 'ai_generated'
-                """)
+                """
+                    )
                 )
 
                 # Add avatar_seed column
                 conn.execute(
-                    text("""
-                    ALTER TABLE users 
+                    text(
+                        """
+                    ALTER TABLE users
                     ADD COLUMN IF NOT EXISTS avatar_seed VARCHAR(100)
-                """)
+                """
+                    )
                 )
 
                 # Commit transaction

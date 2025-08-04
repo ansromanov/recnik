@@ -5,10 +5,9 @@ Provides intelligent caching for word translations to dramatically improve perfo
 
 import hashlib
 import json
-import time
 import logging
-from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
+import time
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +58,7 @@ class TranslationCache:
         except Exception as e:
             logger.warning(f"Failed to update cache stats: {e}")
 
-    def get(self, word: str) -> Optional[Dict[Any, Any]]:
+    def get(self, word: str) -> Optional[dict[Any, Any]]:
         """
         Get cached translation for a word
 
@@ -93,7 +92,7 @@ class TranslationCache:
             self._update_stats(hit=False)
             return None
 
-    def set(self, word: str, translation_data: Dict[Any, Any]) -> bool:
+    def set(self, word: str, translation_data: dict[Any, Any]) -> bool:
         """
         Cache translation data for a word
 
@@ -130,7 +129,7 @@ class TranslationCache:
             logger.error(f"Error caching translation for '{word}': {e}")
             return False
 
-    def get_batch(self, words: List[str]) -> Dict[str, Optional[Dict[Any, Any]]]:
+    def get_batch(self, words: list[str]) -> dict[str, Optional[dict[Any, Any]]]:
         """
         Get cached translations for multiple words in a single operation
 
@@ -160,9 +159,7 @@ class TranslationCache:
 
                         # Update the cache with new access time
                         cache_key = word_to_key[word]
-                        self.redis.setex(
-                            cache_key, self.ttl, json.dumps(translation_data)
-                        )
+                        self.redis.setex(cache_key, self.ttl, json.dumps(translation_data))
 
                         results[word] = translation_data
                         self._update_stats(hit=True)
@@ -180,9 +177,9 @@ class TranslationCache:
 
         except Exception as e:
             logger.error(f"Error in batch cache lookup: {e}")
-            return {word: None for word in words}
+            return dict.fromkeys(words)
 
-    def set_batch(self, translations: Dict[str, Dict[Any, Any]]) -> int:
+    def set_batch(self, translations: dict[str, dict[Any, Any]]) -> int:
         """
         Cache multiple translations in a single operation
 
@@ -198,7 +195,6 @@ class TranslationCache:
         try:
             # Prepare all cache operations
             pipe = self.redis.pipeline()
-            cached_count = 0
 
             for word, translation_data in translations.items():
                 cache_key = self._generate_key(word)
@@ -211,27 +207,22 @@ class TranslationCache:
                 }
 
                 pipe.setex(cache_key, self.ttl, json.dumps(enhanced_data))
-                cached_count += 1
 
             # Execute all cache operations
             results = pipe.execute()
 
             # Update statistics
             successful_caches = sum(1 for result in results if result)
-            self.redis.hincrby(
-                "translation_cache_stats", "total_translations", successful_caches
-            )
+            self.redis.hincrby("translation_cache_stats", "total_translations", successful_caches)
 
-            logger.info(
-                f"Batch cache set: {successful_caches}/{len(translations)} successful"
-            )
+            logger.info(f"Batch cache set: {successful_caches}/{len(translations)} successful")
             return successful_caches
 
         except Exception as e:
             logger.error(f"Error in batch cache set: {e}")
             return 0
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get cache performance statistics
 
@@ -270,9 +261,7 @@ class TranslationCache:
             sample_size = min(10, len(cache_keys))
             if sample_size > 0:
                 sample_keys = cache_keys[:sample_size]
-                total_sample_memory = sum(
-                    len(self.redis.get(key) or "") for key in sample_keys
-                )
+                total_sample_memory = sum(len(self.redis.get(key) or "") for key in sample_keys)
                 avg_memory_per_key = total_sample_memory / sample_size
                 estimated_total_memory = avg_memory_per_key * cache_size
             else:
@@ -284,11 +273,9 @@ class TranslationCache:
                 "total_requests": total_requests,
                 "cache_size": cache_size,
                 "estimated_memory_mb": round(estimated_total_memory / (1024 * 1024), 2),
-                "cache_efficiency": "Excellent"
-                if hit_rate > 80
-                else "Good"
-                if hit_rate > 60
-                else "Poor",
+                "cache_efficiency": (
+                    "Excellent" if hit_rate > 80 else "Good" if hit_rate > 60 else "Poor"
+                ),
             }
 
         except Exception as e:
@@ -334,7 +321,7 @@ class TranslationCache:
             logger.error(f"Error clearing cache: {e}")
             return 0
 
-    def warm_cache(self, word_translations: Dict[str, Dict[Any, Any]]) -> int:
+    def warm_cache(self, word_translations: dict[str, dict[Any, Any]]) -> int:
         """
         Pre-populate cache with known translations (cache warming)
 
@@ -367,9 +354,7 @@ class TranslationCache:
                     cached_data = self.redis.get(key)
                     if cached_data:
                         data = json.loads(cached_data)
-                        last_accessed = data.get(
-                            "last_accessed", data.get("cached_at", 0)
-                        )
+                        last_accessed = data.get("last_accessed", data.get("cached_at", 0))
                         if last_accessed < cutoff_time:
                             old_keys.append(key)
                 except:

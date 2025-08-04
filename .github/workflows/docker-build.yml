@@ -1,0 +1,184 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Job to detect changes and set up build matrix
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+      auth-service: ${{ steps.changes.outputs.auth-service }}
+      vocabulary-service: ${{ steps.changes.outputs.vocabulary-service }}
+      news-service: ${{ steps.changes.outputs.news-service }}
+      image-sync-service: ${{ steps.changes.outputs.image-sync-service }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+            frontend:
+              - 'frontend/**'
+            auth-service:
+              - 'services/auth-service/**'
+            vocabulary-service:
+              - 'services/vocabulary-service/**'
+            news-service:
+              - 'services/news-service/**'
+            image-sync-service:
+              - 'image-sync-service/**'
+
+      - name: Set build matrix
+        id: set-matrix
+        run: |
+          # Use the dedicated script to generate build matrix
+          matrix_json=$(./scripts/generate-build-matrix.sh \
+            --event "${{ github.event_name }}" \
+            --ref "${{ github.ref }}" \
+            --backend "${{ steps.changes.outputs.backend }}" \
+            --frontend "${{ steps.changes.outputs.frontend }}" \
+            --auth-service "${{ steps.changes.outputs.auth-service }}" \
+            --vocab-service "${{ steps.changes.outputs.vocabulary-service }}" \
+            --news-service "${{ steps.changes.outputs.news-service }}" \
+            --image-service "${{ steps.changes.outputs.image-sync-service }}")
+
+          echo "matrix=$matrix_json" >> $GITHUB_OUTPUT
+
+  # Main build job
+  build-and-push:
+    needs: changes
+    if: ${{ needs.changes.outputs.matrix != '[]' && needs.changes.outputs.matrix != '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.changes.outputs.matrix) }}
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set service context and dockerfile
+        id: service-config
+        run: |
+          # Use the dedicated script to get service configuration
+          ./scripts/get-service-config.sh \
+            --service "${{ matrix.service }}" \
+            --registry "${{ env.REGISTRY }}" \
+            --image-name "${{ env.IMAGE_NAME }}" >> $GITHUB_OUTPUT
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.service-config.outputs.image-name }}
+          tags: |
+            # set latest tag for main branch
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            # add short sha for all builds (fixed format)
+            type=sha,prefix={{branch}}-,enable={{is_default_branch}}
+            type=sha,prefix=pr-{{branch}}-,enable=${{ github.event_name == 'pull_request' }}
+            type=sha,prefix=develop-,enable=${{ github.ref == 'refs/heads/develop' }}
+          labels: |
+            org.opencontainers.image.title=${{ matrix.service }}
+            org.opencontainers.image.description=Serbian Vocabulary App - ${{ matrix.service }}
+            org.opencontainers.image.vendor=Serbian Vocabulary Team
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ steps.service-config.outputs.context }}
+          file: ${{ steps.service-config.outputs.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+
+  # Get services for cleanup
+  cleanup-matrix:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.set-services.outputs.services }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set services matrix
+        id: set-services
+        run: |
+          # Get all services from the build matrix script
+          services_json=$(./scripts/generate-build-matrix.sh \
+            --event workflow_dispatch)
+
+          echo "Services to clean up: $services_json"
+          echo "services=$services_json" >> $GITHUB_OUTPUT
+
+  # Cleanup old images (only on main branch)
+  cleanup:
+    needs: [build-and-push, cleanup-matrix]
+    if: ${{ always() && github.ref == 'refs/heads/main' && needs.build-and-push.result == 'success' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.cleanup-matrix.outputs.services) }}
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Clean up old images for ${{ matrix.service }}
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: '${{ github.repository }}/${{ matrix.service }}'
+          package-type: 'container'
+          min-versions-to-keep: 10
+          delete-only-untagged-versions: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true

@@ -5,11 +5,12 @@ This script helps manage database schema changes.
 
 import os
 import sys
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
+
 from dotenv import load_dotenv
-from models import db, Category, Word, UserVocabulary, PracticeSession, PracticeResult
+from flask import Flask
+from sqlalchemy import text
+
+from models import Category, PracticeResult, PracticeSession, UserVocabulary, Word, db
 
 # Load environment variables
 load_dotenv()
@@ -46,9 +47,7 @@ def seed_categories():
     with app.app_context():
         existing_categories = Category.query.count()
         if existing_categories > 0:
-            print(
-                f"Categories already exist ({existing_categories} found). Skipping seed."
-            )
+            print(f"Categories already exist ({existing_categories} found). Skipping seed.")
             return
 
         default_categories = [

@@ -4,8 +4,9 @@ Script to fix orphaned vocabulary entries by assigning them to a specific user
 
 import os
 import sys
-from sqlalchemy import create_engine, text
+
 from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
 
 # Load environment variables
 load_dotenv()
@@ -28,11 +29,13 @@ def fix_orphaned_vocabulary(user_id):
             try:
                 # First, check how many orphaned entries exist
                 result = conn.execute(
-                    text("""
-                    SELECT COUNT(*) as count 
-                    FROM user_vocabulary 
+                    text(
+                        """
+                    SELECT COUNT(*) as count
+                    FROM user_vocabulary
                     WHERE user_id IS NULL
-                """)
+                """
+                    )
                 )
                 orphaned_count = result.scalar()
                 print(f"Found {orphaned_count} orphaned vocabulary entries")
@@ -40,24 +43,26 @@ def fix_orphaned_vocabulary(user_id):
                 if orphaned_count > 0:
                     # Update orphaned entries to belong to the specified user
                     conn.execute(
-                        text("""
-                        UPDATE user_vocabulary 
-                        SET user_id = :user_id 
+                        text(
+                            """
+                        UPDATE user_vocabulary
+                        SET user_id = :user_id
                         WHERE user_id IS NULL
-                    """),
+                    """
+                        ),
                         {"user_id": user_id},
                     )
-                    print(
-                        f"Assigned {orphaned_count} vocabulary entries to user {user_id}"
-                    )
+                    print(f"Assigned {orphaned_count} vocabulary entries to user {user_id}")
 
                 # Verify the update
                 result = conn.execute(
-                    text("""
-                    SELECT COUNT(*) as count 
-                    FROM user_vocabulary 
+                    text(
+                        """
+                    SELECT COUNT(*) as count
+                    FROM user_vocabulary
                     WHERE user_id = :user_id
-                """),
+                """
+                    ),
                     {"user_id": user_id},
                 )
                 user_vocab_count = result.scalar()

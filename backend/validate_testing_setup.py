@@ -4,11 +4,11 @@ Testing Setup Validation Script
 Validates that the testing infrastructure is properly configured.
 """
 
-import sys
-import os
-import subprocess
 import importlib.util
+import os
 from pathlib import Path
+import subprocess
+import sys
 
 
 def check_file_exists(file_path, description):
@@ -35,9 +35,7 @@ def check_python_module(module_name):
 def run_command(command, description):
     """Run a command and check if it succeeds"""
     try:
-        result = subprocess.run(
-            command, shell=True, capture_output=True, text=True, cwd="."
-        )
+        result = subprocess.run(command, shell=True, capture_output=True, text=True, cwd=".")
         if result.returncode == 0:
             print(f"✅ {description}")
             return True, result.stdout
@@ -45,7 +43,7 @@ def run_command(command, description):
             print(f"❌ {description}: {result.stderr}")
             return False, result.stderr
     except Exception as e:
-        print(f"❌ {description}: {str(e)}")
+        print(f"❌ {description}: {e!s}")
         return False, str(e)
 
 
@@ -118,9 +116,7 @@ def main():
 
     # Try to run a simple test to validate the setup
     total_checks += 1
-    success, output = run_command(
-        "python -m pytest tests/ --tb=short -v", "Basic test execution"
-    )
+    success, output = run_command("python -m pytest tests/ --tb=short -v", "Basic test execution")
     if success:
         checks_passed += 1
         print("   Test execution successful!")
@@ -147,13 +143,9 @@ def main():
         print("   python run_tests.py --report     # Generate comprehensive report")
         return True
     else:
-        print(
-            f"⚠️  {total_checks - checks_passed} checks failed. Please review the issues above."
-        )
+        print(f"⚠️  {total_checks - checks_passed} checks failed. Please review the issues above.")
         print("\n🔧 Next Steps:")
-        print(
-            "   1. Install missing dependencies: pip install -r requirements-test.txt"
-        )
+        print("   1. Install missing dependencies: pip install -r requirements-test.txt")
         print("   2. Check file permissions and paths")
         print("   3. Review error messages above")
         return False

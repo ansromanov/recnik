@@ -1,23 +1,19 @@
 import os
-import json
-from datetime import datetime
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
-import redis
-import openai
-from dotenv import load_dotenv
+
+from controllers.content_controller import ContentController
 
 # Import our controllers
 from controllers.news_controller import NewsController
-from controllers.content_controller import ContentController
-
-# Import models
-from models.database import init_db
-from models.news import NewsArticle, ContentItem
+from dotenv import load_dotenv
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+import redis
 
 # Import utilities
 from utils.logger import setup_logger
+
+# Import models
+from models.database import init_db
 
 # Load environment variables
 load_dotenv()
@@ -129,9 +125,7 @@ def generate_vocabulary_context():
     if not topic:
         return jsonify({"error": "Topic is required"}), 400
 
-    return content_controller.generate_vocabulary_context(
-        topic, target_words, content_type
-    )
+    return content_controller.generate_vocabulary_context(topic, target_words, content_type)
 
 
 @app.route("/api/content/types")
@@ -154,6 +148,4 @@ if __name__ == "__main__":
         db.create_all()
 
     port = int(os.getenv("PORT", 5002))
-    app.run(
-        host="0.0.0.0", port=port, debug=os.getenv("DEBUG", "false").lower() == "true"
-    )
+    app.run(host="0.0.0.0", port=port, debug=os.getenv("DEBUG", "false").lower() == "true")

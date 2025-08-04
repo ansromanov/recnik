@@ -31,12 +31,14 @@ def run_migration():
         try:
             # Check if column already exists
             result = db.session.execute(
-                text("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = 'settings' 
+                text(
+                    """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'settings'
                 AND column_name = 'sounds_enabled'
-            """)
+            """
+                )
             )
 
             if result.fetchone():
@@ -46,20 +48,24 @@ def run_migration():
             # Add the sounds_enabled column
             print("Adding sounds_enabled column to settings table...")
             db.session.execute(
-                text("""
-                ALTER TABLE settings 
+                text(
+                    """
+                ALTER TABLE settings
                 ADD COLUMN sounds_enabled BOOLEAN NOT NULL DEFAULT TRUE
-            """)
+            """
+                )
             )
 
             # Update existing settings to have the default value
             print("Setting default values for existing settings...")
             db.session.execute(
-                text("""
-                UPDATE settings 
-                SET sounds_enabled = TRUE 
+                text(
+                    """
+                UPDATE settings
+                SET sounds_enabled = TRUE
                 WHERE sounds_enabled IS NULL
-            """)
+            """
+                )
             )
 
             db.session.commit()

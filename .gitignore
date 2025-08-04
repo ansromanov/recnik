@@ -1,3 +1,5 @@
+issues/
+
 # Dependencies
 node_modules/
 npm-debug.log*
@@ -105,6 +107,19 @@ logs/
 dmypy.json
 .ruff_cache/
 .black/
+
+# Code quality reports
+bandit-report.json
+.bandit
+.pre-commit-cache/
+security-report.json
+type-coverage.txt
+
+# IDE specific
+.vscode/settings.json
+.vscode/launch.json
+.idea/workspace.xml
+.idea/tasks.xml
 
 # OS specific
 Thumbs.db

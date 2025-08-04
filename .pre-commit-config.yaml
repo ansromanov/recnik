@@ -1,12 +1,71 @@
-# Pre-commit configuration for Serbian Vocabulary App
+# Pre-commit hooks configuration
 repos:
-  - repo: local
+  # Black - Python code formatter
+  # - repo: https://github.com/psf/black
+  #   rev: 25.1.0
+  #   hooks:
+  #     - id: black
+  #       language_version: python3
+  #       args: [--config=pyproject.toml]
+
+  # Ruff - Fast Python linter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.7
     hooks:
-      - id: analyze-code-lines
-        name: Analyze code lines and save results
-        entry: python3 analyze_code_lines.py --write --diff
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-        verbose: true
+      - id: ruff-check
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # MyPy - Static type checker (disabled due to microservices structure conflicts)
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.8.0
+  #   hooks:
+  #     - id: mypy
+  #       additional_dependencies:
+  #         - types-requests==2.31.0.20240125
+  #         - types-redis==4.6.0.20240106
+  #         - types-flask==1.1.6
+  #         - types-pillow==10.1.0.2
+  #       args: [--config-file=pyproject.toml]
+
+  # Built-in pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-json
+      - id: pretty-format-json
+        args: [--autofix]
+      - id: check-toml
+      - id: check-docstring-first
+      - id: debug-statements
+      - id: name-tests-test
+        args: [--pytest-test-first]
+
+  # Security checks
+  # - repo: https://github.com/PyCQA/bandit
+  #   rev: 1.7.5
+  #   hooks:
+  #     - id: bandit
+  #       args: [--recursive]
+  #       exclude: ^(test_.*\.py|.*_test\.py|tests/|backend/tests/|analyze_code_lines\.py|demo_testing\.py|validate_testing_setup\.py)$
+
+# Configuration
+default_language_version:
+  python: python3.11
+
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit.com hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ""
+  autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false

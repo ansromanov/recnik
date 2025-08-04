@@ -5,9 +5,9 @@ Add authentication tables migration script
 
 import os
 import sys
-from datetime import datetime
-from sqlalchemy import create_engine, text
+
 from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
 
 # Load environment variables
 load_dotenv()
@@ -50,9 +50,9 @@ END;
 $$ language 'plpgsql';
 
 DROP TRIGGER IF EXISTS update_settings_updated_at ON settings;
-CREATE TRIGGER update_settings_updated_at 
-    BEFORE UPDATE ON settings 
-    FOR EACH ROW 
+CREATE TRIGGER update_settings_updated_at
+    BEFORE UPDATE ON settings
+    FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Create indexes
@@ -74,13 +74,15 @@ def run_migration():
 
             # Verify tables were created
             result = conn.execute(
-                text("""
-                SELECT table_name 
-                FROM information_schema.tables 
-                WHERE table_schema = 'public' 
+                text(
+                    """
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema = 'public'
                 AND table_name IN ('users', 'settings')
                 ORDER BY table_name;
-            """)
+            """
+                )
             )
 
             created_tables = [row[0] for row in result]

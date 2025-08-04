@@ -1,0 +1,317 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "serbian-vocabulary-backend"
+version = "1.0.0"
+description = "Serbian Vocabulary Learning App Backend"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Serbian Vocabulary Team" }]
+keywords = ["vocabulary", "learning", "serbian", "language"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "flask>=3.0.0,<4.0.0",
+    "flask-cors>=4.0.0,<5.0.0",
+    "flask-sqlalchemy>=3.1.0,<4.0.0",
+    "flask-jwt-extended>=4.5.0,<5.0.0",
+    "psycopg2-binary>=2.9.0,<3.0.0",
+    "openai>=0.28.0,<0.29.0",
+    "python-dotenv>=1.0.0,<2.0.0",
+    "requests>=2.31.0,<3.0.0",
+    "feedparser>=6.0.0,<7.0.0",
+    "gunicorn>=21.0.0,<22.0.0",
+    "sqlalchemy>=2.0.0,<3.0.0",
+    "redis>=5.0.0,<6.0.0",
+    "beautifulsoup4>=4.12.0,<5.0.0",
+    "pillow>=10.0.0,<12.0.0",
+    "prometheus-flask-exporter>=0.23.0,<1.0.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.0,<8.0.0",
+    "pytest-cov>=4.1.0,<5.0.0",
+    "pytest-mock>=3.12.0,<4.0.0",
+    "pytest-flask>=1.3.0,<2.0.0",
+    "pytest-redis>=3.0.0,<4.0.0",
+    "fakeredis>=2.20.0,<3.0.0",
+    "factory-boy>=3.3.0,<4.0.0",
+]
+dev = [
+    "black>=23.12.0,<25.0.0",
+    "ruff>=0.1.8,<1.0.0",
+    "mypy>=1.8.0,<2.0.0",
+    "bandit>=1.7.0,<2.0.0",
+    "pre-commit>=3.6.0,<4.0.0",
+    "types-requests>=2.31.0",
+    "types-redis>=4.6.0",
+    "types-flask>=1.1.6",
+    "types-pillow>=10.1.0",
+    "types-flask-cors>=0.1.0",
+    "types-psycopg2>=2.9.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourorg/serbian-vocabulary-app"
+Repository = "https://github.com/yourorg/serbian-vocabulary-app.git"
+Issues = "https://github.com/yourorg/serbian-vocabulary-app/issues"
+
+# Hatch build configuration
+[tool.hatch.build.targets.wheel]
+packages = ["backend"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/backend", "/README.md", "/pyproject.toml"]
+
+# Black configuration
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+  | migrations
+  | __pycache__
+)/
+'''
+
+# Ruff configuration
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+exclude = [
+    "migrations",
+    ".git",
+    "__pycache__",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    "build",
+    "dist",
+    ".venv",
+    "venv",
+    ".bandit",
+    "*.ini",
+    "*.cfg",
+    "*.conf",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "S",   # flake8-bandit
+    "T20", # flake8-print
+    "SIM", # flake8-simplify
+    "RUF", # Ruff-specific rules
+]
+ignore = [
+    "E501",   # line too long, handled by black
+    "B008",   # do not perform function calls in argument defaults
+    "S101",   # use of assert detected (we use assert in tests)
+    "S105",   # possible hardcoded password
+    "S106",   # possible hardcoded password
+    "S108",   # probable insecure usage of temp file/directory
+    "N806",   # variable in function should be lowercase (for SQLAlchemy models)
+    "B904",   # within an except clause, raise exceptions with raise ... from err
+    "T201",   # print found - allow print statements in development
+    "S113",   # probable use of requests call without timeout
+    "S311",   # standard pseudo-random generators not suitable for cryptographic purposes
+    "S324",   # probable use of insecure hash functions in hashlib: md5
+    "S602",   # subprocess call with shell=True identified
+    "S603",   # subprocess call: check for execution of untrusted input
+    "S104",   # possible binding to all interfaces
+    "E402",   # module level import not at top of file
+    "E712",   # comparison to True/False should use is/is not
+    "E722",   # do not use bare except
+    "E741",   # ambiguous variable name
+    "F841",   # local variable assigned to but never used
+    "C401",   # unnecessary generator (rewrite as set comprehension)
+    "B007",   # loop control variable not used within loop body
+    "SIM102", # use a single if statement instead of nested if statements
+    "SIM118", # use key in dict instead of key in dict.keys()
+    "S110",   # try-except-pass detected, consider logging the exception
+    "S112",   # try-except-continue detected, consider logging the exception
+    "RUF001", # string contains ambiguous characters
+    "RUF005", # consider unpacking instead of concatenation
+    "RUF012", # mutable class attributes should be annotated with ClassVar
+    "RUF013", # PEP 484 prohibits implicit Optional
+    "S201",   # use of debug=True in Flask app detected
+    "SIM103", # return the condition directly
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "S101",
+    "S105",
+    "S106",
+] # Allow assert and hardcoded passwords in tests
+"**/migrations/**" = ["ALL"] # Ignore all rules in migration files
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "models", "services", "config"]
+force-sort-within-sections = true
+
+# MyPy configuration
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = false
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+show_column_numbers = true
+pretty = true
+exclude = [
+    "services/",
+    "migrations/",
+    "tests/",
+    "test_.*\\.py",
+    ".*_test\\.py",
+    "analyze_code_lines.py",
+    "demo_testing.py",
+    "validate_testing_setup.py",
+]
+
+# Ignore missing imports for third-party libraries without stubs
+[[tool.mypy.overrides]]
+module = [
+    "feedparser.*",
+    "fakeredis.*",
+    "factory_boy.*",
+    "prometheus_flask_exporter.*",
+    "flask_cors.*",
+    "psycopg2.*",
+]
+ignore_missing_imports = true
+
+# Ignore name-defined errors for Flask-SQLAlchemy models
+[[tool.mypy.overrides]]
+module = "models"
+ignore_errors = true
+
+# Ignore import errors for main app files
+[[tool.mypy.overrides]]
+module = ["app", "app_raw_sql"]
+ignore_missing_imports = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=.",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-fail-under=80",
+]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "unit: marks tests as unit tests",
+    "integration: marks tests as integration tests",
+    "e2e: marks tests as end-to-end tests",
+]
+filterwarnings = ["error", "ignore::UserWarning", "ignore::DeprecationWarning"]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/tests/*",
+    "*/migrations/*",
+    "*/.venv/*",
+    "*/venv/*",
+    "*/__pycache__/*",
+    "setup.py",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+# Bandit configuration
+[tool.bandit]
+exclude_dirs = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "node_modules",
+    ".pytest_cache",
+    ".ruff_cache",
+    "htmlcov",
+    "frontend/build",
+    "frontend/node_modules",
+    "monitoring/grafana",
+    "ssl",
+    "logs",
+    ".github",
+    "tests",
+    "backend/tests",
+]
+skips = ["B101", "B601", "B602", "B603", "B607"]
+exclude = [
+    "*/test_*.py",
+    "*/tests/*",
+    "*/*test.py",
+    "test_*.py",
+    "*_test.py",
+    "analyze_code_lines.py",
+    "demo_testing.py",
+    "validate_testing_setup.py",
+]

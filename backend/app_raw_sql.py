@@ -1,17 +1,16 @@
-import os
-import json
-import random
 from datetime import datetime
-from flask import Flask, request, jsonify
+import json
+import os
+import random
+import re
+
+from dotenv import load_dotenv
+from flask import Flask, jsonify, request
 from flask_cors import CORS
-import psycopg2
+import openai
 from psycopg2.extras import RealDictCursor
 from psycopg2.pool import SimpleConnectionPool
-import openai
-from dotenv import load_dotenv
 import requests
-from html.parser import HTMLParser
-import re
 
 # Try to import feedparser, but don't crash if not available
 try:
@@ -122,9 +121,7 @@ def process_text():
         # Split text into words (basic tokenization for Serbian)
         words = [
             word
-            for word in re.split(
-                r"\s+", re.sub(r'[.,!?;:\'"«»()[\]{}]', " ", text.lower())
-            )
+            for word in re.split(r"\s+", re.sub(r'[.,!?;:\'"«»()[\]{}]', " ", text.lower()))
             if len(word) > 1
         ]
 
@@ -168,11 +165,7 @@ Respond in JSON format: {{"serbian_infinitive": "word in infinitive/base form", 
                 try:
                     parsed = json.loads(response)
                     category = next(
-                        (
-                            c
-                            for c in categories
-                            if c["name"].lower() == parsed["category"].lower()
-                        ),
+                        (c for c in categories if c["name"].lower() == parsed["category"].lower()),
                         None,
                     )
 
@@ -185,9 +178,7 @@ Respond in JSON format: {{"serbian_infinitive": "word in infinitive/base form", 
                                 "serbian_word": serbian_word,
                                 "english_translation": parsed["translation"],
                                 "category_id": category["id"] if category else 1,
-                                "category_name": category["name"]
-                                if category
-                                else "Common Words",
+                                "category_name": (category["name"] if category else "Common Words"),
                                 "original_form": word,
                             }
                         )
@@ -225,11 +216,7 @@ Respond in JSON format: {{"serbian_infinitive": "word in infinitive/base form", 
         existing_words = set(row["serbian_word"] for row in cur.fetchall())
         cur.close()
 
-        new_words = [
-            word
-            for word in processed_words
-            if word["serbian_word"] not in existing_words
-        ]
+        new_words = [word for word in processed_words if word["serbian_word"] not in existing_words]
 
         return jsonify(
             {
@@ -327,7 +314,7 @@ def get_practice_words():
             query += " AND w.difficulty_level = %s"
             params.append(difficulty)
 
-        query += """ ORDER BY 
+        query += """ ORDER BY
             COALESCE(uv.last_practiced, '1900-01-01'::timestamp) ASC,
             uv.mastery_level ASC
             LIMIT %s"""
@@ -341,9 +328,9 @@ def get_practice_words():
         for word in words:
             cur.execute(
                 """
-                SELECT english_translation FROM words 
-                WHERE id != %s 
-                ORDER BY RANDOM() 
+                SELECT english_translation FROM words
+                WHERE id != %s
+                ORDER BY RANDOM()
                 LIMIT 3
             """,
                 (word["id"],),
@@ -445,7 +432,7 @@ def submit_practice_result():
         if was_correct:
             cur.execute(
                 """
-                UPDATE user_vocabulary 
+                UPDATE user_vocabulary
                 SET times_practiced = times_practiced + 1,
                     times_correct = times_correct + 1,
                     last_practiced = CURRENT_TIMESTAMP,
@@ -457,7 +444,7 @@ def submit_practice_result():
         else:
             cur.execute(
                 """
-                UPDATE user_vocabulary 
+                UPDATE user_vocabulary
                 SET times_practiced = times_practiced + 1,
                     last_practiced = CURRENT_TIMESTAMP,
                     mastery_level = GREATEST(mastery_level - 5, 0)
@@ -490,7 +477,7 @@ def complete_practice_session():
         # Get session statistics
         cur.execute(
             """
-            SELECT 
+            SELECT
                 COUNT(*) as total_questions,
                 SUM(CASE WHEN was_correct THEN 1 ELSE 0 END) as correct_answers
             FROM practice_results
@@ -504,7 +491,7 @@ def complete_practice_session():
         # Update session
         cur.execute(
             """
-            UPDATE practice_sessions 
+            UPDATE practice_sessions
             SET total_questions = %s,
                 correct_answers = %s,
                 duration_seconds = %s
@@ -525,11 +512,11 @@ def complete_practice_session():
             {
                 "total_questions": int(stats["total_questions"]),
                 "correct_answers": int(stats["correct_answers"]),
-                "accuracy": round(
-                    (stats["correct_answers"] / stats["total_questions"]) * 100
-                )
-                if stats["total_questions"] > 0
-                else 0,
+                "accuracy": (
+                    round((stats["correct_answers"] / stats["total_questions"]) * 100)
+                    if stats["total_questions"] > 0
+                    else 0
+                ),
             }
         )
     except Exception as e:
@@ -549,22 +536,20 @@ def get_user_stats():
         cur.execute("SELECT COUNT(*) as count FROM words")
         total_words = cur.fetchone()["count"]
 
-        cur.execute(
-            "SELECT COUNT(*) as count FROM user_vocabulary WHERE times_practiced > 0"
-        )
+        cur.execute("SELECT COUNT(*) as count FROM user_vocabulary WHERE times_practiced > 0")
         learned_words = cur.fetchone()["count"]
 
-        cur.execute(
-            "SELECT COUNT(*) as count FROM user_vocabulary WHERE mastery_level >= 80"
-        )
+        cur.execute("SELECT COUNT(*) as count FROM user_vocabulary WHERE mastery_level >= 80")
         mastered_words = cur.fetchone()["count"]
 
-        cur.execute("""
-            SELECT * FROM practice_sessions 
+        cur.execute(
+            """
+            SELECT * FROM practice_sessions
             WHERE total_questions > 0
-            ORDER BY session_date DESC 
+            ORDER BY session_date DESC
             LIMIT 10
-        """)
+        """
+        )
         recent_sessions = cur.fetchall()
 
         cur.close()
@@ -793,9 +778,7 @@ def get_news():
                     feeds_to_use = [{"url": category_url, "name": source_feed["name"]}]
                 else:
                     for key, feed in all_rss_feeds.items():
-                        category_url = feed["categories"].get(
-                            category, feed["categories"]["all"]
-                        )
+                        category_url = feed["categories"].get(category, feed["categories"]["all"])
                         feeds_to_use.append({"url": category_url, "name": feed["name"]})
 
                 articles = []
@@ -823,26 +806,26 @@ def get_news():
                             content = clean_html_content(content)
 
                             article_link = (
-                                item.link
-                                if hasattr(item, "link")
-                                else item.get("guid", "")
+                                item.link if hasattr(item, "link") else item.get("guid", "")
                             )
 
                             articles.append(
                                 {
-                                    "title": item.title
-                                    if hasattr(item, "title")
-                                    else "Bez naslova",
+                                    "title": (
+                                        item.title if hasattr(item, "title") else "Bez naslova"
+                                    ),
                                     "content": content or "Sadržaj nije dostupan.",
                                     "source": feed_info["name"],
-                                    "date": datetime(
-                                        *item.published_parsed[:6]
-                                    ).strftime("%d.%m.%Y")
-                                    if hasattr(item, "published_parsed")
-                                    else datetime.now().strftime("%d.%m.%Y"),
-                                    "category": item.categories[0].term
-                                    if hasattr(item, "categories") and item.categories
-                                    else "Vesti",
+                                    "date": (
+                                        datetime(*item.published_parsed[:6]).strftime("%d.%m.%Y")
+                                        if hasattr(item, "published_parsed")
+                                        else datetime.now().strftime("%d.%m.%Y")
+                                    ),
+                                    "category": (
+                                        item.categories[0].term
+                                        if hasattr(item, "categories") and item.categories
+                                        else "Vesti"
+                                    ),
                                     "link": article_link,
                                     "needsFullContent": len(content) < 400,
                                 }
@@ -863,9 +846,7 @@ def get_news():
                     for i, article in enumerate(articles):
                         if article["needsFullContent"] and article["link"]:
                             full_content = fetch_full_article(article["link"])
-                            if full_content and len(full_content) > len(
-                                article["content"]
-                            ):
+                            if full_content and len(full_content) > len(article["content"]):
                                 articles[i]["content"] = full_content
                                 articles[i]["fullContentFetched"] = True
                                 articles[i]["needsFullContent"] = False

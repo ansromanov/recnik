@@ -13,7 +13,8 @@ def add_xp_achievement_system():
 
     # Create UserXP table for tracking experience points and levels
     db.session.execute(
-        text("""
+        text(
+            """
         CREATE TABLE IF NOT EXISTS user_xp (
             id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -25,12 +26,14 @@ def add_xp_achievement_system():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(user_id)
         );
-    """)
+    """
+        )
     )
 
     # Create XPActivity table for tracking XP-earning activities
     db.session.execute(
-        text("""
+        text(
+            """
         CREATE TABLE IF NOT EXISTS xp_activities (
             id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -40,12 +43,14 @@ def add_xp_achievement_system():
             activity_details JSONB,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-    """)
+    """
+        )
     )
 
     # Create Achievement definitions table
     db.session.execute(
-        text("""
+        text(
+            """
         CREATE TABLE IF NOT EXISTS achievements (
             id SERIAL PRIMARY KEY,
             achievement_key VARCHAR(100) NOT NULL UNIQUE,
@@ -59,12 +64,14 @@ def add_xp_achievement_system():
             is_active BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-    """)
+    """
+        )
     )
 
     # Create UserAchievements table for tracking earned achievements
     db.session.execute(
-        text("""
+        text(
+            """
         CREATE TABLE IF NOT EXISTS user_achievements (
             id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -73,18 +80,21 @@ def add_xp_achievement_system():
             progress_data JSONB,
             UNIQUE(user_id, achievement_id)
         );
-    """)
+    """
+        )
     )
 
     # Create indexes for performance
     db.session.execute(
-        text("""
+        text(
+            """
         CREATE INDEX IF NOT EXISTS idx_user_xp_user_id ON user_xp(user_id);
         CREATE INDEX IF NOT EXISTS idx_xp_activities_user_date ON xp_activities(user_id, activity_date);
         CREATE INDEX IF NOT EXISTS idx_user_achievements_user_id ON user_achievements(user_id);
         CREATE INDEX IF NOT EXISTS idx_achievements_category ON achievements(category);
         CREATE INDEX IF NOT EXISTS idx_achievements_active ON achievements(is_active);
-    """)
+    """
+        )
     )
 
     # Insert predefined achievements
@@ -249,11 +259,13 @@ def add_xp_achievement_system():
     # Insert achievements
     for achievement in achievements_data:
         db.session.execute(
-            text("""
+            text(
+                """
             INSERT INTO achievements (achievement_key, name, description, badge_icon, badge_color, category, xp_reward, unlock_criteria)
             VALUES (:achievement_key, :name, :description, :badge_icon, :badge_color, :category, :xp_reward, :unlock_criteria)
             ON CONFLICT (achievement_key) DO NOTHING
-        """),
+        """
+            ),
             achievement,
         )
 

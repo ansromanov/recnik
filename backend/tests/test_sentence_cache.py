@@ -2,9 +2,11 @@
 Tests for sentence caching functionality
 """
 
-import pytest
 import json
 from unittest.mock import Mock, patch
+
+import pytest
+
 from services.sentence_cache import SentenceCacheService
 
 
@@ -64,14 +66,10 @@ class TestSentenceCache:
 
     def test_cache_miss(self, sentence_cache_service):
         """Test behavior when no cached sentences exist"""
-        cached_sentences = sentence_cache_service.get_cached_sentences(
-            "nonexistent", "word"
-        )
+        cached_sentences = sentence_cache_service.get_cached_sentences("nonexistent", "word")
         assert cached_sentences is None
 
-        random_sentence = sentence_cache_service.get_random_sentence(
-            "nonexistent", "word"
-        )
+        random_sentence = sentence_cache_service.get_random_sentence("nonexistent", "word")
         assert random_sentence is None
 
     @patch("openai.ChatCompletion.create")
@@ -259,9 +257,7 @@ class TestSentenceCacheIntegration:
             "serbian_word": "kuća",
             "english_translation": "house",
         }
-        fake_redis.setex(
-            cache_key, 86400, json.dumps(old_format_data, ensure_ascii=False)
-        )
+        fake_redis.setex(cache_key, 86400, json.dumps(old_format_data, ensure_ascii=False))
 
         # Retrieve cached sentences - should be converted to new format
         cached_sentences = service.get_cached_sentences("kuća", "house")

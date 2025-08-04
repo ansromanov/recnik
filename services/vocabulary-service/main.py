@@ -5,21 +5,19 @@ Handles vocabulary management, words, categories, and text processing.
 """
 
 import os
-import json
-import logging
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
-from prometheus_flask_exporter import PrometheusMetrics
-from dotenv import load_dotenv
 
-from models.vocabulary import Category, Word, UserVocabulary
-from models.database import db
-from controllers.vocabulary_controller import VocabularyController
 from controllers.text_processor_controller import TextProcessorController
-from utils.logger import setup_logger
+from controllers.vocabulary_controller import VocabularyController
+from dotenv import load_dotenv
+from flask import Flask, request
+from flask_cors import CORS
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from health import health_bp
 from metrics import metrics_bp
+from prometheus_flask_exporter import PrometheusMetrics
+from utils.logger import setup_logger
+
+from models.database import db
 
 load_dotenv()
 
@@ -57,9 +55,7 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 }
 
 # JWT configuration
-app.config["JWT_SECRET_KEY"] = os.getenv(
-    "JWT_SECRET_KEY", "vocabulary-service-secret-key"
-)
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "vocabulary-service-secret-key")
 
 # Initialize database
 db.init_app(app)
@@ -180,6 +176,4 @@ if __name__ == "__main__":
         extra={"port": port, "environment": os.getenv("ENVIRONMENT", "development")},
     )
 
-    app.run(
-        host="0.0.0.0", port=port, debug=os.getenv("DEBUG", "false").lower() == "true"
-    )
+    app.run(host="0.0.0.0", port=port, debug=os.getenv("DEBUG", "false").lower() == "true")

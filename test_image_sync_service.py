@@ -6,15 +6,13 @@ Tests the communication between backend and image sync service through Redis.
 
 import json
 import time
+
 import redis
 import requests
-from datetime import datetime
 
 
 class ImageSyncServiceTester:
-    def __init__(
-        self, redis_url="redis://localhost:6379", backend_url="http://localhost:3001"
-    ):
+    def __init__(self, redis_url="redis://localhost:6379", backend_url="http://localhost:3001"):
         self.redis_client = redis.from_url(redis_url, decode_responses=True)
         self.backend_url = backend_url
         self.queue_key = "image_queue"
@@ -130,9 +128,7 @@ class ImageSyncServiceTester:
 
         # Test status endpoint
         try:
-            response = requests.get(
-                f"{self.backend_url}/api/images/background/status", timeout=5
-            )
+            response = requests.get(f"{self.backend_url}/api/images/background/status", timeout=5)
             print(f"   Status endpoint: {response.status_code}")
             if response.status_code == 401:
                 print("     (Authentication required - this is expected)")
@@ -141,9 +137,7 @@ class ImageSyncServiceTester:
 
         # Test cache stats endpoint
         try:
-            response = requests.get(
-                f"{self.backend_url}/api/images/cache/stats", timeout=5
-            )
+            response = requests.get(f"{self.backend_url}/api/images/cache/stats", timeout=5)
             print(f"   Cache stats endpoint: {response.status_code}")
             if response.status_code == 401:
                 print("     (Authentication required - this is expected)")
@@ -171,7 +165,7 @@ class ImageSyncServiceTester:
             print(f"   Queue: {current_queue_length}, Cache: {cache_count}", end="\r")
             time.sleep(5)
 
-        print(f"\n✅ Monitoring complete")
+        print("\n✅ Monitoring complete")
 
     def run_full_test(self):
         """Run complete test suite"""
@@ -207,9 +201,7 @@ class ImageSyncServiceTester:
         # Instructions for next steps
         print("\n5️⃣ Next Steps:")
         print("   To see the image sync service in action:")
-        print(
-            "   1. Start the image sync service: docker-compose up -d image-sync-service"
-        )
+        print("   1. Start the image sync service: docker-compose up -d image-sync-service")
         print("   2. Monitor logs: docker-compose logs -f image-sync-service")
         print("   3. Re-run this test to see processing")
 
@@ -241,9 +233,7 @@ def main():
         default="http://localhost:3001",
         help="Backend URL (default: http://localhost:3001)",
     )
-    parser.add_argument(
-        "--quick", action="store_true", help="Run quick test (skip monitoring)"
-    )
+    parser.add_argument("--quick", action="store_true", help="Run quick test (skip monitoring)")
 
     args = parser.parse_args()
 

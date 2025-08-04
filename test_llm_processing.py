@@ -4,8 +4,6 @@ Test script for the improved LLM prompt-based text processing with infinitive co
 """
 
 import requests
-import json
-import os
 
 # Enhanced test data with various verb forms to test infinitive conversion
 test_texts = {
@@ -83,9 +81,7 @@ def test_process_text():
 
     # Set up OpenAI API key (you'll need to provide a valid key)
     print("\n⚙️  Setting up OpenAI API key...")
-    settings_data = {
-        "openai_api_key": "your-openai-api-key-here"  # Replace with actual key
-    }
+    settings_data = {"openai_api_key": "your-openai-api-key-here"}  # Replace with actual key
 
     try:
         settings_response = requests.put(
@@ -99,15 +95,13 @@ def test_process_text():
             print("✅ OpenAI API key configured")
         else:
             print(f"⚠️  Could not set API key: {settings_response.text}")
-            print(
-                "📝 Note: You'll need to set a valid OpenAI API key to test the LLM processing"
-            )
+            print("📝 Note: You'll need to set a valid OpenAI API key to test the LLM processing")
 
     except Exception as e:
         print(f"⚠️  Settings error: {e}")
 
     # Test the new text processing with multiple test cases
-    print(f"\n🧠 Testing LLM-based text processing with infinitive conversion...")
+    print("\n🧠 Testing LLM-based text processing with infinitive conversion...")
 
     for test_name, test_text in test_texts.items():
         print(f"\n📄 Testing {test_name}:")
@@ -123,12 +117,12 @@ def test_process_text():
 
             if process_response.status_code == 200:
                 result = process_response.json()
-                print(f"   ✅ Processing successful!")
+                print("   ✅ Processing successful!")
                 print(f"   📊 Results: {result.get('new_words', 0)} words extracted")
 
                 translations = result.get("translations", [])
                 if translations:
-                    print(f"   🎯 Sample words (showing infinitive conversion):")
+                    print("   🎯 Sample words (showing infinitive conversion):")
                     for i, word in enumerate(translations[:5]):  # Show first 5
                         original = word.get("original_form", "")
                         base = word["serbian_word"]
@@ -148,13 +142,11 @@ def test_process_text():
                             found_conversions[original] = base
 
                     if found_conversions:
-                        print(f"   ✅ Verified conversions:")
+                        print("   ✅ Verified conversions:")
                         for orig, converted in found_conversions.items():
                             expected = expected_conversions.get(orig, "unknown")
                             status = "✅" if converted == expected else "❌"
-                            print(
-                                f"      {status} {orig} → {converted} (expected: {expected})"
-                            )
+                            print(f"      {status} {orig} → {converted} (expected: {expected})")
 
             elif process_response.status_code == 400:
                 error_data = process_response.json()
@@ -163,20 +155,16 @@ def test_process_text():
                 else:
                     print(f"   ❌ Processing failed for {test_name}: {error_data}")
             else:
-                print(
-                    f"   ❌ Processing failed for {test_name}: {process_response.text}"
-                )
+                print(f"   ❌ Processing failed for {test_name}: {process_response.text}")
 
         except Exception as e:
             print(f"   ❌ Processing error for {test_name}: {e}")
 
     # Summary
-    print(f"\n📝 Summary:")
+    print("\n📝 Summary:")
     print(f"   • Tested {len(test_texts)} different text types")
     print(f"   • Expected infinitive conversions: {len(expected_conversions)}")
-    print(
-        f"   • To test with real API key, replace 'your-openai-api-key-here' with actual key"
-    )
+    print("   • To test with real API key, replace 'your-openai-api-key-here' with actual key")
 
 
 if __name__ == "__main__":

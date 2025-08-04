@@ -29,10 +29,12 @@ def upgrade():
                 # Add the column with default value True
                 with db.engine.connect() as connection:
                     connection.execute(
-                        db.text("""
-                        ALTER TABLE settings 
+                        db.text(
+                            """
+                        ALTER TABLE settings
                         ADD COLUMN auto_play_voice BOOLEAN NOT NULL DEFAULT TRUE
-                    """)
+                    """
+                        )
                     )
                     connection.commit()
 
@@ -71,9 +73,7 @@ def downgrade():
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Add auto_play_voice setting migration"
-    )
+    parser = argparse.ArgumentParser(description="Add auto_play_voice setting migration")
     parser.add_argument(
         "action", choices=["upgrade", "downgrade"], help="Migration action to perform"
     )

@@ -1,8 +1,8 @@
-import json
 import os
-from datetime import datetime
+
 from flask import jsonify
 from openai import OpenAI
+
 from models.news import ContentItem, ContentTemplate
 
 
@@ -130,9 +130,7 @@ Write the story:""",
                 self.db.session.add(template)
 
             self.db.session.commit()
-            self.logger.info(
-                f"Initialized {len(default_templates)} default content templates"
-            )
+            self.logger.info(f"Initialized {len(default_templates)} default content templates")
 
         except Exception as e:
             self.logger.error(f"Error initializing templates: {e}")
@@ -270,11 +268,7 @@ Write the summary:"""
             reading_time = max(1, round(actual_word_count / 200))
 
             # Extract topic from article (simple heuristic)
-            topic = (
-                article_text.split(".")[0][:100]
-                if "." in article_text
-                else article_text[:100]
-            )
+            topic = article_text.split(".")[0][:100] if "." in article_text else article_text[:100]
 
             # Save to database
             content_item = ContentItem(
@@ -305,9 +299,7 @@ Write the summary:"""
             self.db.session.rollback()
             return jsonify({"error": "Failed to generate summary"}), 500
 
-    def generate_vocabulary_context(
-        self, topic, target_words=None, content_type="story"
-    ):
+    def generate_vocabulary_context(self, topic, target_words=None, content_type="story"):
         """Generate vocabulary-focused content from topic"""
         try:
             if not self.openai_api_key:
@@ -356,7 +348,7 @@ Create the {content_type}:"""
                 messages=[
                     {
                         "role": "system",
-                        "content": f"You are creating educational Serbian content that helps language learners understand vocabulary in context.",
+                        "content": "You are creating educational Serbian content that helps language learners understand vocabulary in context.",
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -406,8 +398,7 @@ Create the {content_type}:"""
             {
                 "content_types": self.content_types,
                 "templates": [
-                    t.to_dict()
-                    for t in ContentTemplate.query.filter_by(is_active=True).all()
+                    t.to_dict() for t in ContentTemplate.query.filter_by(is_active=True).all()
                 ],
             }
         )

@@ -10,16 +10,13 @@ import io
 import json
 import logging
 import os
-import random
 import sys
 import time
-from datetime import datetime, timedelta
-from urllib.parse import quote
 
-import requests
-import redis
-from PIL import Image
 from dotenv import load_dotenv
+from PIL import Image
+import redis
+import requests
 
 # Load environment variables
 load_dotenv()
@@ -27,7 +24,7 @@ load_dotenv()
 # Import configuration
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "backend"))
 try:
-    from config import UNSPLASH_RATE_LIMIT, RATE_LIMIT_WINDOW
+    from config import RATE_LIMIT_WINDOW, UNSPLASH_RATE_LIMIT
 except ImportError:
     # Fallback values if config import fails
     UNSPLASH_RATE_LIMIT = 50
@@ -44,14 +41,10 @@ class ImageSyncService:
             self.logger.error("UNSPLASH_ACCESS_KEY not found in environment variables")
             raise ValueError("Missing Unsplash API key")
 
-        self.logger.info(
-            f"Initialized with Unsplash key: {self.unsplash_access_key[:10]}..."
-        )
+        self.logger.info(f"Initialized with Unsplash key: {self.unsplash_access_key[:10]}...")
 
         self.headers = {
-            "User-Agent": os.getenv(
-                "IMAGE_USER_AGENT", "Serbian Vocabulary App Image Sync/1.0"
-            ),
+            "User-Agent": os.getenv("IMAGE_USER_AGENT", "Serbian Vocabulary App Image Sync/1.0"),
             "Accept": "application/json",
         }
 
@@ -92,9 +85,7 @@ class ImageSyncService:
             rate_key = f"{self.rate_limit_key}:{current_hour}"
             current_count = self.redis_client.get(rate_key)
             count = int(current_count) if current_count else 0
-            self.logger.debug(
-                f"Current rate limit: {count}/{self.max_requests_per_hour}"
-            )
+            self.logger.debug(f"Current rate limit: {count}/{self.max_requests_per_hour}")
             return count
         except Exception as e:
             self.logger.error(f"Error getting rate limit info: {e}")
@@ -125,9 +116,7 @@ class ImageSyncService:
         current_count = self._get_rate_limit_info()
         can_make = current_count < self.max_requests_per_hour
         if not can_make:
-            self.logger.warning(
-                f"Rate limit reached: {current_count}/{self.max_requests_per_hour}"
-            )
+            self.logger.warning(f"Rate limit reached: {current_count}/{self.max_requests_per_hour}")
         return can_make
 
     def _search_unsplash_images(self, query, max_results=3):
@@ -138,9 +127,7 @@ class ImageSyncService:
 
         try:
             request_count = self._increment_rate_limit()
-            self.logger.info(
-                f"🔍 Searching Unsplash for: '{query}' (request #{request_count})"
-            )
+            self.logger.info(f"🔍 Searching Unsplash for: '{query}' (request #{request_count})")
 
             params = {
                 "query": query,
@@ -166,16 +153,12 @@ class ImageSyncService:
             data = response.json()
             images = []
 
-            self.logger.info(
-                f"Found {len(data.get('results', []))} results for '{query}'"
-            )
+            self.logger.info(f"Found {len(data.get('results', []))} results for '{query}'")
 
             for i, photo in enumerate(data.get("results", [])):
                 try:
                     urls = photo.get("urls", {})
-                    image_url = (
-                        urls.get("small") or urls.get("regular") or urls.get("thumb")
-                    )
+                    image_url = urls.get("small") or urls.get("regular") or urls.get("thumb")
 
                     if not image_url:
                         self.logger.warning(f"No valid URL found for result #{i + 1}")
@@ -202,9 +185,7 @@ class ImageSyncService:
                     self.logger.error(f"Error processing photo result #{i + 1}: {e}")
                     continue
 
-            self.logger.info(
-                f"✅ Successfully processed {len(images)} images for '{query}'"
-            )
+            self.logger.info(f"✅ Successfully processed {len(images)} images for '{query}'")
             return images
 
         except Exception as e:
@@ -220,9 +201,7 @@ class ImageSyncService:
             self.logger.info(f"📥 Downloading image for '{word}' from {photographer}")
             self.logger.debug(f"Image URL: {image_url}")
 
-            response = requests.get(
-                image_url, headers=self.headers, timeout=15, stream=True
-            )
+            response = requests.get(image_url, headers=self.headers, timeout=15, stream=True)
             response.raise_for_status()
 
             content_type = response.headers.get("content-type", "")
@@ -239,14 +218,12 @@ class ImageSyncService:
 
                 if img.mode in ("RGBA", "LA", "P"):
                     img = img.convert("RGB")
-                    self.logger.debug(f"Converted image mode to RGB")
+                    self.logger.debug("Converted image mode to RGB")
 
                 max_size = int(os.getenv("IMAGE_MAX_SIZE", "400"))
                 if img.width > max_size or img.height > max_size:
                     img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
-                    self.logger.debug(
-                        f"Resized from {original_dims} to {img.width}x{img.height}"
-                    )
+                    self.logger.debug(f"Resized from {original_dims} to {img.width}x{img.height}")
 
                 output = io.BytesIO()
                 img.save(
@@ -276,17 +253,13 @@ class ImageSyncService:
                 }
 
         except Exception as e:
-            self.logger.error(
-                f"❌ Error downloading/processing image for '{word}': {e}"
-            )
+            self.logger.error(f"❌ Error downloading/processing image for '{word}': {e}")
             return None
 
     def process_word(self, serbian_word, english_translation=None):
         """Process a single word for image search"""
         start_time = time.time()
-        self.logger.info(
-            f"🔄 Processing word: '{serbian_word}' ({english_translation})"
-        )
+        self.logger.info(f"🔄 Processing word: '{serbian_word}' ({english_translation})")
 
         cache_key = self._generate_cache_key(serbian_word)
 
@@ -350,14 +323,10 @@ class ImageSyncService:
         # Try each search query
         for i, query in enumerate(search_queries):
             if not self._can_make_request():
-                self.logger.warning(
-                    f"Rate limit reached, stopping search for '{serbian_word}'"
-                )
+                self.logger.warning(f"Rate limit reached, stopping search for '{serbian_word}'")
                 break
 
-            self.logger.info(
-                f"🔍 Search attempt {i + 1}/{len(search_queries)}: '{query}'"
-            )
+            self.logger.info(f"🔍 Search attempt {i + 1}/{len(search_queries)}: '{query}'")
             images = self._search_unsplash_images(query, max_results=2)
 
             if not images:
@@ -401,14 +370,10 @@ class ImageSyncService:
 
             if best_image:
                 self.stats["successful_downloads"] += 1
-                self.logger.info(
-                    f"✅ Cached successful result for '{serbian_word}' (TTL: 30 days)"
-                )
+                self.logger.info(f"✅ Cached successful result for '{serbian_word}' (TTL: 30 days)")
             else:
                 self.stats["failed_downloads"] += 1
-                self.logger.warning(
-                    f"❌ Cached failure for '{serbian_word}' (TTL: 30 days)"
-                )
+                self.logger.warning(f"❌ Cached failure for '{serbian_word}' (TTL: 30 days)")
 
         except Exception as e:
             self.logger.error(f"Error caching result for '{serbian_word}': {e}")
@@ -501,9 +466,7 @@ class ImageSyncService:
         self.logger.info(f"Failed downloads: {self.stats['failed_downloads']}")
         self.logger.info(f"Cache hits: {self.stats['cache_hits']}")
         self.logger.info(f"API requests: {self.stats['api_requests']}")
-        self.logger.info(
-            f"Current rate limit: {rate_info}/{self.max_requests_per_hour}"
-        )
+        self.logger.info(f"Current rate limit: {rate_info}/{self.max_requests_per_hour}")
         self.logger.info(f"Queue length: {queue_length}")
 
         success_rate = (
@@ -516,7 +479,7 @@ class ImageSyncService:
         """Main processing loop"""
         self.logger.info("🚀 Starting Image Sync Service")
         self.logger.info(f"Rate limit: {self.max_requests_per_hour} requests/hour")
-        self.logger.info(f"Processing interval: 30 seconds")
+        self.logger.info("Processing interval: 30 seconds")
 
         last_stats_log = time.time()
 
@@ -530,9 +493,7 @@ class ImageSyncService:
                 # Check rate limit
                 if not self._can_make_request():
                     wait_minutes = 2
-                    self.logger.info(
-                        f"⏸️  Rate limit reached, waiting {wait_minutes} minutes..."
-                    )
+                    self.logger.info(f"⏸️  Rate limit reached, waiting {wait_minutes} minutes...")
                     time.sleep(wait_minutes * 5)
                     continue
 

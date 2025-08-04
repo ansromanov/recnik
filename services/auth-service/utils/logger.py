@@ -3,10 +3,10 @@ JSON structured logger setup
 Compliant with 12-factor app logging principles
 """
 
+from datetime import datetime
 import json
 import logging
 import sys
-from datetime import datetime
 
 
 class JSONFormatter(logging.Formatter):

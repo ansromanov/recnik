@@ -2,33 +2,28 @@
 Test configuration and fixtures for Serbian Vocabulary Application
 """
 
-import os
-import pytest
-import tempfile
-from unittest.mock import Mock, MagicMock, patch
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
-from sqlalchemy import event
-import fakeredis
+from unittest.mock import Mock
+
 import factory
+import fakeredis
+import pytest
 
 # Import application components
-from models import db, User, Category, Word, UserVocabulary, Settings, ExcludedWord
-from services.translation_cache import TranslationCache
+from models import Category, ExcludedWord, Settings, User, UserVocabulary, Word, db
 from services.text_processor import SerbianTextProcessor
+from services.translation_cache import TranslationCache
 
 
 @pytest.fixture(scope="session")
 def app():
     """Create and configure a test Flask application"""
-    from flask import Flask, request, jsonify
+    from flask import Flask, jsonify, request
     from flask_jwt_extended import (
         JWTManager,
-        create_access_token,
-        jwt_required,
         get_jwt_identity,
+        jwt_required,
     )
+
     from models import db
 
     # Create a fresh Flask app for testing
@@ -65,9 +60,7 @@ def app():
             for word_data in words:
                 try:
                     serbian_word = word_data.get("serbian_word", "").strip()
-                    english_translation = word_data.get(
-                        "english_translation", ""
-                    ).strip()
+                    english_translation = word_data.get("english_translation", "").strip()
 
                     if not serbian_word or not english_translation:
                         continue
@@ -94,9 +87,7 @@ def app():
                             continue
                         else:
                             # Add existing word to user's vocabulary
-                            user_vocab = UserVocabulary(
-                                user_id=user_id, word_id=existing_word.id
-                            )
+                            user_vocab = UserVocabulary(user_id=user_id, word_id=existing_word.id)
                             db.session.add(user_vocab)
                             added_to_vocabulary.append(existing_word.to_dict())
                             continue
@@ -123,9 +114,7 @@ def app():
                     print(
                         f'Error processing word "{word_data.get("serbian_word", "unknown")}": {e}'
                     )
-                    skipped_words.append(
-                        {"word": word_data, "reason": f"processing_error: {str(e)}"}
-                    )
+                    skipped_words.append({"word": word_data, "reason": f"processing_error: {e!s}"})
                     continue
 
             # Commit all changes at once
@@ -145,7 +134,7 @@ def app():
         except Exception as e:
             db.session.rollback()
             print(f"Error adding words: {e}")
-            return jsonify({"error": f"Failed to add words: {str(e)}"}), 500
+            return jsonify({"error": f"Failed to add words: {e!s}"}), 500
 
     with flask_app.app_context():
         # Create all tables
@@ -184,9 +173,7 @@ def db_session(app_context):
             test_user_id = test_user.id
 
             # Clean up user vocabulary entries for the test user that might have been added during tests
-            db.session.query(UserVocabulary).filter(
-                UserVocabulary.user_id == test_user_id
-            ).delete()
+            db.session.query(UserVocabulary).filter(UserVocabulary.user_id == test_user_id).delete()
 
             # Clean up any additional users created during tests (keep test user)
             db.session.query(User).filter(User.id != test_user_id).delete()
@@ -258,9 +245,7 @@ def _seed_test_data():
         if existing_cat:
             categories.append(existing_cat)
         else:
-            category = Category(
-                name=cat_data["name"], description=cat_data["description"]
-            )
+            category = Category(name=cat_data["name"], description=cat_data["description"])
             db.session.add(category)
             db.session.flush()  # Flush to get the ID
             categories.append(category)

@@ -4,9 +4,9 @@ Migration script to add user relationships to vocabulary and practice sessions
 
 import os
 import sys
-from datetime import datetime
-from sqlalchemy import create_engine, text
+
 from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
 
 # Load environment variables
 load_dotenv()
@@ -32,54 +32,58 @@ def run_migration():
                 # 1. Add user_id to user_vocabulary table
                 print("Adding user_id to user_vocabulary table...")
                 conn.execute(
-                    text("""
-                    ALTER TABLE user_vocabulary 
+                    text(
+                        """
+                    ALTER TABLE user_vocabulary
                     ADD COLUMN IF NOT EXISTS user_id INTEGER;
-                """)
+                """
+                    )
                 )
 
                 # 2. Add foreign key constraint for user_vocabulary
                 print("Adding foreign key constraint for user_vocabulary...")
                 try:
                     conn.execute(
-                        text("""
-                        ALTER TABLE user_vocabulary 
-                        ADD CONSTRAINT fk_user_vocabulary_user 
+                        text(
+                            """
+                        ALTER TABLE user_vocabulary
+                        ADD CONSTRAINT fk_user_vocabulary_user
                         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-                    """)
+                    """
+                        )
                     )
                 except Exception as e:
                     if "already exists" in str(e):
-                        print(
-                            "Foreign key constraint for user_vocabulary already exists"
-                        )
+                        print("Foreign key constraint for user_vocabulary already exists")
                     else:
                         raise
 
                 # 3. Add user_id to practice_sessions table
                 print("Adding user_id to practice_sessions table...")
                 conn.execute(
-                    text("""
-                    ALTER TABLE practice_sessions 
+                    text(
+                        """
+                    ALTER TABLE practice_sessions
                     ADD COLUMN IF NOT EXISTS user_id INTEGER;
-                """)
+                """
+                    )
                 )
 
                 # 4. Add foreign key constraint for practice_sessions
                 print("Adding foreign key constraint for practice_sessions...")
                 try:
                     conn.execute(
-                        text("""
-                        ALTER TABLE practice_sessions 
-                        ADD CONSTRAINT fk_practice_sessions_user 
+                        text(
+                            """
+                        ALTER TABLE practice_sessions
+                        ADD CONSTRAINT fk_practice_sessions_user
                         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-                    """)
+                    """
+                        )
                     )
                 except Exception as e:
                     if "already exists" in str(e):
-                        print(
-                            "Foreign key constraint for practice_sessions already exists"
-                        )
+                        print("Foreign key constraint for practice_sessions already exists")
                     else:
                         raise
 
@@ -88,27 +92,29 @@ def run_migration():
                 # First drop the existing unique constraint on word_id
                 try:
                     conn.execute(
-                        text("""
-                        ALTER TABLE user_vocabulary 
+                        text(
+                            """
+                        ALTER TABLE user_vocabulary
                         DROP CONSTRAINT user_vocabulary_word_id_key;
-                    """)
+                    """
+                        )
                     )
                 except Exception as e:
                     if "does not exist" in str(e):
-                        print(
-                            "Unique constraint on word_id doesn't exist, skipping drop"
-                        )
+                        print("Unique constraint on word_id doesn't exist, skipping drop")
                     else:
                         raise
 
                 # Then create a composite unique constraint
                 try:
                     conn.execute(
-                        text("""
-                        ALTER TABLE user_vocabulary 
-                        ADD CONSTRAINT user_vocabulary_user_word_unique 
+                        text(
+                            """
+                        ALTER TABLE user_vocabulary
+                        ADD CONSTRAINT user_vocabulary_user_word_unique
                         UNIQUE (user_id, word_id);
-                    """)
+                    """
+                        )
                     )
                 except Exception as e:
                     if "already exists" in str(e):
@@ -119,17 +125,21 @@ def run_migration():
                 # 6. Create indexes for better performance
                 print("Creating indexes...")
                 conn.execute(
-                    text("""
-                    CREATE INDEX IF NOT EXISTS idx_user_vocabulary_user_id 
+                    text(
+                        """
+                    CREATE INDEX IF NOT EXISTS idx_user_vocabulary_user_id
                     ON user_vocabulary(user_id);
-                """)
+                """
+                    )
                 )
 
                 conn.execute(
-                    text("""
-                    CREATE INDEX IF NOT EXISTS idx_practice_sessions_user_id 
+                    text(
+                        """
+                    CREATE INDEX IF NOT EXISTS idx_practice_sessions_user_id
                     ON practice_sessions(user_id);
-                """)
+                """
+                    )
                 )
 
                 # Commit transaction
