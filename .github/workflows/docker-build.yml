@@ -1,0 +1,342 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Job to detect changes and set up build matrix
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+      auth-service: ${{ steps.changes.outputs.auth-service }}
+      vocabulary-service: ${{ steps.changes.outputs.vocabulary-service }}
+      news-service: ${{ steps.changes.outputs.news-service }}
+      image-sync-service: ${{ steps.changes.outputs.image-sync-service }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+            frontend:
+              - 'frontend/**'
+            auth-service:
+              - 'services/auth-service/**'
+            vocabulary-service:
+              - 'services/vocabulary-service/**'
+            news-service:
+              - 'services/news-service/**'
+            image-sync-service:
+              - 'image-sync-service/**'
+
+      - name: Set build matrix
+        id: set-matrix
+        run: |
+          services=()
+
+          # Always build on tags, main branch, or workflow_dispatch
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || \
+             [[ "${{ github.ref }}" == "refs/heads/main" ]] || \
+             [[ "${{ github.ref }}" =~ ^refs/tags/v.* ]]; then
+            services=("backend" "frontend" "auth-service" "vocabulary-service" "news-service" "image-sync-service")
+          else
+            # Build only changed services for other events
+            if [[ "${{ steps.changes.outputs.backend }}" == "true" ]]; then
+              services+=("backend")
+            fi
+            if [[ "${{ steps.changes.outputs.frontend }}" == "true" ]]; then
+              services+=("frontend")
+            fi
+            if [[ "${{ steps.changes.outputs.auth-service }}" == "true" ]]; then
+              services+=("auth-service")
+            fi
+            if [[ "${{ steps.changes.outputs.vocabulary-service }}" == "true" ]]; then
+              services+=("vocabulary-service")
+            fi
+            if [[ "${{ steps.changes.outputs.news-service }}" == "true" ]]; then
+              services+=("news-service")
+            fi
+            if [[ "${{ steps.changes.outputs.image-sync-service }}" == "true" ]]; then
+              services+=("image-sync-service")
+            fi
+          fi
+
+          # Convert array to JSON
+          matrix_json=$(printf '%s\n' "${services[@]}" | jq -R . | jq -s .)
+          echo "matrix=${matrix_json}" >> $GITHUB_OUTPUT
+          echo "Services to build: ${services[*]}"
+
+  # Main build job
+  build-and-push:
+    needs: changes
+    if: ${{ needs.changes.outputs.matrix != '[]' && needs.changes.outputs.matrix != '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.changes.outputs.matrix) }}
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set service context and dockerfile
+        id: service-config
+        run: |
+          case "${{ matrix.service }}" in
+            "backend")
+              echo "context=./backend" >> $GITHUB_OUTPUT
+              echo "dockerfile=./backend/Dockerfile" >> $GITHUB_OUTPUT
+              echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend" >> $GITHUB_OUTPUT
+              ;;
+            "frontend")
+              echo "context=./frontend" >> $GITHUB_OUTPUT
+              echo "dockerfile=./frontend/Dockerfile" >> $GITHUB_OUTPUT
+              echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend" >> $GITHUB_OUTPUT
+              ;;
+            "auth-service")
+              echo "context=./services/auth-service" >> $GITHUB_OUTPUT
+              echo "dockerfile=./services/auth-service/Dockerfile" >> $GITHUB_OUTPUT
+              echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/auth-service" >> $GITHUB_OUTPUT
+              ;;
+            "vocabulary-service")
+              echo "context=./services/vocabulary-service" >> $GITHUB_OUTPUT
+              echo "dockerfile=./services/vocabulary-service/Dockerfile" >> $GITHUB_OUTPUT
+              echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/vocabulary-service" >> $GITHUB_OUTPUT
+              ;;
+            "news-service")
+              echo "context=./services/news-service" >> $GITHUB_OUTPUT
+              echo "dockerfile=./services/news-service/Dockerfile" >> $GITHUB_OUTPUT
+              echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/news-service" >> $GITHUB_OUTPUT
+              ;;
+            "image-sync-service")
+              echo "context=./image-sync-service" >> $GITHUB_OUTPUT
+              echo "dockerfile=./image-sync-service/Dockerfile" >> $GITHUB_OUTPUT
+              echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/image-sync-service" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.service-config.outputs.image-name }}
+          tags: |
+            # set latest tag for main branch
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            # add short sha for all builds
+            type=sha,prefix={{branch}}-
+          labels: |
+            org.opencontainers.image.title=${{ matrix.service }}
+            org.opencontainers.image.description=Serbian Vocabulary App - ${{ matrix.service }}
+            org.opencontainers.image.vendor=Serbian Vocabulary Team
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ steps.service-config.outputs.context }}
+          file: ${{ steps.service-config.outputs.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+
+  # Job to create a multi-service deployment manifest
+  create-manifest:
+    needs: [changes, build-and-push]
+    if: ${{ always() && needs.build-and-push.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate deployment manifest
+        run: |
+          # Create deployment manifest with image references
+          cat > deployment-manifest.yml << EOF
+          # Serbian Vocabulary App - Deployment Manifest
+          # Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          # Commit: ${{ github.sha }}
+          # Branch/Tag: ${{ github.ref_name }}
+
+          version: "3.8"
+
+          services:
+            backend:
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:${{ github.ref_name }}-${{ github.sha }}
+
+            frontend:
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:${{ github.ref_name }}-${{ github.sha }}
+
+            auth-service:
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/auth-service:${{ github.ref_name }}-${{ github.sha }}
+
+            vocabulary-service:
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/vocabulary-service:${{ github.ref_name }}-${{ github.sha }}
+
+            news-service:
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/news-service:${{ github.ref_name }}-${{ github.sha }}
+
+            image-sync-service:
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/image-sync-service:${{ github.ref_name }}-${{ github.sha }}
+          EOF
+
+      - name: Upload deployment manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-manifest-${{ github.sha }}
+          path: deployment-manifest.yml
+          retention-days: 30
+
+  # Security scanning
+  security-scan:
+    needs: [changes, build-and-push]
+    if: ${{ always() && needs.build-and-push.result == 'success' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.changes.outputs.matrix) }}
+
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:${{ github.ref_name }}-${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.service }}.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results-${{ matrix.service }}.sarif'
+          category: 'trivy-${{ matrix.service }}'
+
+  # Cleanup old images (only on main branch)
+  cleanup:
+    needs: [build-and-push]
+    if: ${{ always() && github.ref == 'refs/heads/main' && needs.build-and-push.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Delete old images
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: '${{ github.repository }}/backend'
+          package-type: 'container'
+          min-versions-to-keep: 10
+          delete-only-untagged-versions: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Delete old frontend images
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: '${{ github.repository }}/frontend'
+          package-type: 'container'
+          min-versions-to-keep: 10
+          delete-only-untagged-versions: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Delete old auth-service images
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: '${{ github.repository }}/auth-service'
+          package-type: 'container'
+          min-versions-to-keep: 10
+          delete-only-untagged-versions: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Delete old vocabulary-service images
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: '${{ github.repository }}/vocabulary-service'
+          package-type: 'container'
+          min-versions-to-keep: 10
+          delete-only-untagged-versions: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Delete old news-service images
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: '${{ github.repository }}/news-service'
+          package-type: 'container'
+          min-versions-to-keep: 10
+          delete-only-untagged-versions: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Delete old image-sync-service images
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: '${{ github.repository }}/image-sync-service'
+          package-type: 'container'
+          min-versions-to-keep: 10
+          delete-only-untagged-versions: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
