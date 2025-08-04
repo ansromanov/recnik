@@ -542,9 +542,9 @@ class XPService:
 
             if criteria_type == "vocabulary_count":
                 progress["current"] = UserVocabulary.query.filter_by(user_id=user_id).count()
-                progress[
-                    "description"
-                ] = f"{progress['current']}/{progress['target']} words in vocabulary"
+                progress["description"] = (
+                    f"{progress['current']}/{progress['target']} words in vocabulary"
+                )
 
             elif criteria_type == "session_count":
                 progress["current"] = PracticeSession.query.filter(
@@ -553,9 +553,9 @@ class XPService:
                         PracticeSession.total_questions > 0,
                     )
                 ).count()
-                progress[
-                    "description"
-                ] = f"{progress['current']}/{progress['target']} practice sessions completed"
+                progress["description"] = (
+                    f"{progress['current']}/{progress['target']} practice sessions completed"
+                )
 
             elif criteria_type == "streak_days":
                 daily_streak = UserStreak.query.filter(
