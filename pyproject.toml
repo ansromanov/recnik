@@ -108,6 +108,10 @@ exclude = [
     "dist",
     ".venv",
     "venv",
+    ".bandit",
+    "*.ini",
+    "*.cfg",
+    "*.conf",
 ]
 
 [tool.ruff.lint]

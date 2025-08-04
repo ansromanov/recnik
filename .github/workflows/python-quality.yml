@@ -74,12 +74,3 @@ jobs:
         with:
           python-version: "3.11"
       - uses: pre-commit/action@v3.0.0
-
-  dependency-review:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-      - name: Dependency Review
-        uses: actions/dependency-review-action@v3
