@@ -145,7 +145,7 @@ services=$(build_services_list)
 case "$OUTPUT_FORMAT" in
     json)
         if [[ -n "$services" ]]; then
-            echo "$services" | jq -R 'split(",") | map(select(length > 0))'
+            echo "$services" | jq -c -R 'split(",") | map(select(length > 0))'
         else
             echo "[]"
         fi
