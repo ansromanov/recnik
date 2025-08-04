@@ -96,38 +96,11 @@ jobs:
       - name: Set service context and dockerfile
         id: service-config
         run: |
-          case "${{ matrix.service }}" in
-            "backend")
-              echo "context=./backend" >> $GITHUB_OUTPUT
-              echo "dockerfile=./backend/Dockerfile" >> $GITHUB_OUTPUT
-              echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend" >> $GITHUB_OUTPUT
-              ;;
-            "frontend")
-              echo "context=./frontend" >> $GITHUB_OUTPUT
-              echo "dockerfile=./frontend/Dockerfile" >> $GITHUB_OUTPUT
-              echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend" >> $GITHUB_OUTPUT
-              ;;
-            "auth-service")
-              echo "context=./services/auth-service" >> $GITHUB_OUTPUT
-              echo "dockerfile=./services/auth-service/Dockerfile" >> $GITHUB_OUTPUT
-              echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/auth-service" >> $GITHUB_OUTPUT
-              ;;
-            "vocabulary-service")
-              echo "context=./services/vocabulary-service" >> $GITHUB_OUTPUT
-              echo "dockerfile=./services/vocabulary-service/Dockerfile" >> $GITHUB_OUTPUT
-              echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/vocabulary-service" >> $GITHUB_OUTPUT
-              ;;
-            "news-service")
-              echo "context=./services/news-service" >> $GITHUB_OUTPUT
-              echo "dockerfile=./services/news-service/Dockerfile" >> $GITHUB_OUTPUT
-              echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/news-service" >> $GITHUB_OUTPUT
-              ;;
-            "image-sync-service")
-              echo "context=./image-sync-service" >> $GITHUB_OUTPUT
-              echo "dockerfile=./image-sync-service/Dockerfile" >> $GITHUB_OUTPUT
-              echo "image-name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/image-sync-service" >> $GITHUB_OUTPUT
-              ;;
-          esac
+          # Use the dedicated script to get service configuration
+          ./scripts/get-service-config.sh \
+            --service "${{ matrix.service }}" \
+            --registry "${{ env.REGISTRY }}" \
+            --image-name "${{ env.IMAGE_NAME }}" >> $GITHUB_OUTPUT
 
       - name: Extract metadata
         id: meta
@@ -142,8 +115,10 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest,enable={{is_default_branch}}
-            # add short sha for all builds
-            type=sha,prefix={{branch}}-
+            # add short sha for all builds (fixed format)
+            type=sha,prefix={{branch}}-,enable={{is_default_branch}}
+            type=sha,prefix=pr-{{branch}}-,enable=${{ github.event_name == 'pull_request' }}
+            type=sha,prefix=develop-,enable=${{ github.ref == 'refs/heads/develop' }}
           labels: |
             org.opencontainers.image.title=${{ matrix.service }}
             org.opencontainers.image.description=Serbian Vocabulary App - ${{ matrix.service }}
@@ -187,33 +162,47 @@ jobs:
 
       - name: Generate deployment manifest
         run: |
+          # Determine the tag based on event type
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            TAG="pr-${{ github.event.number }}"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            TAG="main"
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            TAG="develop"
+          elif [[ "${{ github.ref }}" =~ ^refs/tags/v.* ]]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+
           # Create deployment manifest with image references
           cat > deployment-manifest.yml << EOF
           # Serbian Vocabulary App - Deployment Manifest
           # Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
           # Commit: ${{ github.sha }}
           # Branch/Tag: ${{ github.ref_name }}
+          # Tag: ${TAG}
 
           version: "3.8"
 
           services:
             backend:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:${{ github.ref_name }}-${{ github.sha }}
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:${TAG}
 
             frontend:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:${{ github.ref_name }}-${{ github.sha }}
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:${TAG}
 
             auth-service:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/auth-service:${{ github.ref_name }}-${{ github.sha }}
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/auth-service:${TAG}
 
             vocabulary-service:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/vocabulary-service:${{ github.ref_name }}-${{ github.sha }}
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/vocabulary-service:${TAG}
 
             news-service:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/news-service:${{ github.ref_name }}-${{ github.sha }}
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/news-service:${TAG}
 
             image-sync-service:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/image-sync-service:${{ github.ref_name }}-${{ github.sha }}
+              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/image-sync-service:${TAG}
           EOF
 
       - name: Upload deployment manifest
@@ -239,10 +228,25 @@ jobs:
       security-events: write
 
     steps:
+      - name: Determine image tag
+        id: tag
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "tag=pr-${{ github.event.number }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "tag=main" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "tag=develop" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" =~ ^refs/tags/v.* ]]; then
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:${{ github.ref_name }}-${{ github.sha }}
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:${{ steps.tag.outputs.tag }}
           format: 'sarif'
           output: 'trivy-results-${{ matrix.service }}.sarif'
 

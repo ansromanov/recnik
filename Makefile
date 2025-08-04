@@ -20,6 +20,8 @@ help:
 	@echo "  build-matrix    - Show build matrix script help"
 	@echo "  build-matrix-all - Generate matrix for all services"
 	@echo "  build-matrix-test - Test build matrix script with various scenarios"
+	@echo "  service-config  - Show service configuration script help"
+	@echo "  service-config-test - Test service configuration script with various formats"
 
 # Setup development environment
 setup-dev:
@@ -137,14 +139,33 @@ build-matrix-all:
 build-matrix-test:
 	@echo "🧪 Testing build matrix script..."
 	@echo "All services (workflow_dispatch):"
-	@./scripts/generate-build-matrix.sh --event workflow_dispatch
+	@./scripts/generate-build-matrix.sh --event workflow_dispatch 2>/dev/null
 	@echo ""
 	@echo "Backend only (pull_request):"
-	@./scripts/generate-build-matrix.sh --event pull_request --backend true
+	@./scripts/generate-build-matrix.sh --event pull_request --backend true 2>/dev/null
 	@echo ""
 	@echo "Frontend + Auth service (pull_request):"
-	@./scripts/generate-build-matrix.sh --event pull_request --frontend true --auth-service true
+	@./scripts/generate-build-matrix.sh --event pull_request --frontend true --auth-service true 2>/dev/null
 	@echo ""
 	@echo "No changes (pull_request):"
-	@./scripts/generate-build-matrix.sh --event pull_request
+	@./scripts/generate-build-matrix.sh --event pull_request 2>/dev/null
+	@echo ""
 	@echo "✅ Build matrix testing complete!"
+
+# Service configuration for CI/CD
+service-config:
+	@echo "🔧 Service configuration script help:"
+	@./scripts/get-service-config.sh --help
+
+service-config-test:
+	@echo "🧪 Testing service configuration script..."
+	@echo "Backend service (env format):"
+	@./scripts/get-service-config.sh --service backend 2>/dev/null
+	@echo ""
+	@echo "Frontend service (JSON format):"
+	@./scripts/get-service-config.sh --service frontend --output-format json 2>/dev/null
+	@echo ""
+	@echo "Auth service (YAML format):"
+	@./scripts/get-service-config.sh --service auth-service --output-format yaml 2>/dev/null
+	@echo ""
+	@echo "✅ Service configuration testing complete!"
