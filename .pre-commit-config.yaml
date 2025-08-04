@@ -50,7 +50,7 @@ repos:
     rev: 1.7.5
     hooks:
       - id: bandit
-        args: [--recursive, --configfile, .bandit]
+        args: [--recursive]
         exclude: ^(test_.*\.py|.*_test\.py|tests/|backend/tests/|analyze_code_lines\.py|demo_testing\.py|validate_testing_setup\.py)$
 
 # Configuration
