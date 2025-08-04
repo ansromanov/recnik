@@ -2,9 +2,11 @@
 Tests for sentence caching functionality
 """
 
-import pytest
 import json
 from unittest.mock import Mock, patch
+
+import pytest
+
 from services.sentence_cache import SentenceCacheService
 
 

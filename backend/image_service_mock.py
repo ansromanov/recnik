@@ -1,10 +1,11 @@
 import base64
 import hashlib
-import json
-import time
 import io
-from PIL import Image, ImageDraw, ImageFont
+import json
 import random
+import time
+
+from PIL import Image, ImageDraw, ImageFont
 
 
 class MockImageService:
@@ -128,7 +129,7 @@ class MockImageService:
         except Exception as e:
             print(f"Error generating placeholder image: {e}")
             return {
-                "error": f"Failed to generate image: {str(e)}",
+                "error": f"Failed to generate image: {e!s}",
                 "cached_at": int(time.time()),
             }
 

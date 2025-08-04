@@ -2,10 +2,10 @@
 Test models in isolation without requiring full Flask app
 """
 
-import pytest
 from flask import Flask
 from flask_jwt_extended import JWTManager
-from models import db, User, Category, Word, UserVocabulary, Settings
+
+from models import Category, Settings, User, UserVocabulary, Word, db
 
 
 def test_basic_model_functionality():

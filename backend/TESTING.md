@@ -229,7 +229,7 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     services:
       redis:
         image: redis:6
@@ -240,26 +240,26 @@ jobs:
           --health-retries 5
         ports:
           - 6379:6379
-    
+
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
-    
+
     - name: Install dependencies
       run: |
         cd backend
         pip install -r requirements.txt
         pip install -r requirements-test.txt
-    
+
     - name: Run tests
       run: |
         cd backend
         python run_tests.py --report
-    
+
     - name: Upload coverage
       uses: codecov/codecov-action@v3
       with:
@@ -288,10 +288,10 @@ class TestYourClass:
         """Test successful method execution"""
         # Arrange
         instance = YourClass()
-        
+
         # Act
         result = instance.method()
-        
+
         # Assert
         assert result is not None
 
@@ -304,7 +304,7 @@ class TestYourClass:
 @pytest.mark.integration
 class TestYourClassIntegration:
     """Integration tests for YourClass"""
-    
+
     def test_with_real_dependencies(self):
         """Test with real external dependencies"""
         pass
@@ -320,14 +320,14 @@ def test_with_database(db_session):
     user = User(username="test")
     db_session.add(user)
     db_session.commit()
-    
+
     assert user.id is not None
 
 def test_with_cache(translation_cache):
     """Test that uses Redis cache"""
     translation_cache.set("word", {"translation": "translation"})
     result = translation_cache.get("word")
-    
+
     assert result is not None
 
 def test_with_mocked_openai(text_processor):
@@ -355,7 +355,7 @@ def test_with_mocked_openai(mock_create):
     mock_response = Mock()
     mock_response.choices[0].message = {"content": "{}"}
     mock_create.return_value = mock_response
-    
+
     # Your test code here
 
 @patch.dict('os.environ', {'API_KEY': 'test-key'})

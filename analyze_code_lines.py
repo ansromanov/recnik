@@ -5,10 +5,9 @@ Analyzes and reports lines of code by technology, excluding temporary files.
 """
 
 import os
+from pathlib import Path
 import subprocess
 import sys
-from pathlib import Path
-from typing import Dict, List, Tuple
 
 
 class CodeAnalyzer:
@@ -67,7 +66,7 @@ class CodeAnalyzer:
             ],
         }
 
-    def _build_find_command(self, patterns: List[str]) -> List[str]:
+    def _build_find_command(self, patterns: list[str]) -> list[str]:
         """Build find command with exclusions"""
         cmd = ["find", str(self.root_path)]
 
@@ -90,8 +89,8 @@ class CodeAnalyzer:
         return cmd
 
     def count_lines_for_type(
-        self, technology: str, patterns: List[str]
-    ) -> Tuple[int, int]:
+        self, technology: str, patterns: list[str]
+    ) -> tuple[int, int]:
         """Count lines for a specific file type, returning (production_lines, test_lines)"""
         try:
             find_cmd = self._build_find_command(patterns)
@@ -167,7 +166,7 @@ class CodeAnalyzer:
             print(f"Error counting lines for {technology}: {e}", file=sys.stderr)
             return (0, 0)
 
-    def analyze(self) -> Tuple[Dict[str, int], Dict[str, int], Dict[str, int]]:
+    def analyze(self) -> tuple[dict[str, int], dict[str, int], dict[str, int]]:
         """Analyze all file types and return (total_results, prod_results, test_results)"""
         total_results = {}
         prod_results = {}
@@ -193,9 +192,9 @@ class CodeAnalyzer:
 
     def generate_report(
         self,
-        total_results: Dict[str, int],
-        prod_results: Dict[str, int],
-        test_results: Dict[str, int],
+        total_results: dict[str, int],
+        prod_results: dict[str, int],
+        test_results: dict[str, int],
     ) -> None:
         """Generate and print comprehensive report"""
         if not total_results:
@@ -242,7 +241,7 @@ class CodeAnalyzer:
         self._generate_architecture_breakdown(total_results, total)
 
     def _generate_architecture_breakdown(
-        self, results: Dict[str, int], total: int
+        self, results: dict[str, int], total: int
     ) -> None:
         """Generate architecture-specific breakdown"""
         # Define architecture categories
@@ -281,11 +280,11 @@ class CodeAnalyzer:
 
     def _generate_insights(
         self,
-        sorted_results: List[Tuple[str, int]],
+        sorted_results: list[tuple[str, int]],
         total: int,
-        total_results: Dict[str, int],
-        prod_results: Dict[str, int],
-        test_results: Dict[str, int],
+        total_results: dict[str, int],
+        prod_results: dict[str, int],
+        test_results: dict[str, int],
     ) -> None:
         """Generate insights based on the analysis"""
         if not sorted_results:
@@ -366,7 +365,6 @@ def save_results_to_json(
 ):
     """Save analysis results to JSON file"""
     import json
-    from datetime import datetime
 
     output = {
         "total": total_results,
@@ -391,7 +389,7 @@ def load_previous_results(filepath="code_analysis_results.json"):
     import json
 
     try:
-        with open(filepath, "r") as f:
+        with open(filepath) as f:
             return json.load(f)
     except FileNotFoundError:
         print(f"❌ No previous results found at {filepath}")

@@ -5,11 +5,12 @@ This script helps manage database schema changes.
 
 import os
 import sys
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
+
 from dotenv import load_dotenv
-from models import db, Category, Word, UserVocabulary, PracticeSession, PracticeResult
+from flask import Flask
+from sqlalchemy import text
+
+from models import Category, PracticeResult, PracticeSession, UserVocabulary, Word, db
 
 # Load environment variables
 load_dotenv()

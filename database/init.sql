@@ -52,7 +52,7 @@ CREATE TABLE practice_results (
 );
 
 -- Insert default categories
-INSERT INTO categories (name, description) VALUES 
+INSERT INTO categories (name, description) VALUES
     ('Common Words', 'Frequently used everyday words'),
     ('Verbs', 'Action words'),
     ('Nouns', 'People, places, things'),

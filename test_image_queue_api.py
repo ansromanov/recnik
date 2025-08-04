@@ -3,9 +3,8 @@
 Test script for the new image queue population API endpoint
 """
 
+
 import requests
-import json
-import time
 
 BASE_URL = "http://localhost:3001"
 

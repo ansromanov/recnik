@@ -1,8 +1,8 @@
-import json
 import os
-from datetime import datetime
+
 from flask import jsonify
 from openai import OpenAI
+
 from models.news import ContentItem, ContentTemplate
 
 
@@ -356,7 +356,7 @@ Create the {content_type}:"""
                 messages=[
                     {
                         "role": "system",
-                        "content": f"You are creating educational Serbian content that helps language learners understand vocabulary in context.",
+                        "content": "You are creating educational Serbian content that helps language learners understand vocabulary in context.",
                     },
                     {"role": "user", "content": prompt},
                 ],

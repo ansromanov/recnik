@@ -4,13 +4,11 @@ import io
 import json
 import os
 import random
-import time
 import threading
-from datetime import datetime, timedelta
-from urllib.parse import quote
+import time
 
-import requests
 from PIL import Image
+import requests
 
 
 class RateLimitedImageService:

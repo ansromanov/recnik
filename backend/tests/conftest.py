@@ -2,33 +2,28 @@
 Test configuration and fixtures for Serbian Vocabulary Application
 """
 
-import os
-import pytest
-import tempfile
-from unittest.mock import Mock, MagicMock, patch
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
-from sqlalchemy import event
-import fakeredis
+from unittest.mock import Mock
+
 import factory
+import fakeredis
+import pytest
 
 # Import application components
-from models import db, User, Category, Word, UserVocabulary, Settings, ExcludedWord
-from services.translation_cache import TranslationCache
+from models import Category, ExcludedWord, Settings, User, UserVocabulary, Word, db
 from services.text_processor import SerbianTextProcessor
+from services.translation_cache import TranslationCache
 
 
 @pytest.fixture(scope="session")
 def app():
     """Create and configure a test Flask application"""
-    from flask import Flask, request, jsonify
+    from flask import Flask, jsonify, request
     from flask_jwt_extended import (
         JWTManager,
-        create_access_token,
-        jwt_required,
         get_jwt_identity,
+        jwt_required,
     )
+
     from models import db
 
     # Create a fresh Flask app for testing
@@ -124,7 +119,7 @@ def app():
                         f'Error processing word "{word_data.get("serbian_word", "unknown")}": {e}'
                     )
                     skipped_words.append(
-                        {"word": word_data, "reason": f"processing_error: {str(e)}"}
+                        {"word": word_data, "reason": f"processing_error: {e!s}"}
                     )
                     continue
 
@@ -145,7 +140,7 @@ def app():
         except Exception as e:
             db.session.rollback()
             print(f"Error adding words: {e}")
-            return jsonify({"error": f"Failed to add words: {str(e)}"}), 500
+            return jsonify({"error": f"Failed to add words: {e!s}"}), 500
 
     with flask_app.app_context():
         # Create all tables

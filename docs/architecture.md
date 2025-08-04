@@ -19,49 +19,49 @@ The Serbian Vocabulary Learning App has been redesigned as a microservices archi
 graph TB
     %% User Interface
     User[👤 User] --> Frontend[🖥️ Frontend<br/>React App<br/>:3000]
-    
+
     %% API Gateway
     Frontend --> Gateway[🚪 API Gateway<br/>Request Router<br/>:3001]
-    
+
     %% Core Microservices
     Gateway --> Auth[🔐 Auth Service<br/>User Management<br/>:3002]
     Gateway --> Vocab[📚 Vocabulary Service<br/>Words & Categories<br/>:3003]
     Gateway --> Practice[🎯 Practice Service<br/>Learning Sessions<br/>:3004]
     Gateway --> News[📰 News Service<br/>Content Aggregation<br/>:3005]
-    
+
     %% Background Services
     ImageSync[🖼️ Image Sync Service<br/>Background Worker] --> Redis
     CacheUpdater[⚡ Cache Updater<br/>News Background Worker] --> Redis
     QueuePopulator[📋 Queue Populator<br/>Image Queue Management] --> Redis
     QueuePopulator --> Postgres
-    
+
     %% Infrastructure
     Auth --> Postgres[(🗄️ PostgreSQL<br/>:5432)]
     Vocab --> Postgres
     Practice --> Postgres
     News --> Redis[(⚡ Redis<br/>:6379)]
     ImageSync --> Redis
-    
+
     %% Monitoring
     Prometheus[📊 Prometheus<br/>Metrics Collection<br/>:9090] --> Gateway
     Prometheus --> Auth
     Prometheus --> Vocab
     Prometheus --> Practice
     Prometheus --> News
-    
+
     Grafana[📈 Grafana<br/>Dashboards<br/>:3100] --> Prometheus
-    
+
     %% External Services
     Vocab -.-> OpenAI[🤖 OpenAI API<br/>Text Processing]
     ImageSync -.-> Unsplash[📸 Unsplash API<br/>Image Search]
     News -.-> RSS[📡 RSS Feeds<br/>News Sources]
-    
+
     %% Styling
     classDef service fill:#e1f5fe,stroke:#01579b,stroke-width:2px
     classDef infrastructure fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
     classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef monitoring fill:#e8f5e8,stroke:#2e7d2e,stroke-width:2px
-    
+
     class Auth,Vocab,Practice,News,Gateway service
     class Postgres,Redis infrastructure
     class OpenAI,Unsplash,RSS external
@@ -300,7 +300,7 @@ sequenceDiagram
     P-->>G: Practice Questions
     G-->>F: Practice Questions
     F-->>U: Display Questions
-    
+
     U->>F: Submit Answers
     F->>G: POST /api/practice/submit
     G->>P: Forward Request
@@ -460,7 +460,7 @@ open http://localhost:3100  # Grafana
 ## Future Improvements
 
 1. **Service Mesh**: Implement Istio for advanced traffic management
-2. **Event Sourcing**: Add event-driven architecture for better auditing  
+2. **Event Sourcing**: Add event-driven architecture for better auditing
 3. **CQRS**: Separate read/write models for better performance
 4. **GraphQL**: Add GraphQL API for flexible data fetching
 5. **Kubernetes**: Deploy on Kubernetes for better orchestration

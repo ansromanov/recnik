@@ -193,7 +193,7 @@ services:
 
   # Frontend with HTTPS
   frontend:
-    build: 
+    build:
       context: ./frontend
       args:
         - REACT_APP_RESPONSIVEVOICE_API_KEY=${REACT_APP_RESPONSIVEVOICE_API_KEY}

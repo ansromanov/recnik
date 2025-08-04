@@ -1,7 +1,7 @@
-import os
-import redis
 from datetime import datetime
-from flask import jsonify
+import os
+
+import redis
 
 
 def check_health():

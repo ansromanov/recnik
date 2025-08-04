@@ -2,8 +2,10 @@
 CAPTCHA verification service for reCAPTCHA integration
 """
 
-import requests
 import logging
+
+import requests
+
 from config import RECAPTCHA_SECRET_KEY, RECAPTCHA_VERIFY_URL
 
 logger = logging.getLogger(__name__)

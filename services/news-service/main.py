@@ -1,23 +1,19 @@
 import os
-import json
-from datetime import datetime
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
-import redis
-import openai
-from dotenv import load_dotenv
+
+from controllers.content_controller import ContentController
 
 # Import our controllers
 from controllers.news_controller import NewsController
-from controllers.content_controller import ContentController
-
-# Import models
-from models.database import init_db
-from models.news import NewsArticle, ContentItem
+from dotenv import load_dotenv
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+import redis
 
 # Import utilities
 from utils.logger import setup_logger
+
+# Import models
+from models.database import init_db
 
 # Load environment variables
 load_dotenv()

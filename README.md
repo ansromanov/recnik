@@ -7,7 +7,7 @@ A modern microservices-based application for learning Serbian vocabulary, built 
 The application has been redesigned as a microservices architecture following 12-factor app principles:
 
 - **5 Core Microservices**: Auth, Vocabulary, Practice, News, API Gateway
-- **3 Background Services**: Image Sync, Cache Updater, Queue Populator  
+- **3 Background Services**: Image Sync, Cache Updater, Queue Populator
 - **Full Observability**: Structured JSON logging, Prometheus metrics, Health checks
 - **Monitoring Stack**: Prometheus + Grafana dashboards
 - **Infrastructure**: PostgreSQL, Redis, Docker containers
@@ -89,7 +89,7 @@ serbian-vocabulary-app/
 │   └── api-gateway/           # Request routing & composition
 ├── frontend/                   # React web application
 ├── image-sync-service/        # Background image processing
-├── database/                  # Database initialization scripts  
+├── database/                  # Database initialization scripts
 ├── monitoring/               # Prometheus & Grafana config
 ├── docs/                     # Architecture documentation
 └── docker-compose.yml       # Service orchestration

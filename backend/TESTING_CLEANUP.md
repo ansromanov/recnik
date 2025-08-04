@@ -39,7 +39,7 @@ Maintained clean, focused unit tests:
 The remaining tests cover:
 
 - **Models**: User authentication, word creation, vocabulary relationships
-- **Services**: Avatar generation, streak logic, XP calculations  
+- **Services**: Avatar generation, streak logic, XP calculations
 - **APIs**: Word addition, duplicate handling, text processing
 - **Caching**: Sentence cache functionality
 - **Core Logic**: Password hashing, serialization, validation
@@ -49,7 +49,7 @@ The remaining tests cover:
 Instead of debugging complex integration tests with interdependencies, we focused on:
 
 - Simple, isolated unit tests
-- Clear test purposes  
+- Clear test purposes
 - Fast execution
 - No external dependencies
 - Predictable behavior

@@ -1,9 +1,6 @@
 import hashlib
 import random
-import string
-from typing import Optional, Dict, Any
-import requests
-from datetime import datetime
+from typing import Any, Optional
 
 
 class AvatarService:
@@ -91,7 +88,7 @@ class AvatarService:
 
     def create_user_avatar(
         self, username: str, style: Optional[str] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a new avatar for a user"""
         # Generate unique seed
         seed = self.generate_avatar_seed(username)
@@ -116,7 +113,7 @@ class AvatarService:
         style: Optional[str] = None,
         keep_seed: bool = False,
         current_seed: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Regenerate avatar for a user"""
         # Use existing seed or generate new one
         if keep_seed and current_seed:
@@ -165,7 +162,7 @@ class AvatarService:
 
     def validate_uploaded_avatar(
         self, file_data: bytes, content_type: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Validate uploaded avatar file"""
         # Check file size (max 5MB)
         max_size = 5 * 1024 * 1024  # 5MB
@@ -200,7 +197,7 @@ class AvatarService:
             if not file_data.startswith(b"GIF"):
                 return {"valid": False, "error": "Invalid GIF file"}
         elif content_type == "image/webp":
-            if not (b"WEBP" in file_data[:20]):
+            if b"WEBP" not in file_data[:20]:
                 return {"valid": False, "error": "Invalid WebP file"}
 
         return {"valid": True, "size": len(file_data), "content_type": content_type}
@@ -220,7 +217,7 @@ class AvatarService:
 
         return avatar_url
 
-    def get_default_avatar(self, username: str) -> Dict[str, Any]:
+    def get_default_avatar(self, username: str) -> dict[str, Any]:
         """Get default avatar for new users"""
         return self.create_user_avatar(username, self.default_style)
 

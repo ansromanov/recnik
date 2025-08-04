@@ -2,11 +2,13 @@
 Essential tests for core functionality
 """
 
-import pytest
 import json
-from unittest.mock import patch, MagicMock
-from models import db, User, Word, UserVocabulary, Category
+from unittest.mock import MagicMock, patch
+
 from flask_jwt_extended import create_access_token
+import pytest
+
+from models import Category, User, UserVocabulary, Word, db
 
 
 @pytest.fixture

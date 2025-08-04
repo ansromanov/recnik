@@ -1,17 +1,16 @@
-import os
-import json
-import random
 from datetime import datetime
-from flask import Flask, request, jsonify
+import json
+import os
+import random
+import re
+
+from dotenv import load_dotenv
+from flask import Flask, jsonify, request
 from flask_cors import CORS
-import psycopg2
+import openai
 from psycopg2.extras import RealDictCursor
 from psycopg2.pool import SimpleConnectionPool
-import openai
-from dotenv import load_dotenv
 import requests
-from html.parser import HTMLParser
-import re
 
 # Try to import feedparser, but don't crash if not available
 try:
@@ -185,9 +184,9 @@ Respond in JSON format: {{"serbian_infinitive": "word in infinitive/base form", 
                                 "serbian_word": serbian_word,
                                 "english_translation": parsed["translation"],
                                 "category_id": category["id"] if category else 1,
-                                "category_name": category["name"]
-                                if category
-                                else "Common Words",
+                                "category_name": (
+                                    category["name"] if category else "Common Words"
+                                ),
                                 "original_form": word,
                             }
                         )
@@ -327,7 +326,7 @@ def get_practice_words():
             query += " AND w.difficulty_level = %s"
             params.append(difficulty)
 
-        query += """ ORDER BY 
+        query += """ ORDER BY
             COALESCE(uv.last_practiced, '1900-01-01'::timestamp) ASC,
             uv.mastery_level ASC
             LIMIT %s"""
@@ -341,9 +340,9 @@ def get_practice_words():
         for word in words:
             cur.execute(
                 """
-                SELECT english_translation FROM words 
-                WHERE id != %s 
-                ORDER BY RANDOM() 
+                SELECT english_translation FROM words
+                WHERE id != %s
+                ORDER BY RANDOM()
                 LIMIT 3
             """,
                 (word["id"],),
@@ -445,7 +444,7 @@ def submit_practice_result():
         if was_correct:
             cur.execute(
                 """
-                UPDATE user_vocabulary 
+                UPDATE user_vocabulary
                 SET times_practiced = times_practiced + 1,
                     times_correct = times_correct + 1,
                     last_practiced = CURRENT_TIMESTAMP,
@@ -457,7 +456,7 @@ def submit_practice_result():
         else:
             cur.execute(
                 """
-                UPDATE user_vocabulary 
+                UPDATE user_vocabulary
                 SET times_practiced = times_practiced + 1,
                     last_practiced = CURRENT_TIMESTAMP,
                     mastery_level = GREATEST(mastery_level - 5, 0)
@@ -490,7 +489,7 @@ def complete_practice_session():
         # Get session statistics
         cur.execute(
             """
-            SELECT 
+            SELECT
                 COUNT(*) as total_questions,
                 SUM(CASE WHEN was_correct THEN 1 ELSE 0 END) as correct_answers
             FROM practice_results
@@ -504,7 +503,7 @@ def complete_practice_session():
         # Update session
         cur.execute(
             """
-            UPDATE practice_sessions 
+            UPDATE practice_sessions
             SET total_questions = %s,
                 correct_answers = %s,
                 duration_seconds = %s
@@ -525,11 +524,11 @@ def complete_practice_session():
             {
                 "total_questions": int(stats["total_questions"]),
                 "correct_answers": int(stats["correct_answers"]),
-                "accuracy": round(
-                    (stats["correct_answers"] / stats["total_questions"]) * 100
-                )
-                if stats["total_questions"] > 0
-                else 0,
+                "accuracy": (
+                    round((stats["correct_answers"] / stats["total_questions"]) * 100)
+                    if stats["total_questions"] > 0
+                    else 0
+                ),
             }
         )
     except Exception as e:
@@ -559,12 +558,14 @@ def get_user_stats():
         )
         mastered_words = cur.fetchone()["count"]
 
-        cur.execute("""
-            SELECT * FROM practice_sessions 
+        cur.execute(
+            """
+            SELECT * FROM practice_sessions
             WHERE total_questions > 0
-            ORDER BY session_date DESC 
+            ORDER BY session_date DESC
             LIMIT 10
-        """)
+        """
+        )
         recent_sessions = cur.fetchall()
 
         cur.close()
@@ -830,19 +831,26 @@ def get_news():
 
                             articles.append(
                                 {
-                                    "title": item.title
-                                    if hasattr(item, "title")
-                                    else "Bez naslova",
+                                    "title": (
+                                        item.title
+                                        if hasattr(item, "title")
+                                        else "Bez naslova"
+                                    ),
                                     "content": content or "Sadržaj nije dostupan.",
                                     "source": feed_info["name"],
-                                    "date": datetime(
-                                        *item.published_parsed[:6]
-                                    ).strftime("%d.%m.%Y")
-                                    if hasattr(item, "published_parsed")
-                                    else datetime.now().strftime("%d.%m.%Y"),
-                                    "category": item.categories[0].term
-                                    if hasattr(item, "categories") and item.categories
-                                    else "Vesti",
+                                    "date": (
+                                        datetime(*item.published_parsed[:6]).strftime(
+                                            "%d.%m.%Y"
+                                        )
+                                        if hasattr(item, "published_parsed")
+                                        else datetime.now().strftime("%d.%m.%Y")
+                                    ),
+                                    "category": (
+                                        item.categories[0].term
+                                        if hasattr(item, "categories")
+                                        and item.categories
+                                        else "Vesti"
+                                    ),
                                     "link": article_link,
                                     "needsFullContent": len(content) < 400,
                                 }

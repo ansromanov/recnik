@@ -1,43 +1,44 @@
-import os
+from datetime import datetime
 import json
 import random
-from datetime import datetime, timedelta
-from flask import Flask, request, jsonify
+import re
+
+from dotenv import load_dotenv
+from flask import Flask, jsonify, request
 from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import (
     JWTManager,
     create_access_token,
-    jwt_required,
     get_jwt_identity,
+    jwt_required,
 )
-from sqlalchemy import or_, and_, func
-from sqlalchemy.orm import joinedload
+
+# Import image service client (lightweight version that communicates with separate service)
+from image_service_client import ImageServiceClient
 import openai
-from dotenv import load_dotenv
-import requests
-from html.parser import HTMLParser
-import re
 import redis
+import requests
+from sqlalchemy import func, or_
+from sqlalchemy.orm import joinedload
 
 # Import configuration
 import config
 
 # Import our models
 from models import (
-    db,
     Category,
-    Word,
-    UserVocabulary,
-    PracticeSession,
-    PracticeResult,
-    User,
-    Settings,
     ExcludedWord,
+    PracticeResult,
+    PracticeSession,
+    Settings,
+    User,
+    UserVocabulary,
+    Word,
+    db,
 )
 
-# Import image service client (lightweight version that communicates with separate service)
-from image_service_client import ImageServiceClient
+# Import avatar service
+from services.avatar_service import avatar_service
 
 # Import CAPTCHA service
 from services.captcha_service import captcha_service
@@ -45,20 +46,17 @@ from services.captcha_service import captcha_service
 # Import optimized text processing service
 from services.optimized_text_processor import OptimizedSerbianTextProcessor
 
-# Import translation caching service
-from services.translation_cache import TranslationCache
+# Import sentence cache service
+from services.sentence_cache import SentenceCacheService
 
 # Import streak service
 from services.streak_service import streak_service
 
+# Import translation caching service
+from services.translation_cache import TranslationCache
+
 # Import XP service
 from services.xp_service import xp_service
-
-# Import sentence cache service
-from services.sentence_cache import SentenceCacheService
-
-# Import avatar service
-from services.avatar_service import avatar_service
 
 # Try to import feedparser, but don't crash if not available
 try:
@@ -196,7 +194,7 @@ CRITICAL REQUIREMENTS:
 
 EXAMPLES:
 Serbian input "radim" → "raditi" (to work)
-Serbian input "kuće" → "kuća" (house)  
+Serbian input "kuće" → "kuća" (house)
 English input "working" → "raditi" (to work)
 English input "houses" → "kuća" (house)
 
@@ -338,13 +336,16 @@ def register():
         # Create access token
         access_token = create_access_token(identity=str(user.id))
 
-        return jsonify(
-            {
-                "message": "User registered successfully",
-                "access_token": access_token,
-                "user": user.to_dict(),
-            }
-        ), 201
+        return (
+            jsonify(
+                {
+                    "message": "User registered successfully",
+                    "access_token": access_token,
+                    "user": user.to_dict(),
+                }
+            ),
+            201,
+        )
 
     except Exception as e:
         db.session.rollback()
@@ -452,9 +453,14 @@ def update_settings():
             if 1 <= timeout <= 10:
                 user.settings.auto_advance_timeout = timeout
             else:
-                return jsonify(
-                    {"error": "Auto-advance timeout must be between 1 and 10 seconds"}
-                ), 400
+                return (
+                    jsonify(
+                        {
+                            "error": "Auto-advance timeout must be between 1 and 10 seconds"
+                        }
+                    ),
+                    400,
+                )
 
         # Update mastery threshold if provided
         if "mastery_threshold" in data:
@@ -463,11 +469,14 @@ def update_settings():
             if 3 <= threshold <= 10:
                 user.settings.mastery_threshold = threshold
             else:
-                return jsonify(
-                    {
-                        "error": "Mastery threshold must be between 3 and 10 correct answers"
-                    }
-                ), 400
+                return (
+                    jsonify(
+                        {
+                            "error": "Mastery threshold must be between 3 and 10 correct answers"
+                        }
+                    ),
+                    400,
+                )
 
         # Update practice round count if provided
         if "practice_round_count" in data:
@@ -476,11 +485,14 @@ def update_settings():
             if 5 <= round_count <= 30:
                 user.settings.practice_round_count = round_count
             else:
-                return jsonify(
-                    {
-                        "error": "Practice round count must be between 5 and 30 words per session"
-                    }
-                ), 400
+                return (
+                    jsonify(
+                        {
+                            "error": "Practice round count must be between 5 and 30 words per session"
+                        }
+                    ),
+                    400,
+                )
 
         db.session.commit()
 
@@ -739,9 +751,12 @@ def add_suggested_word():
         notes = data.get("notes", "")
 
         if not serbian_word or not english_translation:
-            return jsonify(
-                {"error": "Both Serbian word and English translation are required"}
-            ), 400
+            return (
+                jsonify(
+                    {"error": "Both Serbian word and English translation are required"}
+                ),
+                400,
+            )
 
         # Check if word already exists
         existing_word = Word.query.filter_by(
@@ -755,12 +770,15 @@ def add_suggested_word():
             ).first()
 
             if existing_vocab:
-                return jsonify(
-                    {
-                        "error": "Word already exists in your vocabulary",
-                        "word": existing_word.to_dict(),
-                    }
-                ), 409
+                return (
+                    jsonify(
+                        {
+                            "error": "Word already exists in your vocabulary",
+                            "word": existing_word.to_dict(),
+                        }
+                    ),
+                    409,
+                )
             else:
                 # Add existing word to user's vocabulary
                 user_vocab = UserVocabulary(user_id=user_id, word_id=existing_word.id)
@@ -852,9 +870,10 @@ def process_text():
         api_key = get_user_openai_key(int(user_id))
 
         if not api_key:
-            return jsonify(
-                {"error": "Please configure your OpenAI API key in settings"}
-            ), 400
+            return (
+                jsonify({"error": "Please configure your OpenAI API key in settings"}),
+                400,
+            )
 
         data = request.get_json()
         text = data.get("text", "")
@@ -934,9 +953,10 @@ def process_text():
         except Exception as processor_error:
             print(f"Optimized processor error: {processor_error}")
             # Fallback to basic processing if optimized processor fails
-            return jsonify(
-                {"error": f"Text processing error: {str(processor_error)}"}
-            ), 500
+            return (
+                jsonify({"error": f"Text processing error: {processor_error!s}"}),
+                500,
+            )
 
     except Exception as e:
         print(f"Error processing text: {e}")
@@ -1020,7 +1040,7 @@ def add_words():
                 )
                 # Continue processing other words instead of failing the entire request
                 skipped_words.append(
-                    {"word": word_data, "reason": f"processing_error: {str(e)}"}
+                    {"word": word_data, "reason": f"processing_error: {e!s}"}
                 )
                 continue
 
@@ -1072,7 +1092,7 @@ def add_words():
     except Exception as e:
         db.session.rollback()
         print(f"Error adding words: {e}")
-        return jsonify({"error": f"Failed to add words: {str(e)}"}), 500
+        return jsonify({"error": f"Failed to add words: {e!s}"}), 500
 
 
 @app.route("/api/practice/words")
@@ -1171,9 +1191,11 @@ def get_practice_words():
                             {
                                 "serbian_word": word.serbian_word,
                                 "english_translation": word.english_translation,
-                                "category_name": word.category.name
-                                if word.category
-                                else "Common Words",
+                                "category_name": (
+                                    word.category.name
+                                    if word.category
+                                    else "Common Words"
+                                ),
                             }
                         )
 
@@ -1256,9 +1278,11 @@ def get_practice_words():
                                                     {
                                                         "serbian_word": word.serbian_word,
                                                         "english_translation": word.english_translation,
-                                                        "category_name": word.category.name
-                                                        if word.category
-                                                        else "Common Words",
+                                                        "category_name": (
+                                                            word.category.name
+                                                            if word.category
+                                                            else "Common Words"
+                                                        ),
                                                     }
                                                 )
 
@@ -1420,18 +1444,20 @@ def generate_example_sentence():
         api_key = get_user_openai_key(int(user_id))
 
         if not api_key:
-            return jsonify(
-                {"error": "Please configure your OpenAI API key in settings"}
-            ), 400
+            return (
+                jsonify({"error": "Please configure your OpenAI API key in settings"}),
+                400,
+            )
 
         data = request.get_json()
         serbian_word = data.get("serbian_word")
         english_translation = data.get("english_translation")
 
         if not serbian_word or not english_translation:
-            return jsonify(
-                {"error": "Serbian word and English translation are required"}
-            ), 400
+            return (
+                jsonify({"error": "Serbian word and English translation are required"}),
+                400,
+            )
 
         # PRIMARY PATH: Try to get cached sentence first - this dramatically reduces API calls
         cached_sentence = sentence_cache_service.get_random_sentence(
@@ -1702,9 +1728,11 @@ def complete_practice_session():
         response_data = {
             "total_questions": total_questions,
             "correct_answers": correct_answers,
-            "accuracy": round((correct_answers / total_questions) * 100)
-            if total_questions > 0
-            else 0,
+            "accuracy": (
+                round((correct_answers / total_questions) * 100)
+                if total_questions > 0
+                else 0
+            ),
         }
 
         # Add XP information to response
@@ -2201,19 +2229,26 @@ def get_news():
 
                             articles.append(
                                 {
-                                    "title": item.title
-                                    if hasattr(item, "title")
-                                    else "Bez naslova",
+                                    "title": (
+                                        item.title
+                                        if hasattr(item, "title")
+                                        else "Bez naslova"
+                                    ),
                                     "content": content or "Sadržaj nije dostupan.",
                                     "source": feed_info["name"],
-                                    "date": datetime(
-                                        *item.published_parsed[:6]
-                                    ).strftime("%d.%m.%Y")
-                                    if hasattr(item, "published_parsed")
-                                    else datetime.now().strftime("%d.%m.%Y"),
-                                    "category": item.categories[0].term
-                                    if hasattr(item, "categories") and item.categories
-                                    else "Vesti",
+                                    "date": (
+                                        datetime(*item.published_parsed[:6]).strftime(
+                                            "%d.%m.%Y"
+                                        )
+                                        if hasattr(item, "published_parsed")
+                                        else datetime.now().strftime("%d.%m.%Y")
+                                    ),
+                                    "category": (
+                                        item.categories[0].term
+                                        if hasattr(item, "categories")
+                                        and item.categories
+                                        else "Vesti"
+                                    ),
                                     "link": article_link,
                                     "needsFullContent": len(content) < 400,
                                 }
@@ -2352,9 +2387,11 @@ def search_image():
             return jsonify(
                 {
                     "success": False,
-                    "error": image_data.get("error", "No image found")
-                    if image_data
-                    else "No image found",
+                    "error": (
+                        image_data.get("error", "No image found")
+                        if image_data
+                        else "No image found"
+                    ),
                 }
             )
 
@@ -2379,9 +2416,11 @@ def clear_image_cache():
         return jsonify(
             {
                 "success": success,
-                "message": f"Cache cleared for word '{serbian_word}'"
-                if success
-                else "Failed to clear cache",
+                "message": (
+                    f"Cache cleared for word '{serbian_word}'"
+                    if success
+                    else "Failed to clear cache"
+                ),
             }
         )
 
@@ -2478,9 +2517,11 @@ def get_image_immediate():
             return jsonify(
                 {
                     "success": False,
-                    "error": image_data.get("error", "No image found")
-                    if image_data
-                    else "No image found",
+                    "error": (
+                        image_data.get("error", "No image found")
+                        if image_data
+                        else "No image found"
+                    ),
                 }
             )
 
@@ -2730,9 +2771,10 @@ def get_text_processing_stats():
         api_key = get_user_openai_key(int(user_id))
 
         if not api_key:
-            return jsonify(
-                {"error": "Please configure your OpenAI API key in settings"}
-            ), 400
+            return (
+                jsonify({"error": "Please configure your OpenAI API key in settings"}),
+                400,
+            )
 
         # Create processor to get stats
         processor = OptimizedSerbianTextProcessor(
@@ -2758,9 +2800,10 @@ def clear_text_processing_cache():
         api_key = get_user_openai_key(int(user_id))
 
         if not api_key:
-            return jsonify(
-                {"error": "Please configure your OpenAI API key in settings"}
-            ), 400
+            return (
+                jsonify({"error": "Please configure your OpenAI API key in settings"}),
+                400,
+            )
 
         # Create processor to clear cache
         processor = OptimizedSerbianTextProcessor(
@@ -2793,9 +2836,10 @@ def warm_text_processing_cache():
         api_key = get_user_openai_key(user_id_int)
 
         if not api_key:
-            return jsonify(
-                {"error": "Please configure your OpenAI API key in settings"}
-            ), 400
+            return (
+                jsonify({"error": "Please configure your OpenAI API key in settings"}),
+                400,
+            )
 
         # Get user's vocabulary words
         user_words = (
@@ -2812,9 +2856,9 @@ def warm_text_processing_cache():
                     "serbian_word": word.serbian_word,
                     "english_translation": word.english_translation,
                     "category_id": word.category_id,
-                    "category_name": word.category.name
-                    if word.category
-                    else "Common Words",
+                    "category_name": (
+                        word.category.name if word.category else "Common Words"
+                    ),
                 }
             )
 
@@ -2849,9 +2893,10 @@ def analyze_text_patterns():
         api_key = get_user_openai_key(int(user_id))
 
         if not api_key:
-            return jsonify(
-                {"error": "Please configure your OpenAI API key in settings"}
-            ), 400
+            return (
+                jsonify({"error": "Please configure your OpenAI API key in settings"}),
+                400,
+            )
 
         data = request.get_json()
         texts = data.get("texts", [])
@@ -2933,9 +2978,10 @@ def populate_sentence_cache():
         api_key = get_user_openai_key(user_id)
 
         if not api_key:
-            return jsonify(
-                {"error": "Please configure your OpenAI API key in settings"}
-            ), 400
+            return (
+                jsonify({"error": "Please configure your OpenAI API key in settings"}),
+                400,
+            )
 
         data = request.get_json() or {}
         batch_size = data.get("batch_size", 5)  # Process 5 words at a time
@@ -2963,9 +3009,9 @@ def populate_sentence_cache():
                 {
                     "serbian_word": word.serbian_word,
                     "english_translation": word.english_translation,
-                    "category_name": word.category.name
-                    if word.category
-                    else "Common Words",
+                    "category_name": (
+                        word.category.name if word.category else "Common Words"
+                    ),
                 }
             )
 
@@ -3040,9 +3086,10 @@ def warm_sentence_cache():
         api_key = get_user_openai_key(user_id)
 
         if not api_key:
-            return jsonify(
-                {"error": "Please configure your OpenAI API key in settings"}
-            ), 400
+            return (
+                jsonify({"error": "Please configure your OpenAI API key in settings"}),
+                400,
+            )
 
         data = request.get_json() or {}
         max_words = data.get("max_words", 20)  # Limit to avoid too many API calls
@@ -3074,9 +3121,9 @@ def warm_sentence_cache():
                     {
                         "serbian_word": word.serbian_word,
                         "english_translation": word.english_translation,
-                        "category_name": word.category.name
-                        if word.category
-                        else "Common Words",
+                        "category_name": (
+                            word.category.name if word.category else "Common Words"
+                        ),
                     }
                 )
 
@@ -3182,9 +3229,10 @@ def bulk_populate_sentence_cache():
         api_key = get_user_openai_key(user_id)
 
         if not api_key:
-            return jsonify(
-                {"error": "Please configure your OpenAI API key in settings"}
-            ), 400
+            return (
+                jsonify({"error": "Please configure your OpenAI API key in settings"}),
+                400,
+            )
 
         data = request.get_json() or {}
         max_words = data.get("max_words", 50)  # Process up to 50 words at once
@@ -3248,9 +3296,9 @@ def bulk_populate_sentence_cache():
                 {
                     "serbian_word": word.serbian_word,
                     "english_translation": word.english_translation,
-                    "category_name": word.category.name
-                    if word.category
-                    else "Common Words",
+                    "category_name": (
+                        word.category.name if word.category else "Common Words"
+                    ),
                 }
             )
 
@@ -3320,9 +3368,10 @@ def supercharge_sentence_cache():
         api_key = get_user_openai_key(user_id)
 
         if not api_key:
-            return jsonify(
-                {"error": "Please configure your OpenAI API key in settings"}
-            ), 400
+            return (
+                jsonify({"error": "Please configure your OpenAI API key in settings"}),
+                400,
+            )
 
         data = request.get_json() or {}
         force_refresh = data.get("force_refresh", False)  # Re-cache existing entries
@@ -3369,9 +3418,9 @@ def supercharge_sentence_cache():
                     {
                         "serbian_word": word.serbian_word,
                         "english_translation": word.english_translation,
-                        "category_name": word.category.name
-                        if word.category
-                        else "Common Words",
+                        "category_name": (
+                            word.category.name if word.category else "Common Words"
+                        ),
                         "priority_score": (word.user_vocabulary[0].times_practiced * 2)
                         + (
                             100 - word.user_vocabulary[0].mastery_level
@@ -3490,9 +3539,11 @@ def supercharge_sentence_cache():
                 "performance_rating": performance_rating,
                 "estimated_api_calls_saved": int(estimated_api_savings),
                 "performance_improvement": f"{performance_rating} performance - Practice sessions will be significantly faster!",
-                "next_steps": "Your vocabulary is now optimized for maximum practice speed. Enjoy lightning-fast sentence generation!"
-                if cache_coverage >= 90
-                else f"Consider running supercharge again to reach 100% coverage ({100 - cache_coverage:.1f}% remaining)",
+                "next_steps": (
+                    "Your vocabulary is now optimized for maximum practice speed. Enjoy lightning-fast sentence generation!"
+                    if cache_coverage >= 90
+                    else f"Consider running supercharge again to reach 100% coverage ({100 - cache_coverage:.1f}% remaining)"
+                ),
             }
         )
 
@@ -3551,9 +3602,10 @@ def generate_dialogue():
         api_key = get_user_openai_key(int(user_id))
 
         if not api_key:
-            return jsonify(
-                {"error": "Please configure your OpenAI API key in settings"}
-            ), 400
+            return (
+                jsonify({"error": "Please configure your OpenAI API key in settings"}),
+                400,
+            )
 
         data = request.get_json()
         topic = data.get("topic")
@@ -3651,9 +3703,10 @@ def generate_summary():
         api_key = get_user_openai_key(int(user_id))
 
         if not api_key:
-            return jsonify(
-                {"error": "Please configure your OpenAI API key in settings"}
-            ), 400
+            return (
+                jsonify({"error": "Please configure your OpenAI API key in settings"}),
+                400,
+            )
 
         data = request.get_json()
         article_text = data.get("article_text")
@@ -3683,7 +3736,7 @@ Write a vocabulary-focused summary:"""
             prompt = f"""Create a {summary_type} summary in Serbian of this article.
 
 Requirements:
-- Approximately {target_word_count} words  
+- Approximately {target_word_count} words
 - Use clear, intermediate-level Serbian
 - Focus on main points and key information
 - Make it accessible for Serbian language learners
@@ -3751,9 +3804,10 @@ def generate_vocabulary_context():
         api_key = get_user_openai_key(int(user_id))
 
         if not api_key:
-            return jsonify(
-                {"error": "Please configure your OpenAI API key in settings"}
-            ), 400
+            return (
+                jsonify({"error": "Please configure your OpenAI API key in settings"}),
+                400,
+            )
 
         data = request.get_json()
         topic = data.get("topic")
@@ -3789,7 +3843,7 @@ Create the {content_type}:"""
             messages=[
                 {
                     "role": "system",
-                    "content": f"You are creating educational Serbian content that helps language learners understand vocabulary in context.",
+                    "content": "You are creating educational Serbian content that helps language learners understand vocabulary in context.",
                 },
                 {"role": "user", "content": prompt},
             ],

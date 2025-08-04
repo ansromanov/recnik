@@ -1,40 +1,40 @@
 {
-    "name": "recnik-frontend",
-    "version": "1.0.0",
-    "description": "Frontend for Recnik - Serbian vocabulary learning tool",
-    "private": true,
-    "dependencies": {
-        "axios": "^1.6.2",
-        "react": "^18.2.0",
-        "react-dom": "^18.2.0",
-        "react-google-recaptcha": "^3.1.0",
-        "react-router-dom": "^6.20.1"
-    },
-    "scripts": {
-        "start": "react-scripts start",
-        "build": "react-scripts build",
-        "test": "react-scripts test",
-        "eject": "react-scripts eject"
-    },
-    "devDependencies": {
-        "react-scripts": "5.0.1"
-    },
-    "eslintConfig": {
-        "extends": [
-            "react-app"
-        ]
-    },
-    "browserslist": {
-        "production": [
-            ">0.2%",
-            "not dead",
-            "not op_mini all"
-        ],
-        "development": [
-            "last 1 chrome version",
-            "last 1 firefox version",
-            "last 1 safari version"
-        ]
-    },
-    "proxy": "http://backend:3001"
+  "browserslist": {
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ],
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ]
+  },
+  "dependencies": {
+    "axios": "^1.6.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-google-recaptcha": "^3.1.0",
+    "react-router-dom": "^6.20.1"
+  },
+  "description": "Frontend for Recnik - Serbian vocabulary learning tool",
+  "devDependencies": {
+    "react-scripts": "5.0.1"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
+  },
+  "name": "recnik-frontend",
+  "private": true,
+  "proxy": "http://backend:3001",
+  "scripts": {
+    "build": "react-scripts build",
+    "eject": "react-scripts eject",
+    "start": "react-scripts start",
+    "test": "react-scripts test"
+  },
+  "version": "1.0.0"
 }

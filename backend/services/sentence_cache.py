@@ -1,9 +1,10 @@
+from datetime import datetime, timezone
 import json
-import redis
-import openai
-from typing import List, Optional, Dict
 import random
-from datetime import datetime, timedelta, timezone
+from typing import Optional
+
+import openai
+import redis
 
 
 class SentenceCacheService:
@@ -23,7 +24,7 @@ class SentenceCacheService:
 
     def get_cached_sentences(
         self, serbian_word: str, english_translation: str
-    ) -> Optional[List[Dict]]:
+    ) -> Optional[list[dict]]:
         """Get cached sentences for a word (returns list of {serbian, english} pairs)"""
         try:
             cache_key = self._get_cache_key(serbian_word, english_translation)
@@ -47,7 +48,7 @@ class SentenceCacheService:
 
     def get_random_sentence(
         self, serbian_word: str, english_translation: str
-    ) -> Optional[Dict]:
+    ) -> Optional[dict]:
         """Get a random cached sentence pair for a word"""
         sentences = self.get_cached_sentences(serbian_word, english_translation)
         if sentences:
@@ -55,7 +56,7 @@ class SentenceCacheService:
         return None
 
     def cache_sentences(
-        self, serbian_word: str, english_translation: str, sentences: List[Dict]
+        self, serbian_word: str, english_translation: str, sentences: list[dict]
     ) -> bool:
         """Cache sentence pairs for a word (each sentence is {serbian, english})"""
         try:
@@ -81,7 +82,7 @@ class SentenceCacheService:
         english_translation: str,
         api_key: str,
         category_name: str = None,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Generate and cache sentence pairs (Serbian + English) for a word using OpenAI"""
         try:
             # Create prompt for generating sentence pairs
@@ -195,7 +196,7 @@ Generate {self.sentences_per_word} sentence pairs:"""
             ]
 
     def warm_cache_for_words(
-        self, words_data: List[Dict], api_key: str, batch_size: int = 5
+        self, words_data: list[dict], api_key: str, batch_size: int = 5
     ) -> int:
         """Warm cache for multiple words in batches"""
         cached_count = 0
@@ -230,7 +231,7 @@ Generate {self.sentences_per_word} sentence pairs:"""
 
         return cached_count
 
-    def get_cache_stats(self) -> Dict:
+    def get_cache_stats(self) -> dict:
         """Get cache statistics"""
         try:
             # Count cache entries
@@ -258,11 +259,11 @@ Generate {self.sentences_per_word} sentence pairs:"""
             return {
                 "total_cached_words": total_cached,
                 "estimated_total_sentences": estimated_total_sentences,
-                "average_sentences_per_word": round(
-                    estimated_total_sentences / total_cached, 1
-                )
-                if total_cached > 0
-                else 0,
+                "average_sentences_per_word": (
+                    round(estimated_total_sentences / total_cached, 1)
+                    if total_cached > 0
+                    else 0
+                ),
                 "cache_ttl_days": self.cache_ttl / 86400,
                 "sentences_per_word_target": self.sentences_per_word,
             }
@@ -295,8 +296,8 @@ Generate {self.sentences_per_word} sentence pairs:"""
             return 0
 
     def populate_user_vocabulary_cache(
-        self, user_words: List[Dict], api_key: str
-    ) -> Dict:
+        self, user_words: list[dict], api_key: str
+    ) -> dict:
         """Populate cache for user's vocabulary words"""
         try:
             # Filter words that don't have cached sentences

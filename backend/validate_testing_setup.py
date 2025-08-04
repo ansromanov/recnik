@@ -4,11 +4,11 @@ Testing Setup Validation Script
 Validates that the testing infrastructure is properly configured.
 """
 
-import sys
-import os
-import subprocess
 import importlib.util
+import os
 from pathlib import Path
+import subprocess
+import sys
 
 
 def check_file_exists(file_path, description):
@@ -45,7 +45,7 @@ def run_command(command, description):
             print(f"❌ {description}: {result.stderr}")
             return False, result.stderr
     except Exception as e:
-        print(f"❌ {description}: {str(e)}")
+        print(f"❌ {description}: {e!s}")
         return False, str(e)
 
 

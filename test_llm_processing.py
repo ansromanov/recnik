@@ -3,9 +3,8 @@
 Test script for the improved LLM prompt-based text processing with infinitive conversion
 """
 
+
 import requests
-import json
-import os
 
 # Enhanced test data with various verb forms to test infinitive conversion
 test_texts = {
@@ -107,7 +106,7 @@ def test_process_text():
         print(f"⚠️  Settings error: {e}")
 
     # Test the new text processing with multiple test cases
-    print(f"\n🧠 Testing LLM-based text processing with infinitive conversion...")
+    print("\n🧠 Testing LLM-based text processing with infinitive conversion...")
 
     for test_name, test_text in test_texts.items():
         print(f"\n📄 Testing {test_name}:")
@@ -123,12 +122,12 @@ def test_process_text():
 
             if process_response.status_code == 200:
                 result = process_response.json()
-                print(f"   ✅ Processing successful!")
+                print("   ✅ Processing successful!")
                 print(f"   📊 Results: {result.get('new_words', 0)} words extracted")
 
                 translations = result.get("translations", [])
                 if translations:
-                    print(f"   🎯 Sample words (showing infinitive conversion):")
+                    print("   🎯 Sample words (showing infinitive conversion):")
                     for i, word in enumerate(translations[:5]):  # Show first 5
                         original = word.get("original_form", "")
                         base = word["serbian_word"]
@@ -148,7 +147,7 @@ def test_process_text():
                             found_conversions[original] = base
 
                     if found_conversions:
-                        print(f"   ✅ Verified conversions:")
+                        print("   ✅ Verified conversions:")
                         for orig, converted in found_conversions.items():
                             expected = expected_conversions.get(orig, "unknown")
                             status = "✅" if converted == expected else "❌"
@@ -171,11 +170,11 @@ def test_process_text():
             print(f"   ❌ Processing error for {test_name}: {e}")
 
     # Summary
-    print(f"\n📝 Summary:")
+    print("\n📝 Summary:")
     print(f"   • Tested {len(test_texts)} different text types")
     print(f"   • Expected infinitive conversions: {len(expected_conversions)}")
     print(
-        f"   • To test with real API key, replace 'your-openai-api-key-here' with actual key"
+        "   • To test with real API key, replace 'your-openai-api-key-here' with actual key"
     )
 
 

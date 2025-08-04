@@ -1,28 +1,28 @@
 {
-  "total": {
-    "Python": 20214,
-    "JavaScript": 8484,
-    "CSS": 7343,
-    "JSON": 1428,
-    "Markdown": 2347
-  },
   "production": {
-    "Python": 17952,
-    "JavaScript": 8484,
     "CSS": 7343,
     "JSON": 1428,
-    "Markdown": 2347
-  },
-  "tests": {
-    "Python": 2262,
-    "JavaScript": 0,
-    "CSS": 0,
-    "JSON": 0,
-    "Markdown": 0
+    "JavaScript": 8484,
+    "Markdown": 2347,
+    "Python": 17952
   },
   "summary": {
-    "total_lines": 39816,
     "production_lines": 37554,
-    "test_lines": 2262
+    "test_lines": 2262,
+    "total_lines": 39816
+  },
+  "tests": {
+    "CSS": 0,
+    "JSON": 0,
+    "JavaScript": 0,
+    "Markdown": 0,
+    "Python": 2262
+  },
+  "total": {
+    "CSS": 7343,
+    "JSON": 1428,
+    "JavaScript": 8484,
+    "Markdown": 2347,
+    "Python": 20214
   }
 }

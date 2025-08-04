@@ -4,27 +4,24 @@ Authentication Service
 Handles user authentication, registration, and JWT token management.
 """
 
+from datetime import timedelta
 import os
-import json
-import logging
-from datetime import datetime, timedelta
-from flask import Flask, request, jsonify
+
+from controllers.auth_controller import AuthController
+from dotenv import load_dotenv
+from flask import Flask, request
 from flask_cors import CORS
 from flask_jwt_extended import (
     JWTManager,
-    create_access_token,
-    jwt_required,
     get_jwt_identity,
+    jwt_required,
 )
-from prometheus_flask_exporter import PrometheusMetrics
-from dotenv import load_dotenv
-
-from models.user import User, Settings
-from models.database import db
-from controllers.auth_controller import AuthController
-from utils.logger import setup_logger
 from health import health_bp
 from metrics import metrics_bp
+from prometheus_flask_exporter import PrometheusMetrics
+from utils.logger import setup_logger
+
+from models.database import db
 
 load_dotenv()
 

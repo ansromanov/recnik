@@ -1,7 +1,8 @@
 import os
 import sys
-from sqlalchemy import create_engine, text
+
 from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
 
 # Load environment variables
 load_dotenv()
@@ -1026,10 +1027,12 @@ def populate_top_100_words():
 
                         # Insert the word
                         conn.execute(
-                            text("""
+                            text(
+                                """
                                 INSERT INTO words (serbian_word, english_translation, category_id, is_top_100)
                                 VALUES (:serbian, :english, :cat_id, TRUE)
-                            """),
+                            """
+                            ),
                             {
                                 "serbian": serbian_word,
                                 "english": english_translation,

@@ -7,8 +7,9 @@ This script tests the background processing and rate limiting functionality.
 import os
 import sys
 import time
-import redis
+
 from dotenv import load_dotenv
+import redis
 
 # Load environment variables
 load_dotenv()
@@ -63,7 +64,7 @@ def test_rate_limited_service():
         print(f"❌ Error getting status: {e}")
 
     # Test rate limiting by checking current status
-    print(f"\n⏱️  Rate Limiting Test:")
+    print("\n⏱️  Rate Limiting Test:")
     print("=" * 30)
     current_requests = image_service._get_rate_limit_info()
     can_make_request = image_service._can_make_request()
@@ -71,7 +72,7 @@ def test_rate_limited_service():
     print(f"Can make request: {'✅' if can_make_request else '❌'}")
 
     # Test adding words to background queue
-    print(f"\n🔄 Testing Background Queue:")
+    print("\n🔄 Testing Background Queue:")
     print("=" * 35)
 
     test_words = [
@@ -91,7 +92,7 @@ def test_rate_limited_service():
     print(f"Queue length after adding: {status.get('queue_length', 'unknown')}")
 
     # Test immediate processing (if rate limit allows)
-    print(f"\n⚡ Testing Immediate Processing:")
+    print("\n⚡ Testing Immediate Processing:")
     print("=" * 40)
 
     if can_make_request:
@@ -116,7 +117,7 @@ def test_rate_limited_service():
         print("⏸️ Rate limit reached - cannot test immediate processing")
 
     # Test normal get_word_image (should return None and queue for background)
-    print(f"\n🎯 Testing Normal Image Retrieval:")
+    print("\n🎯 Testing Normal Image Retrieval:")
     print("=" * 40)
 
     # This should return None and add to queue
@@ -129,7 +130,7 @@ def test_rate_limited_service():
         )
 
     # Show final status
-    print(f"\n📈 Final Status:")
+    print("\n📈 Final Status:")
     print("=" * 20)
     status = image_service.get_background_status()
     cache_stats = image_service.get_cache_stats()
@@ -145,7 +146,7 @@ def test_rate_limited_service():
     )
 
     # Show how background processing works
-    print(f"\n🔍 Background Processing Info:")
+    print("\n🔍 Background Processing Info:")
     print("=" * 35)
     print("The background processor will:")
     print("• Process 1 word every 2 minutes")
@@ -161,7 +162,7 @@ def test_rate_limited_service():
         )
 
     # Stop background processor for clean shutdown
-    print(f"\n🛑 Stopping background processor...")
+    print("\n🛑 Stopping background processor...")
     image_service.stop_background_processor()
 
     return True

@@ -1,7 +1,7 @@
+from datetime import datetime
 import os
+
 import redis
-from datetime import datetime, timedelta
-from flask import jsonify
 
 
 def get_metrics():
@@ -185,7 +185,7 @@ def increment_metric(redis_client, metric_type, value=1):
         # Increment total counter
         redis_client.incr(total_key, value)
 
-    except Exception as e:
+    except Exception:
         # Don't let metrics failures break the service
         pass
 

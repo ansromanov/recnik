@@ -3,11 +3,11 @@
 Test runner script for Serbian Vocabulary Application
 """
 
-import os
-import sys
-import subprocess
 import argparse
+import os
 from pathlib import Path
+import subprocess
+import sys
 
 
 def run_command(cmd, cwd=None):

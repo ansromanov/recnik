@@ -1,12 +1,13 @@
-import os
-import time
+from datetime import datetime
 import json
 import logging
-from datetime import datetime
-import redis
-import feedparser
-import requests
+import os
+import time
+
 from dotenv import load_dotenv
+import feedparser
+import redis
+import requests
 
 # Load environment variables
 load_dotenv()
@@ -218,9 +219,11 @@ def fetch_feed_articles(source_key, category, feed_url, max_articles=10):
                 "title": item.title if hasattr(item, "title") else "Bez naslova",
                 "content": content or "Sadržaj nije dostupan.",
                 "source": RSS_FEEDS[source_key]["name"],
-                "date": datetime(*item.published_parsed[:6]).strftime("%d.%m.%Y")
-                if hasattr(item, "published_parsed")
-                else datetime.now().strftime("%d.%m.%Y"),
+                "date": (
+                    datetime(*item.published_parsed[:6]).strftime("%d.%m.%Y")
+                    if hasattr(item, "published_parsed")
+                    else datetime.now().strftime("%d.%m.%Y")
+                ),
                 "category": category,
                 "link": article_link,
                 "source_key": source_key,

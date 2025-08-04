@@ -31,12 +31,14 @@ def run_migration():
         try:
             # Check if column already exists
             result = db.session.execute(
-                text("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = 'settings' 
+                text(
+                    """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'settings'
                 AND column_name = 'practice_round_count'
-            """)
+            """
+                )
             )
 
             if result.fetchone():
@@ -46,20 +48,24 @@ def run_migration():
             # Add the practice_round_count column
             print("Adding practice_round_count column to settings table...")
             db.session.execute(
-                text("""
-                ALTER TABLE settings 
+                text(
+                    """
+                ALTER TABLE settings
                 ADD COLUMN practice_round_count INTEGER NOT NULL DEFAULT 10
-            """)
+            """
+                )
             )
 
             # Update existing settings to have the default value
             print("Setting default values for existing settings...")
             db.session.execute(
-                text("""
-                UPDATE settings 
-                SET practice_round_count = 10 
+                text(
+                    """
+                UPDATE settings
+                SET practice_round_count = 10
                 WHERE practice_round_count IS NULL
-            """)
+            """
+                )
             )
 
             db.session.commit()

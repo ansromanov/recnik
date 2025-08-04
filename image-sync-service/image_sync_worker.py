@@ -10,16 +10,13 @@ import io
 import json
 import logging
 import os
-import random
 import sys
 import time
-from datetime import datetime, timedelta
-from urllib.parse import quote
 
-import requests
-import redis
-from PIL import Image
 from dotenv import load_dotenv
+from PIL import Image
+import redis
+import requests
 
 # Load environment variables
 load_dotenv()
@@ -27,7 +24,7 @@ load_dotenv()
 # Import configuration
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "backend"))
 try:
-    from config import UNSPLASH_RATE_LIMIT, RATE_LIMIT_WINDOW
+    from config import RATE_LIMIT_WINDOW, UNSPLASH_RATE_LIMIT
 except ImportError:
     # Fallback values if config import fails
     UNSPLASH_RATE_LIMIT = 50
@@ -239,7 +236,7 @@ class ImageSyncService:
 
                 if img.mode in ("RGBA", "LA", "P"):
                     img = img.convert("RGB")
-                    self.logger.debug(f"Converted image mode to RGB")
+                    self.logger.debug("Converted image mode to RGB")
 
                 max_size = int(os.getenv("IMAGE_MAX_SIZE", "400"))
                 if img.width > max_size or img.height > max_size:
@@ -276,17 +273,13 @@ class ImageSyncService:
                 }
 
         except Exception as e:
-            self.logger.error(
-                f"❌ Error downloading/processing image for '{word}': {e}"
-            )
+            self.logger.error(f"❌ Error downloading/processing image for '{word}': {e}")
             return None
 
     def process_word(self, serbian_word, english_translation=None):
         """Process a single word for image search"""
         start_time = time.time()
-        self.logger.info(
-            f"🔄 Processing word: '{serbian_word}' ({english_translation})"
-        )
+        self.logger.info(f"🔄 Processing word: '{serbian_word}' ({english_translation})")
 
         cache_key = self._generate_cache_key(serbian_word)
 
@@ -516,7 +509,7 @@ class ImageSyncService:
         """Main processing loop"""
         self.logger.info("🚀 Starting Image Sync Service")
         self.logger.info(f"Rate limit: {self.max_requests_per_hour} requests/hour")
-        self.logger.info(f"Processing interval: 30 seconds")
+        self.logger.info("Processing interval: 30 seconds")
 
         last_stats_log = time.time()
 

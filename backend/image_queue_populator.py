@@ -6,13 +6,15 @@ Automatically populates the image processing queue with words from:
 2. Top 100 words
 """
 
+from datetime import datetime, timedelta
 import json
 import time
-from datetime import datetime, timedelta
+
 from flask import Flask
-from models import db, Word, UserVocabulary
 import redis
+
 import config
+from models import UserVocabulary, Word, db
 
 
 class ImageQueuePopulator:
@@ -249,9 +251,7 @@ class ImageQueuePopulator:
             print(f"\n✅ Population cycle complete! Added {total_added} words to queue")
 
             if total_added > 0:
-                print(
-                    "🎯 Image sync service will now process these words automatically"
-                )
+                print("🎯 Image sync service will now process these words automatically")
                 print("📝 Monitor progress: docker-compose logs -f image-sync-service")
             else:
                 print("ℹ️  No new words added - all words are already cached or queued")

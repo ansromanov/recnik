@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from models.database import db
 
 
@@ -44,9 +45,9 @@ class NewsArticle(db.Model):
             "source": self.source,
             "source_url": self.source_url,
             "category": self.category,
-            "publish_date": self.publish_date.isoformat()
-            if self.publish_date
-            else None,
+            "publish_date": (
+                self.publish_date.isoformat() if self.publish_date else None
+            ),
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "word_count": self.word_count,
             "reading_time_minutes": self.reading_time_minutes,

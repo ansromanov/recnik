@@ -6,9 +6,9 @@ Tests the communication between backend and image sync service through Redis.
 
 import json
 import time
+
 import redis
 import requests
-from datetime import datetime
 
 
 class ImageSyncServiceTester:
@@ -171,7 +171,7 @@ class ImageSyncServiceTester:
             print(f"   Queue: {current_queue_length}, Cache: {cache_count}", end="\r")
             time.sleep(5)
 
-        print(f"\n✅ Monitoring complete")
+        print("\n✅ Monitoring complete")
 
     def run_full_test(self):
         """Run complete test suite"""

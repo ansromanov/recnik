@@ -4,8 +4,8 @@
 
 ### 📋 **Project Overview**
 
-**Feature**: Text-to-Speech (TTS) integration for Serbian vocabulary pronunciation  
-**Timeline**: Week 1 implementation  
+**Feature**: Text-to-Speech (TTS) integration for Serbian vocabulary pronunciation
+**Timeline**: Week 1 implementation
 **Goal**: Enable audio pronunciation playback for vocabulary words with minimal cost and easy integration
 
 ---
@@ -138,7 +138,7 @@ const VocabularyCard = ({ word, translation }) => {
     <div className="vocabulary-card">
       <h3>{word}</h3>
       <p>{translation}</p>
-      <button 
+      <button
         onClick={playPronunciation}
         disabled={isPlaying}
       >
@@ -397,8 +397,8 @@ export const useAudio = () => {
 
 ---
 
-**Proposal Prepared**: February 8, 2025  
-**Recommended Solution**: ResponsiveVoice.js  
-**Estimated Cost**: $0-50/month  
-**Implementation Time**: 1 week  
+**Proposal Prepared**: February 8, 2025
+**Recommended Solution**: ResponsiveVoice.js
+**Estimated Cost**: $0-50/month
+**Implementation Time**: 1 week
 **Risk Level**: Low

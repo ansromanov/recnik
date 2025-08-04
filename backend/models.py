@@ -1,8 +1,8 @@
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone
+
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
-from sqlalchemy.sql import func
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
 
@@ -222,9 +222,9 @@ class UserVocabulary(db.Model):
             "word_id": self.word_id,
             "times_practiced": self.times_practiced,
             "times_correct": self.times_correct,
-            "last_practiced": self.last_practiced.isoformat()
-            if self.last_practiced
-            else None,
+            "last_practiced": (
+                self.last_practiced.isoformat() if self.last_practiced else None
+            ),
             "mastery_level": self.mastery_level,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
@@ -255,9 +255,9 @@ class PracticeSession(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
-            "session_date": self.session_date.isoformat()
-            if self.session_date
-            else None,
+            "session_date": (
+                self.session_date.isoformat() if self.session_date else None
+            ),
             "total_questions": self.total_questions,
             "correct_answers": self.correct_answers,
             "duration_seconds": self.duration_seconds,
@@ -366,9 +366,9 @@ class UserStreak(db.Model):
             "streak_type": self.streak_type,
             "current_streak": self.current_streak,
             "longest_streak": self.longest_streak,
-            "last_activity_date": self.last_activity_date.isoformat()
-            if self.last_activity_date
-            else None,
+            "last_activity_date": (
+                self.last_activity_date.isoformat() if self.last_activity_date else None
+            ),
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -402,9 +402,9 @@ class StreakActivity(db.Model):
         return {
             "id": self.id,
             "user_id": self.user_id,
-            "activity_date": self.activity_date.isoformat()
-            if self.activity_date
-            else None,
+            "activity_date": (
+                self.activity_date.isoformat() if self.activity_date else None
+            ),
             "activity_type": self.activity_type,
             "activity_count": self.activity_count,
             "streak_qualifying": self.streak_qualifying,
@@ -469,9 +469,9 @@ class XPActivity(db.Model):
             "user_id": self.user_id,
             "activity_type": self.activity_type,
             "xp_earned": self.xp_earned,
-            "activity_date": self.activity_date.isoformat()
-            if self.activity_date
-            else None,
+            "activity_date": (
+                self.activity_date.isoformat() if self.activity_date else None
+            ),
             "activity_details": self.activity_details,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

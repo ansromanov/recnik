@@ -451,8 +451,8 @@ function ContentPage() {
                     <div class="dialogue-line">
                         <div class="dialogue-line-header">
                             <span class="dialogue-speaker">${displaySpeaker}:</span>
-                            <button 
-                                class="pronounce-line-button" 
+                            <button
+                                class="pronounce-line-button"
                                 onclick="window.handleDialogueLinePronunciation('${text.replace(/'/g, "\\'")}', this, '${displaySpeaker}', ${allSpeakersStr})"
                                 title="Pronounce ${displaySpeaker}'s line"
                             >

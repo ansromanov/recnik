@@ -1,10 +1,12 @@
+from datetime import datetime
 import json
 import re
-from datetime import datetime, timedelta
-from flask import jsonify
+
 import feedparser
+from flask import jsonify
 import requests
-from models.news import NewsArticle, ContentItem
+
+from models.news import ContentItem
 
 
 class NewsController:
@@ -284,20 +286,22 @@ class NewsController:
                     "source": source_info["name"],
                     "source_url": item.link if hasattr(item, "link") else "",
                     "category": category,
-                    "publish_date": datetime(*item.published_parsed[:6]).strftime(
-                        "%d.%m.%Y %H:%M"
-                    )
-                    if hasattr(item, "published_parsed")
-                    else datetime.now().strftime("%d.%m.%Y %H:%M"),
+                    "publish_date": (
+                        datetime(*item.published_parsed[:6]).strftime("%d.%m.%Y %H:%M")
+                        if hasattr(item, "published_parsed")
+                        else datetime.now().strftime("%d.%m.%Y %H:%M")
+                    ),
                     "word_count": word_count,
                     "reading_time_minutes": reading_time,
                     "difficulty_level": difficulty,
                     "is_formatted": True,
                     "has_full_content": len(formatted_content) > 300,
                     "content_type": "article",
-                    "date": datetime(*item.published_parsed[:6]).strftime("%d.%m.%Y")
-                    if hasattr(item, "published_parsed")
-                    else datetime.now().strftime("%d.%m.%Y"),
+                    "date": (
+                        datetime(*item.published_parsed[:6]).strftime("%d.%m.%Y")
+                        if hasattr(item, "published_parsed")
+                        else datetime.now().strftime("%d.%m.%Y")
+                    ),
                 }
 
                 articles.append(article)

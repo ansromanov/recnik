@@ -30,7 +30,8 @@ def migrate():
         with engine.connect() as conn:
             # Create excluded_words table
             conn.execute(
-                text("""
+                text(
+                    """
                 CREATE TABLE IF NOT EXISTS excluded_words (
                     id SERIAL PRIMARY KEY,
                     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -39,26 +40,33 @@ def migrate():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     CONSTRAINT excluded_words_user_word_unique UNIQUE (user_id, word_id)
                 );
-            """)
+            """
+                )
             )
 
             # Create indexes for performance
             conn.execute(
-                text("""
+                text(
+                    """
                 CREATE INDEX IF NOT EXISTS idx_excluded_words_user_id ON excluded_words(user_id);
-            """)
+            """
+                )
             )
 
             conn.execute(
-                text("""
+                text(
+                    """
                 CREATE INDEX IF NOT EXISTS idx_excluded_words_word_id ON excluded_words(word_id);
-            """)
+            """
+                )
             )
 
             conn.execute(
-                text("""
+                text(
+                    """
                 CREATE INDEX IF NOT EXISTS idx_excluded_words_created_at ON excluded_words(created_at);
-            """)
+            """
+                )
             )
 
             conn.commit()

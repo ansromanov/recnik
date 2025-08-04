@@ -29,10 +29,12 @@ def upgrade():
                 # Add the column with default value True
                 with db.engine.connect() as connection:
                     connection.execute(
-                        db.text("""
-                        ALTER TABLE settings 
+                        db.text(
+                            """
+                        ALTER TABLE settings
                         ADD COLUMN auto_play_voice BOOLEAN NOT NULL DEFAULT TRUE
-                    """)
+                    """
+                        )
                     )
                     connection.commit()
 

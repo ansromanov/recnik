@@ -5,10 +5,9 @@ Provides intelligent caching for word translations to dramatically improve perfo
 
 import hashlib
 import json
-import time
 import logging
-from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
+import time
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +58,7 @@ class TranslationCache:
         except Exception as e:
             logger.warning(f"Failed to update cache stats: {e}")
 
-    def get(self, word: str) -> Optional[Dict[Any, Any]]:
+    def get(self, word: str) -> Optional[dict[Any, Any]]:
         """
         Get cached translation for a word
 
@@ -93,7 +92,7 @@ class TranslationCache:
             self._update_stats(hit=False)
             return None
 
-    def set(self, word: str, translation_data: Dict[Any, Any]) -> bool:
+    def set(self, word: str, translation_data: dict[Any, Any]) -> bool:
         """
         Cache translation data for a word
 
@@ -130,7 +129,7 @@ class TranslationCache:
             logger.error(f"Error caching translation for '{word}': {e}")
             return False
 
-    def get_batch(self, words: List[str]) -> Dict[str, Optional[Dict[Any, Any]]]:
+    def get_batch(self, words: list[str]) -> dict[str, Optional[dict[Any, Any]]]:
         """
         Get cached translations for multiple words in a single operation
 
@@ -180,9 +179,9 @@ class TranslationCache:
 
         except Exception as e:
             logger.error(f"Error in batch cache lookup: {e}")
-            return {word: None for word in words}
+            return dict.fromkeys(words)
 
-    def set_batch(self, translations: Dict[str, Dict[Any, Any]]) -> int:
+    def set_batch(self, translations: dict[str, dict[Any, Any]]) -> int:
         """
         Cache multiple translations in a single operation
 
@@ -231,7 +230,7 @@ class TranslationCache:
             logger.error(f"Error in batch cache set: {e}")
             return 0
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get cache performance statistics
 
@@ -284,11 +283,13 @@ class TranslationCache:
                 "total_requests": total_requests,
                 "cache_size": cache_size,
                 "estimated_memory_mb": round(estimated_total_memory / (1024 * 1024), 2),
-                "cache_efficiency": "Excellent"
-                if hit_rate > 80
-                else "Good"
-                if hit_rate > 60
-                else "Poor",
+                "cache_efficiency": (
+                    "Excellent"
+                    if hit_rate > 80
+                    else "Good"
+                    if hit_rate > 60
+                    else "Poor"
+                ),
             }
 
         except Exception as e:
@@ -334,7 +335,7 @@ class TranslationCache:
             logger.error(f"Error clearing cache: {e}")
             return 0
 
-    def warm_cache(self, word_translations: Dict[str, Dict[Any, Any]]) -> int:
+    def warm_cache(self, word_translations: dict[str, dict[Any, Any]]) -> int:
         """
         Pre-populate cache with known translations (cache warming)
 

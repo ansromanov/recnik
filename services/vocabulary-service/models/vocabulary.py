@@ -3,7 +3,9 @@ Vocabulary models for vocabulary service
 """
 
 from datetime import datetime
+
 from sqlalchemy import event
+
 from .database import db
 
 
@@ -105,9 +107,9 @@ class UserVocabulary(db.Model):
             "mastery_level": self.mastery_level,
             "times_practiced": self.times_practiced,
             "times_correct": self.times_correct,
-            "last_practiced": self.last_practiced.isoformat()
-            if self.last_practiced
-            else None,
+            "last_practiced": (
+                self.last_practiced.isoformat() if self.last_practiced else None
+            ),
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

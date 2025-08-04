@@ -709,7 +709,7 @@ function PracticePage() {
         setLetterStates(newLetterStates);
     };
 
-    // Clear word  
+    // Clear word
     const handleClearWord = () => {
         if (showResult) return;
         setUserWord('');

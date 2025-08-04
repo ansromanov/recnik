@@ -4,19 +4,19 @@ Performance Optimization Script
 Applies database indexes and integrates optimized text processing
 """
 
+from datetime import datetime
+import logging
 import os
 import sys
-import logging
-from datetime import datetime
-from sqlalchemy import text, create_engine
-from sqlalchemy.exc import SQLAlchemyError
+
+from sqlalchemy import create_engine, text
 
 # Add the current directory to the path so we can import our modules
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from models import db, Category
-from services.translation_cache import TranslationCache
 import redis
+
+from services.translation_cache import TranslationCache
 
 # Configure logging
 logging.basicConfig(
@@ -46,7 +46,7 @@ def apply_database_indexes():
             logger.error(f"Performance indexes file not found: {indexes_file}")
             return False
 
-        with open(indexes_file, "r") as f:
+        with open(indexes_file) as f:
             sql_content = f.read()
 
         # Split SQL commands and execute them
@@ -327,7 +327,7 @@ def main():
 
     # Summary
     logger.info(f"\n{'=' * 50}")
-    logger.info(f"PERFORMANCE OPTIMIZATION SUMMARY")
+    logger.info("PERFORMANCE OPTIMIZATION SUMMARY")
     logger.info(f"{'=' * 50}")
     logger.info(f"Successfully completed: {success_steps}/{total_steps} steps")
 

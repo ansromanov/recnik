@@ -50,7 +50,8 @@ def run_migration():
         # Create user_streaks table
         if "user_streaks" not in existing_tables:
             conn.execute(
-                text("""
+                text(
+                    """
                 CREATE TABLE user_streaks (
                     id SERIAL PRIMARY KEY,
                     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -61,7 +62,8 @@ def run_migration():
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+                )
             )
             print("✅ Created user_streaks table")
         else:
@@ -70,7 +72,8 @@ def run_migration():
         # Create streak_activities table
         if "streak_activities" not in existing_tables:
             conn.execute(
-                text("""
+                text(
+                    """
                 CREATE TABLE streak_activities (
                     id SERIAL PRIMARY KEY,
                     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -80,7 +83,8 @@ def run_migration():
                     streak_qualifying BOOLEAN NOT NULL DEFAULT FALSE,
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+                )
             )
             print("✅ Created streak_activities table")
         else:
@@ -89,11 +93,13 @@ def run_migration():
         # Add unique constraint for user_id + streak_type combination
         try:
             conn.execute(
-                text("""
-                ALTER TABLE user_streaks 
-                ADD CONSTRAINT user_streaks_user_type_unique 
+                text(
+                    """
+                ALTER TABLE user_streaks
+                ADD CONSTRAINT user_streaks_user_type_unique
                 UNIQUE (user_id, streak_type)
-            """)
+            """
+                )
             )
             print("✅ Added unique constraint to user_streaks")
         except Exception as e:
@@ -105,11 +111,13 @@ def run_migration():
         # Add unique constraint for user_id + activity_date combination
         try:
             conn.execute(
-                text("""
-                ALTER TABLE streak_activities 
-                ADD CONSTRAINT streak_activities_user_date_unique 
+                text(
+                    """
+                ALTER TABLE streak_activities
+                ADD CONSTRAINT streak_activities_user_date_unique
                 UNIQUE (user_id, activity_date)
-            """)
+            """
+                )
             )
             print("✅ Added unique constraint to streak_activities")
         except Exception as e:
