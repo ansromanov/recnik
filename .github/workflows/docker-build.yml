@@ -140,48 +140,6 @@ jobs:
             VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
 
-  # Job to create a multi-service deployment manifest
-  create-manifest:
-    needs: [changes, build-and-push]
-    if: ${{ always() && needs.build-and-push.result == 'success' }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate deployment manifest
-        id: manifest
-        run: |
-          # Use the dedicated script to generate deployment manifest
-          manifest_file=$(./scripts/generate-deployment-manifest.sh \
-            --event "${{ github.event_name }}" \
-            --ref "${{ github.ref }}" \
-            --ref-name "${{ github.ref_name }}" \
-            --sha "${{ github.sha }}" \
-            --pr-number "${{ github.event.number }}" \
-            --registry "${{ env.REGISTRY }}" \
-            --image-name "${{ env.IMAGE_NAME }}")
-
-          echo "manifest-file=${manifest_file}" >> $GITHUB_OUTPUT
-
-      - name: Upload deployment manifest
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-manifest-${{ github.sha }}
-          path: ${{ steps.manifest.outputs.manifest-file }}
-          retention-days: 30
-
   # Get services for cleanup
   cleanup-matrix:
     if: ${{ github.ref == 'refs/heads/main' }}
