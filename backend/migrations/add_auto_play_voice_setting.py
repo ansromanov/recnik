@@ -73,9 +73,7 @@ def downgrade():
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Add auto_play_voice setting migration"
-    )
+    parser = argparse.ArgumentParser(description="Add auto_play_voice setting migration")
     parser.add_argument(
         "action", choices=["upgrade", "downgrade"], help="Migration action to perform"
     )

@@ -25,9 +25,7 @@ def add_mastery_threshold_column():
                 )
             )
             if result.first():
-                print(
-                    "Column 'mastery_threshold' already exists in 'settings'. No action needed."
-                )
+                print("Column 'mastery_threshold' already exists in 'settings'. No action needed.")
                 return
 
             print("Adding 'mastery_threshold' column to 'settings' table...")

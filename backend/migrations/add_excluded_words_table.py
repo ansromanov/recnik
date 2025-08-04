@@ -103,9 +103,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Add excluded_words table migration")
-    parser.add_argument(
-        "--rollback", action="store_true", help="Rollback the migration"
-    )
+    parser.add_argument("--rollback", action="store_true", help="Rollback the migration")
     args = parser.parse_args()
 
     if args.rollback:

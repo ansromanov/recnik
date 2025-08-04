@@ -129,9 +129,7 @@ def run_migration():
         # Add indexes for better performance
         try:
             conn.execute(
-                text(
-                    "CREATE INDEX IF NOT EXISTS idx_user_streaks_user_id ON user_streaks(user_id)"
-                )
+                text("CREATE INDEX IF NOT EXISTS idx_user_streaks_user_id ON user_streaks(user_id)")
             )
             conn.execute(
                 text(
