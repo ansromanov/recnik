@@ -195,7 +195,6 @@ class TranslationCache:
         try:
             # Prepare all cache operations
             pipe = self.redis.pipeline()
-            cached_count = 0
 
             for word, translation_data in translations.items():
                 cache_key = self._generate_key(word)
@@ -208,7 +207,6 @@ class TranslationCache:
                 }
 
                 pipe.setex(cache_key, self.ttl, json.dumps(enhanced_data))
-                cached_count += 1
 
             # Execute all cache operations
             results = pipe.execute()

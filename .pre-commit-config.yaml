@@ -1,19 +1,20 @@
 # Pre-commit hooks configuration
 repos:
   # Black - Python code formatter
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
-    hooks:
-      - id: black
-        language_version: python3
-        args: [--config=pyproject.toml]
+  # - repo: https://github.com/psf/black
+  #   rev: 25.1.0
+  #   hooks:
+  #     - id: black
+  #       language_version: python3
+  #       args: [--config=pyproject.toml]
 
   # Ruff - Fast Python linter
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.12.7
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
 
   # MyPy - Static type checker (disabled due to microservices structure conflicts)
   # - repo: https://github.com/pre-commit/mirrors-mypy

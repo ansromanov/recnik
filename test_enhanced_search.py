@@ -3,7 +3,6 @@
 Test script for the enhanced word search functionality with LLM integration
 """
 
-
 from dotenv import load_dotenv
 import requests
 

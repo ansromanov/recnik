@@ -37,9 +37,9 @@ jobs:
         run: |
           uv sync --extra dev --extra test
 
-      - name: Format check with Black
+      - name: Format check with Ruff
         run: |
-          uv run black --check --diff .
+          uv run ruff format --check --diff .
 
       - name: Lint with Ruff
         run: |

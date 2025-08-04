@@ -262,7 +262,7 @@ def run_performance_benchmarks():
             cache_hits = sum(1 for result in cached_results.values() if result is not None)
 
             logger.info(
-                f"Cache benchmark: {cache_hits}/{len(test_words)} hits " f"in {cache_time:.3f}s"
+                f"Cache benchmark: {cache_hits}/{len(test_words)} hits in {cache_time:.3f}s"
             )
 
         logger.info("Performance benchmarks completed")
