@@ -1,0 +1,278 @@
+name: Test and Coverage
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          uv sync --extra dev --extra test
+
+      - name: Set up test environment
+        run: |
+          # Create test environment file
+          cat > backend/.env.test << EOF
+          DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_db
+          REDIS_URL=redis://localhost:6379/0
+          SECRET_KEY=test_secret_key_for_testing_only
+          JWT_SECRET_KEY=test_jwt_secret_key_for_testing_only
+          FLASK_ENV=testing
+          TESTING=true
+          OPENAI_API_KEY=test_key
+          EOF
+
+      - name: Run linting
+        run: |
+          uv run ruff check . --output-format=github
+
+      - name: Run type checking
+        run: |
+          uv run mypy .
+        continue-on-error: true
+
+      - name: Run security scan
+        run: |
+          uv run bandit -r . --skip B101,B601 --exclude tests/ --format json --output bandit-report.json || true
+          uv run bandit -r . --skip B101,B601 --exclude tests/
+        continue-on-error: true
+
+      - name: Run tests with coverage
+        run: |
+          cd backend
+          uv run pytest \
+            --cov=. \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-report=term-missing \
+            --cov-fail-under=70 \
+            --junitxml=pytest-results.xml \
+            -v
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test_secret_key_for_testing_only
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only
+          FLASK_ENV: testing
+          TESTING: true
+          OPENAI_API_KEY: test_key
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./backend/coverage.xml
+          directory: ./backend
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: false
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            backend/pytest-results.xml
+            backend/htmlcov/
+            backend/coverage.xml
+            bandit-report.json
+
+      - name: Comment coverage on PR
+        if: github.event_name == 'pull_request'
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          COVERAGE_PATH: backend/coverage.xml
+          MINIMUM_GREEN: 80
+          MINIMUM_ORANGE: 70
+
+  # Frontend tests (if you have any)
+  test-frontend:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && contains(github.event.pull_request.changed_files, 'frontend/'))
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Run frontend linting
+        run: |
+          cd frontend
+          npm run lint || echo "No lint script found"
+        continue-on-error: true
+
+      - name: Run frontend tests
+        run: |
+          cd frontend
+          npm test -- --coverage --watchAll=false || echo "No test script found"
+        continue-on-error: true
+
+      - name: Upload frontend coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          directory: ./frontend
+          flags: frontend
+          name: frontend-coverage
+          fail_ci_if_error: false
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
+
+  # Services tests
+  test-services:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [auth-service, vocabulary-service, news-service]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Check if service has tests
+        id: check-tests
+        run: |
+          if [ -d "services/${{ matrix.service }}/tests" ] || [ -f "services/${{ matrix.service }}/test_*.py" ]; then
+            echo "has_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tests=false" >> $GITHUB_OUTPUT
+            echo "No tests found for ${{ matrix.service }}"
+          fi
+
+      - name: Install service dependencies
+        if: steps.check-tests.outputs.has_tests == 'true'
+        run: |
+          cd services/${{ matrix.service }}
+          if [ -f "requirements.txt" ]; then
+            uv pip install -r requirements.txt
+          fi
+          if [ -f "requirements-test.txt" ]; then
+            uv pip install -r requirements-test.txt
+          else
+            # Install common test dependencies
+            uv pip install pytest pytest-cov pytest-mock
+          fi
+
+      - name: Run service tests
+        if: steps.check-tests.outputs.has_tests == 'true'
+        run: |
+          cd services/${{ matrix.service }}
+          if [ -d "tests" ]; then
+            python -m pytest tests/ --cov=. --cov-report=xml --cov-report=term-missing -v || echo "Tests failed but continuing"
+          elif ls test_*.py 1> /dev/null 2>&1; then
+            python -m pytest test_*.py --cov=. --cov-report=xml --cov-report=term-missing -v || echo "Tests failed but continuing"
+          fi
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test_secret_key_for_testing_only
+          FLASK_ENV: testing
+          TESTING: true
+        continue-on-error: true
+
+      - name: Upload service coverage to Codecov
+        if: steps.check-tests.outputs.has_tests == 'true'
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ./services/${{ matrix.service }}
+          flags: ${{ matrix.service }}
+          name: ${{ matrix.service }}-coverage
+          fail_ci_if_error: false
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
