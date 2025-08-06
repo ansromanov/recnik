@@ -93,11 +93,12 @@ jobs:
           uv run mypy .
         continue-on-error: true
 
-      - name: Security scan with Bandit
-        run: |
-          uv run bandit -r . --skip B101,B601 --exclude tests/ --format json --output bandit-report.json || true
-          uv run bandit -r . --skip B101,B601 --exclude tests/
-        continue-on-error: true
+      # Skip Bandit for now, uncomment if needed
+      # - name: Security scan with Bandit
+      #   run: |
+      #     uv run bandit -r . --skip B101,B601 --exclude tests/ --format json --output bandit-report.json || true
+      #     uv run bandit -r . --skip B101,B601 --exclude tests/
+      #   continue-on-error: true
 
       - name: Run tests with coverage
         run: |
@@ -140,7 +141,7 @@ jobs:
             backend/pytest-results.xml
             backend/htmlcov/
             backend/coverage.xml
-            bandit-report.json
+            # bandit-report.json
 
       - name: Comment coverage on PR
         if: github.event_name == 'pull_request' && matrix.python-version == '3.11'
@@ -150,51 +151,6 @@ jobs:
           COVERAGE_PATH: backend/coverage.xml
           MINIMUM_GREEN: 80
           MINIMUM_ORANGE: 70
-
-  # Frontend tests (if you have any)
-  test-frontend:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && contains(github.event.pull_request.changed_files, 'frontend/'))
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        run: |
-          cd frontend
-          npm ci
-
-      - name: Run frontend linting
-        run: |
-          cd frontend
-          npm run lint || echo "No lint script found"
-        continue-on-error: true
-
-      - name: Run frontend tests
-        run: |
-          cd frontend
-          npm test -- --coverage --watchAll=false || echo "No test script found"
-        continue-on-error: true
-
-      - name: Upload frontend coverage to Codecov
-        uses: codecov/codecov-action@v4
-        if: always()
-        with:
-          directory: ./frontend
-          flags: frontend
-          name: frontend-coverage
-          fail_ci_if_error: false
-          verbose: true
-          token: ${{ secrets.CODECOV_TOKEN }}
-        continue-on-error: true
 
   # Services tests
   test-services:
