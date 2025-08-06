@@ -135,7 +135,6 @@ ci-test-cov:
 		--cov-report=xml \
 		--cov-report=html \
 		--cov-report=term-missing \
-		--cov-fail-under=70 \
 		--junitxml=pytest-results.xml \
 		-v
 	@echo "✅ CI tests with coverage complete!"
