@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Deploying Serbian Vocabulary App with Image Service..."
+echo "🚀 Deploying Recnik with Image Service..."
 
 # Stop existing containers
 echo "📦 Stopping existing containers..."
@@ -8,8 +8,8 @@ docker-compose down
 
 # Remove existing backend image to force rebuild
 echo "🔄 Removing old backend image to force rebuild..."
-docker rmi serbian-vocabulary-app_backend 2>/dev/null || true
-docker rmi serbian-vocabulary-app_cache-updater 2>/dev/null || true
+docker rmi recnik_backend 2>/dev/null || true
+docker rmi recnik_cache-updater 2>/dev/null || true
 
 # Rebuild and start containers
 echo "🏗️  Building and starting containers..."

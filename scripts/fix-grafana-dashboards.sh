@@ -8,7 +8,7 @@ docker-compose stop grafana prometheus
 
 # Remove Grafana data to force re-provisioning
 echo "Clearing Grafana data volume..."
-docker volume rm serbian-vocabulary-app_grafana_data 2>/dev/null || true
+docker volume rm recnik_grafana_data 2>/dev/null || true
 
 # Restart the monitoring stack
 echo "Starting monitoring stack..."

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Generate deployment manifest for Serbian Vocabulary App services
+# Generate deployment manifest for Recnik services
 
 set -euo pipefail
 
@@ -152,7 +152,7 @@ generate_manifest() {
 
     # Start writing the manifest
     cat > "$output_file" << EOF
-# Serbian Vocabulary App - Deployment Manifest
+# Recnik - Deployment Manifest
 # Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
 # Commit: ${SHA}
 # Branch/Tag: ${REF_NAME:-unknown}

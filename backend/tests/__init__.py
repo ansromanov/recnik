@@ -1,3 +1,3 @@
 """
-Unit tests for Serbian Vocabulary Application Backend
+Unit tests for Recnik Backend
 """

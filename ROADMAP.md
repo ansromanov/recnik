@@ -1,4 +1,4 @@
-# Serbian Vocabulary App - Development Roadmap 🗺️
+# Recnik - Development Roadmap 🗺️
 
 ## 🎯 Next 2 Weeks: Priority Features
 

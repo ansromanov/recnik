@@ -1,8 +1,8 @@
-# Serbian Vocabulary App - Architecture Documentation
+# Recnik - Architecture Documentation
 
 ## Overview
 
-The Serbian Vocabulary Learning App has been redesigned as a microservices architecture following 12-factor app principles and clean architecture patterns. This document describes the current architecture, services, and their interactions.
+Recnik has been redesigned as a microservices architecture following 12-factor app principles and clean architecture patterns. This document describes the current architecture, services, and their interactions.
 
 ## Architecture Principles
 

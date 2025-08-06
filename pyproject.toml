@@ -3,13 +3,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "serbian-vocabulary-backend"
+name = "recnik-backend"
 version = "1.0.0"
-description = "Serbian Vocabulary Learning App Backend"
+description = "Recnik - Serbian Language Learning App Backend"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "Serbian Vocabulary Team" }]
+authors = [{ name = "Recnik Team" }]
 keywords = ["vocabulary", "learning", "serbian", "language"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -64,9 +64,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourorg/serbian-vocabulary-app"
-Repository = "https://github.com/yourorg/serbian-vocabulary-app.git"
-Issues = "https://github.com/yourorg/serbian-vocabulary-app/issues"
+Homepage = "https://github.com/yourorg/recnik"
+Repository = "https://github.com/yourorg/recnik.git"
+Issues = "https://github.com/yourorg/recnik/issues"
 
 # Hatch build configuration
 [tool.hatch.build.targets.wheel]

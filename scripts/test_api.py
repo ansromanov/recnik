@@ -6,7 +6,7 @@ BASE_URL = "http://localhost:3001"
 
 
 def test_api():
-    print("Testing Serbian Vocabulary API...")
+    print("Testing Recnik API...")
 
     # Test 1: Health check
     print("\n1. Testing health check...")

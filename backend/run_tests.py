@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test runner script for Serbian Vocabulary Application
+Test runner script for Recnik
 """
 
 import argparse
@@ -151,7 +151,7 @@ def generate_test_report():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run tests for Serbian Vocabulary Application")
+    parser = argparse.ArgumentParser(description="Run tests for Recnik")
 
     parser.add_argument(
         "--type",

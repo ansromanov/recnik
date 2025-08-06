@@ -2,7 +2,7 @@ import React from 'react';
 import { useAudio } from '../hooks/useAudio';
 
 /**
- * AudioPlayer Component for Serbian vocabulary pronunciation
+ * AudioPlayer Component for Serbian vocabulary pronunciation in Recnik
  * Provides play button with visual feedback for TTS pronunciation
  */
 const AudioPlayer = ({

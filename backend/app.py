@@ -277,7 +277,7 @@ OUTPUT FORMAT (JSON):
 # Routes
 @app.route("/api/health")
 def health_check():
-    return jsonify({"status": "ok", "message": "Serbian Vocabulary API is running with ORM"})
+    return jsonify({"status": "ok", "message": "Recnik API is running with ORM"})
 
 
 @app.route("/api/captcha/site-key")

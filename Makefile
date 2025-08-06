@@ -1,4 +1,4 @@
-# Serbian Vocabulary App - Backend Development Makefile
+# Recnik - Backend Development Makefile
 
 .PHONY: help install install-dev format lint type-check test test-cov clean security check-all pre-commit setup-dev
 

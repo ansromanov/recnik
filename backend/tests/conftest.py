@@ -1,5 +1,5 @@
 """
-Test configuration and fixtures for Serbian Vocabulary Application
+Test configuration and fixtures for Recnik
 """
 
 from unittest.mock import Mock

@@ -20,7 +20,7 @@ class RateLimitedImageService:
             print("Warning: UNSPLASH_ACCESS_KEY not found in environment variables")
 
         self.headers = {
-            "User-Agent": "Serbian Vocabulary App/1.0",
+            "User-Agent": "Recnik/1.0",
             "Accept": "application/json",
         }
 

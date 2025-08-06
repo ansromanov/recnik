@@ -121,8 +121,8 @@ jobs:
             type=sha,prefix=develop-,enable=${{ github.ref == 'refs/heads/develop' }}
           labels: |
             org.opencontainers.image.title=${{ matrix.service }}
-            org.opencontainers.image.description=Serbian Vocabulary App - ${{ matrix.service }}
-            org.opencontainers.image.vendor=Serbian Vocabulary Team
+            org.opencontainers.image.description=Recnik - ${{ matrix.service }}
+            org.opencontainers.image.vendor=Recnik Team
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
 Testing Infrastructure Demonstration Script
-Shows how to use the comprehensive testing setup for the Serbian Vocabulary Application.
+Shows how to use the comprehensive testing setup for Recnik.
 """
 
 
 def main():
     """Main demonstration function"""
-    print("🧪 Serbian Vocabulary App - Testing Infrastructure Demo")
+    print("🧪 Recnik - Testing Infrastructure Demo")
     print("=" * 60)
 
     print("\n📚 Available Testing Commands:")

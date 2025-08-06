@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Start Serbian Vocabulary App with HTTPS support
+# Start Recnik with HTTPS support
 # This script uses self-signed certificates for local development
 
-echo "🚀 Starting Serbian Vocabulary App with HTTPS..."
+echo "🚀 Starting Recnik with HTTPS..."
 echo "📍 Using self-signed certificates for local development"
 echo ""
 
@@ -12,7 +12,7 @@ if [ ! -f "ssl/localhost.crt" ] || [ ! -f "ssl/localhost.key" ]; then
     echo "🔐 Creating SSL certificates..."
     mkdir -p ssl
     openssl req -x509 -newkey rsa:4096 -keyout ssl/localhost.key -out ssl/localhost.crt -days 365 -nodes \
-        -subj "/C=RS/ST=Belgrade/L=Belgrade/O=SerbianVocabApp/OU=Development/CN=localhost"
+        -subj "/C=RS/ST=Belgrade/L=Belgrade/O=Recnik/OU=Development/CN=localhost"
     echo "✅ SSL certificates created"
     echo ""
 fi
@@ -76,4 +76,4 @@ echo ""
 echo "📊 To view logs:"
 echo "   docker-compose -f docker-compose-https.yml logs -f [service-name]"
 echo ""
-echo "⚡ Happy learning Serbian vocabulary with HTTPS! 🇷🇸"
+echo "⚡ Happy learning Serbian vocabulary with Recnik! 🇷🇸"

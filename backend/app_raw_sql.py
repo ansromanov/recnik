@@ -59,7 +59,7 @@ def put_db(conn):
 # Routes
 @app.route("/api/health")
 def health_check():
-    return jsonify({"status": "ok", "message": "Serbian Vocabulary API is running"})
+    return jsonify({"status": "ok", "message": "Recnik API is running"})
 
 
 @app.route("/api/categories")
