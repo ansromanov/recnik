@@ -8,6 +8,7 @@ on:
 jobs:
   codecov-ai-review:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
       pull-requests: write
@@ -29,7 +30,8 @@ jobs:
 
               // Look for existing Codecov AI review comment
               const existingComment = comments.find(comment =>
-                comment.body.includes('@codecov-ai-reviewer review')
+                comment.body.includes('@codecov-ai-reviewer review') &&
+                comment.user.type === 'Bot'
               );
 
               // If no existing comment, create one
@@ -46,6 +48,12 @@ jobs:
                 console.log('ℹ️ Codecov AI review comment already exists, skipping...');
               }
             } catch (error) {
-              console.error('❌ Failed to process Codecov AI review comment:', error.message);
-              core.setFailed(`Workflow failed: ${error.message}`);
+              if (error.status === 403) {
+                core.setFailed(`Permission denied: ${error.message}`);
+              } else if (error.status === 422) {
+                core.setFailed(`Invalid request: ${error.message}`);
+              } else {
+                core.error('❌ Failed to process Codecov AI review comment:', error.message);
+                core.setFailed(`Workflow failed: ${error.message}`);
+              }
             }
