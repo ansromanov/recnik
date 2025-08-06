@@ -19,28 +19,33 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            // Check if a Codecov AI review comment already exists
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-
-            // Look for existing Codecov AI review comment
-            const existingComment = comments.find(comment =>
-              comment.body.includes('@codecov-ai-reviewer review')
-            );
-
-            // If no existing comment, create one
-            if (!existingComment) {
-              await github.rest.issues.createComment({
+            try {
+              // Check if a Codecov AI review comment already exists
+              const { data: comments } = await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: '@codecov-ai-reviewer review'
               });
 
-              console.log('✅ Codecov AI review comment added successfully');
-            } else {
-              console.log('ℹ️ Codecov AI review comment already exists, skipping...');
+              // Look for existing Codecov AI review comment
+              const existingComment = comments.find(comment =>
+                comment.body.includes('@codecov-ai-reviewer review')
+              );
+
+              // If no existing comment, create one
+              if (!existingComment) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: '@codecov-ai-reviewer review'
+                });
+
+                console.log('✅ Codecov AI review comment added successfully');
+              } else {
+                console.log('ℹ️ Codecov AI review comment already exists, skipping...');
+              }
+            } catch (error) {
+              console.error('❌ Failed to process Codecov AI review comment:', error.message);
+              core.setFailed(`Workflow failed: ${error.message}`);
             }
