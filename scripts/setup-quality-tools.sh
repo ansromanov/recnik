@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Serbian Vocabulary App - Code Quality Tools Setup
+# Recnik - Code Quality Tools Setup
 set -e
 
-echo "🚀 Setting up code quality tools for Serbian Vocabulary App..."
+echo "🚀 Setting up code quality tools for Recnik..."
 
 # Colors for output
 RED='\033[0;31m'

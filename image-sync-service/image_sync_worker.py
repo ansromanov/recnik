@@ -44,7 +44,7 @@ class ImageSyncService:
         self.logger.info(f"Initialized with Unsplash key: {self.unsplash_access_key[:10]}...")
 
         self.headers = {
-            "User-Agent": os.getenv("IMAGE_USER_AGENT", "Serbian Vocabulary App Image Sync/1.0"),
+            "User-Agent": os.getenv("IMAGE_USER_AGENT", "Recnik Image Sync/1.0"),
             "Accept": "application/json",
         }
 

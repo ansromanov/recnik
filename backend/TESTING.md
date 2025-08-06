@@ -1,6 +1,6 @@
-# Testing Guide for Serbian Vocabulary Application
+# Testing Guide for Recnik
 
-This document provides comprehensive information about the testing setup and how to run tests for the Serbian Vocabulary Application backend.
+This document provides comprehensive information about the testing setup and how to run tests for the Recnik backend.
 
 ## 📋 Table of Contents
 

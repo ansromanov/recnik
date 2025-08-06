@@ -1,5 +1,5 @@
 """
-Configuration settings for Serbian Vocabulary App
+Configuration settings for Recnik
 Simple configuration without overengineering
 """
 

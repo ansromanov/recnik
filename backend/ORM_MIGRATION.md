@@ -1,6 +1,6 @@
 # Database ORM Migration Guide
 
-This document describes the migration from raw SQL queries to SQLAlchemy ORM in the Serbian Vocabulary App backend.
+This document describes the migration from raw SQL queries to SQLAlchemy ORM in the Recnik backend.
 
 ## What Changed
 

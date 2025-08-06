@@ -1,6 +1,6 @@
 # Monitoring Setup
 
-This directory contains the monitoring configuration for the Serbian Vocabulary App using Prometheus and Grafana.
+This directory contains the monitoring configuration for Recnik using Prometheus and Grafana.
 
 ## Architecture
 

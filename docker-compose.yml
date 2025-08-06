@@ -2,7 +2,7 @@ services:
   # Infrastructure
   postgres:
     image: postgres:15-alpine
-    container_name: serbian-vocab-db
+    container_name: recnik-db
     environment:
       POSTGRES_USER: vocab_user
       POSTGRES_PASSWORD: vocab_pass
@@ -22,7 +22,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: serbian-vocab-redis
+    container_name: recnik-redis
     ports:
       - "6379:6379"
     networks:
@@ -39,7 +39,7 @@ services:
   # Core Services - Using existing backend for now, auth-service when ready
   backend:
     build: ./backend
-    container_name: serbian-vocab-backend
+    container_name: recnik-backend
     environment:
       DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
       REDIS_URL: redis://redis:6379
@@ -74,7 +74,7 @@ services:
   # New Auth Service (when ready)
   auth-service:
     build: ./services/auth-service
-    container_name: serbian-vocab-auth
+    container_name: recnik-auth
     environment:
       DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-auth-service-secret-key}
@@ -98,7 +98,7 @@ services:
   # New Vocabulary Service (when controllers are implemented)
   vocabulary-service:
     build: ./services/vocabulary-service
-    container_name: serbian-vocab-vocabulary
+    container_name: recnik-vocabulary
     environment:
       DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-vocabulary-service-secret-key}
@@ -125,7 +125,7 @@ services:
   # Background Services
   cache-updater:
     build: ./backend
-    container_name: serbian-vocab-cache-updater
+    container_name: recnik-cache-updater
     environment:
       DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
       REDIS_URL: redis://redis:6379
@@ -144,7 +144,7 @@ services:
 
   image-sync-service:
     build: ./image-sync-service
-    container_name: serbian-vocab-image-sync
+    container_name: recnik-image-sync
     environment:
       REDIS_URL: redis://redis:6379
       UNSPLASH_ACCESS_KEY: ${UNSPLASH_ACCESS_KEY}
@@ -168,7 +168,7 @@ services:
 
   queue-populator:
     build: ./backend
-    container_name: serbian-vocab-queue-populator
+    container_name: recnik-queue-populator
     environment:
       DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
       REDIS_URL: redis://redis:6379
@@ -197,7 +197,7 @@ services:
       context: ./frontend
       args:
         - REACT_APP_RESPONSIVEVOICE_API_KEY=${REACT_APP_RESPONSIVEVOICE_API_KEY}
-    container_name: serbian-vocab-frontend
+    container_name: recnik-frontend
     environment:
       - REACT_APP_RESPONSIVEVOICE_API_KEY=${REACT_APP_RESPONSIVEVOICE_API_KEY}
     ports:
@@ -217,7 +217,7 @@ services:
   # Monitoring Stack
   prometheus:
     image: prom/prometheus:latest
-    container_name: serbian-vocab-prometheus
+    container_name: recnik-prometheus
     ports:
       - "9090:9090"
     volumes:
@@ -236,7 +236,7 @@ services:
 
   grafana:
     image: grafana/grafana:latest
-    container_name: serbian-vocab-grafana
+    container_name: recnik-grafana
     ports:
       - "3100:3000"
     environment:

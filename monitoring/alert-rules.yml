@@ -1,5 +1,5 @@
 groups:
-  - name: serbian-vocabulary-app-alerts
+  - name: recnik-alerts
     rules:
       # Service Down Alert
       - alert: ServiceDown

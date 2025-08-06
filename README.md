@@ -1,10 +1,10 @@
-# Serbian Vocabulary Learning App
+# Recnik
 
 [![codecov](https://codecov.io/gh/ansromanov/recnik/branch/main/graph/badge.svg)](https://codecov.io/gh/ansromanov/recnik)
 [![Test and Coverage](https://github.com/ansromanov/recnik/actions/workflows/test-and-coverage.yml/badge.svg)](https://github.com/ansromanov/recnik/actions/workflows/test-and-coverage.yml)
 [![Build and Push Docker Images](https://github.com/ansromanov/recnik/actions/workflows/docker-build.yml/badge.svg)](https://github.com/ansromanov/recnik/actions/workflows/docker-build.yml)
 
-A modern microservices-based application for learning Serbian vocabulary, built with clean architecture principles and comprehensive observability.
+A modern microservices-based application for Serbian vocabulary learning, built with clean architecture principles and comprehensive observability.
 
 ## 🏗️ Architecture Overview
 
@@ -30,7 +30,7 @@ The application has been redesigned as a microservices architecture following 12
 
 ```bash
 git clone <repository-url>
-cd serbian-vocabulary-app
+cd recnik
 ```
 
 2. Copy and configure environment variables:
@@ -84,7 +84,7 @@ docker-compose up -d
 ### Project Structure
 
 ```
-serbian-vocabulary-app/
+recnik/
 ├── services/                    # Microservices
 │   ├── auth-service/           # User authentication & settings
 │   ├── vocabulary-service/     # Words, categories, text processing

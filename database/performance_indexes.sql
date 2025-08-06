@@ -1,4 +1,4 @@
--- Performance Optimization Indexes for Serbian Vocabulary App
+-- Performance Optimization Indexes for Recnik
 -- These indexes will significantly improve query performance
 -- Run this script after the main init.sql
 

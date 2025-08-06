@@ -680,7 +680,7 @@ function SettingsPage() {
             <div className="settings-section">
                 <h2>About</h2>
                 <p>
-                    Serbian Vocabulary App helps you learn Serbian by reading news articles,
+                    Recnik helps you learn Serbian by reading news articles,
                     extracting vocabulary, and practicing with interactive exercises.
                 </p>
             </div>

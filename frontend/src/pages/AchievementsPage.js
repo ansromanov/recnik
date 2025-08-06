@@ -8,7 +8,7 @@ const AchievementsPage = () => {
         <div className="achievements-page">
             <div className="page-header">
                 <h1>🏆 Achievements & Progress</h1>
-                <p>Track your learning journey and unlock rewards as you master Serbian vocabulary!</p>
+                <p>Track your learning journey and unlock rewards as you master Serbian vocabulary with Recnik!</p>
             </div>
 
             <div className="achievements-layout">

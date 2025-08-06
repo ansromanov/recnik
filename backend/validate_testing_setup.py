@@ -49,7 +49,7 @@ def run_command(command, description):
 
 def main():
     """Main validation function"""
-    print("🧪 Serbian Vocabulary App - Testing Setup Validation")
+    print("🧪 Recnik - Testing Setup Validation")
     print("=" * 60)
 
     # Change to backend directory
