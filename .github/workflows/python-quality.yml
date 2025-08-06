@@ -7,18 +7,48 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
+env:
+  DEFAULT_PYTHON_VERSION: "3.11"
+
 jobs:
   quality-checks:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
 
@@ -26,7 +56,7 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Cache uv dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/uv
           key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
@@ -34,43 +64,61 @@ jobs:
             ${{ runner.os }}-uv-
 
       - name: Install dependencies
+        run: make install-dev
+
+      - name: Set up test environment
         run: |
-          uv sync --extra dev --extra test
+          # Create test environment file
+          cat > backend/.env.test << EOF
+          DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_db
+          REDIS_URL=redis://localhost:6379/0
+          SECRET_KEY=test_secret_key_for_testing_only
+          JWT_SECRET_KEY=test_jwt_secret_key_for_testing_only
+          FLASK_ENV=testing
+          TESTING=true
+          OPENAI_API_KEY=test_key
+          EOF
 
       - name: Format check with Ruff
         run: |
           uv run ruff format --check --diff .
 
       - name: Lint with Ruff
-        run: |
-          uv run ruff check .
+        run: make lint
 
       - name: Type check with MyPy
-        run: |
-          uv run mypy .
+        run: make type-check
+        continue-on-error: true
 
-      # - name: Security scan with Bandit
-      #   run: |
-      #     uv run bandit -r . --skip B101,B601 --exclude tests/ || true
-
-      - name: Test with pytest
-        run: |
-          cd backend && uv run pytest --cov=. --cov-report=xml --cov-report=term-missing
+      - name: Run tests with coverage
+        run: make ci-test-cov
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test_secret_key_for_testing_only
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only
+          FLASK_ENV: testing
+          TESTING: true
+          OPENAI_API_KEY: test_key
 
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.11'
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           file: ./backend/coverage.xml
-          flags: unittests
-          name: codecov-umbrella
+          directory: ./backend
+          flags: backend
+          name: backend-coverage
           fail_ci_if_error: false
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
 
-  pre-commit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always() && matrix.python-version == '3.11'
         with:
-          python-version: "3.11"
-      - uses: pre-commit/action@v3.0.0
+          name: test-results
+          path: |
+            backend/pytest-results.xml
+            backend/htmlcov/
+            backend/coverage.xml

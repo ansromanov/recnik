@@ -1,5 +1,9 @@
 # Serbian Vocabulary Learning App
 
+[![codecov](https://codecov.io/gh/ansromanov/recnik/branch/main/graph/badge.svg)](https://codecov.io/gh/ansromanov/recnik)
+[![Test and Coverage](https://github.com/ansromanov/recnik/actions/workflows/test-and-coverage.yml/badge.svg)](https://github.com/ansromanov/recnik/actions/workflows/test-and-coverage.yml)
+[![Build and Push Docker Images](https://github.com/ansromanov/recnik/actions/workflows/docker-build.yml/badge.svg)](https://github.com/ansromanov/recnik/actions/workflows/docker-build.yml)
+
 A modern microservices-based application for learning Serbian vocabulary, built with clean architecture principles and comprehensive observability.
 
 ## 🏗️ Architecture Overview

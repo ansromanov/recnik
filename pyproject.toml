@@ -92,6 +92,7 @@ extend-exclude = '''
   | build
   | dist
   | migrations
+  | scripts
   | __pycache__
 )/
 '''
@@ -102,6 +103,7 @@ target-version = "py39"
 line-length = 100
 exclude = [
     "migrations",
+    "scripts",
     ".git",
     "__pycache__",
     ".mypy_cache",
@@ -204,9 +206,10 @@ exclude = [
     "services/",
     "migrations/",
     "tests/",
+    "scripts/",
     "test_.*\\.py",
     ".*_test\\.py",
-    "analyze_code_lines.py",
+    "scripts/analyze_code_lines.py",
     "demo_testing.py",
     "validate_testing_setup.py",
 ]
@@ -263,6 +266,7 @@ source = ["."]
 omit = [
     "*/tests/*",
     "*/migrations/*",
+    "*/scripts/*",
     "*/.venv/*",
     "*/venv/*",
     "*/__pycache__/*",
@@ -303,6 +307,7 @@ exclude_dirs = [
     ".github",
     "tests",
     "backend/tests",
+    "scripts",
 ]
 skips = ["B101", "B601", "B602", "B603", "B607"]
 exclude = [
@@ -311,7 +316,8 @@ exclude = [
     "*/*test.py",
     "test_*.py",
     "*_test.py",
-    "analyze_code_lines.py",
+    "scripts/analyze_code_lines.py",
+    "scripts/test_*.py",
     "demo_testing.py",
     "validate_testing_setup.py",
 ]

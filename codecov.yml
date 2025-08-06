@@ -1,0 +1,158 @@
+# Codecov configuration for Serbian Vocabulary App
+
+coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+
+  status:
+    project:
+      # Overall project coverage
+      default:
+        target: 80%
+        threshold: 2%
+        base: auto
+        flags:
+          - backend
+        paths:
+          - "backend/"
+
+      # Backend specific coverage
+      backend:
+        target: 80%
+        threshold: 2%
+        flags:
+          - backend
+        paths:
+          - "backend/"
+
+      # Frontend specific coverage (if applicable)
+      frontend:
+        target: 70%
+        threshold: 3%
+        flags:
+          - frontend
+        paths:
+          - "frontend/src/"
+        if_no_uploads: success
+
+      # Individual services
+      services:
+        target: 75%
+        threshold: 3%
+        flags:
+          - auth-service
+          - vocabulary-service
+          - news-service
+        paths:
+          - "services/"
+        if_no_uploads: success
+
+    patch:
+      default:
+        target: 70%
+        threshold: 2%
+        base: auto
+        flags:
+          - backend
+
+      backend:
+        target: 70%
+        threshold: 2%
+        flags:
+          - backend
+        paths:
+          - "backend/"
+
+      services:
+        target: 65%
+        threshold: 3%
+        flags:
+          - auth-service
+          - vocabulary-service
+          - news-service
+        paths:
+          - "services/"
+        if_no_uploads: success
+
+# Which files to ignore
+ignore:
+  - "backend/migrations/"
+  - "backend/htmlcov/"
+  - "backend/tests/"
+  - "backend/.pytest_cache/"
+  - "**/__pycache__/"
+  - "**/*.pyc"
+  - "**/test_*.py"
+  - "**/*_test.py"
+  - "frontend/build/"
+  - "frontend/node_modules/"
+  - "frontend/public/"
+  - "database/"
+  - "ssl/"
+  - "logs/"
+  - "monitoring/"
+  - "scripts/"
+  - ".github/"
+  - "docs/"
+  - "*.md"
+  - "*.yml"
+  - "*.yaml"
+  - "*.json"
+  - "Dockerfile"
+  - "docker-compose.yml"
+  - "Makefile"
+  - ".env*"
+  - ".gitignore"
+  - "pyproject.toml"
+  - "uv.lock"
+
+# Flags to organize coverage by component
+flags:
+  backend:
+    paths:
+      - backend/
+    carryforward: true
+
+  frontend:
+    paths:
+      - frontend/src/
+    carryforward: true
+
+  auth-service:
+    paths:
+      - services/auth-service/
+    carryforward: true
+
+  vocabulary-service:
+    paths:
+      - services/vocabulary-service/
+    carryforward: true
+
+  news-service:
+    paths:
+      - services/news-service/
+    carryforward: true
+
+# Comment configuration for PRs
+comment:
+  layout: "reach,diff,flags,tree,footer"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+  branches:
+    - main
+    - develop
+
+# Notifications
+github_checks:
+  annotations: true
+
+# Pull request comments
+pull_request_comments:
+  layout: "reach,diff,flags,files,footer"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
