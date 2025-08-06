@@ -37,7 +37,7 @@ jobs:
       - name: Run frontend tests
         run: |
           cd frontend
-          npm test -- --coverage --watchAll=false || echo "No test script found"
+          npm test -- --coverage --watchAll=false --passWithNoTests
         continue-on-error: true
 
       - name: Upload frontend coverage to Codecov
