@@ -64,8 +64,7 @@ jobs:
             ${{ runner.os }}-uv-
 
       - name: Install dependencies
-        run: |
-          uv sync --extra dev --extra test
+        run: make install-dev
 
       - name: Set up test environment
         run: |
@@ -85,31 +84,18 @@ jobs:
           uv run ruff format --check --diff .
 
       - name: Lint with Ruff
-        run: |
-          uv run ruff check . --output-format=github
+        run: make lint
 
       - name: Type check with MyPy
-        run: |
-          uv run mypy .
+        run: make type-check
         continue-on-error: true
 
-      # Skip Bandit for now, uncomment if needed
-      # - name: Security scan with Bandit
-      #   run: |
-      #     uv run bandit -r . --skip B101,B601 --exclude tests/ --format json --output bandit-report.json || true
-      #     uv run bandit -r . --skip B101,B601 --exclude tests/
-      #   continue-on-error: true
+      - name: Security scan with Bandit
+        run: make security
+        continue-on-error: true
 
       - name: Run tests with coverage
-        run: |
-          cd backend
-          uv run pytest \
-            --cov=. \
-            --cov-report=xml \
-            --cov-report=html \
-            --cov-report=term-missing \
-            --junitxml=pytest-results.xml \
-            -v
+        run: make ci-test-cov
         env:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
           REDIS_URL: redis://localhost:6379/0

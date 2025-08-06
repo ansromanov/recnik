@@ -14,7 +14,9 @@ help:
 	@echo "  security        - Security scan with Bandit"
 	@echo "  test            - Run tests with pytest"
 	@echo "  test-cov        - Run tests with coverage report"
+	@echo "  ci-test-cov     - Run tests with coverage for CI (includes XML and JUnit output)"
 	@echo "  check-all       - Run all quality checks (format, lint, type-check, security, test)"
+	@echo "  ci-check        - Run all CI checks (lint, type-check, security, ci-test-cov)"
 	@echo "  pre-commit      - Install and run pre-commit hooks"
 	@echo "  clean           - Clean cache and temporary files"
 	@echo "  build-matrix    - Show build matrix script help"
@@ -126,7 +128,19 @@ ci-install:
 	@echo "🤖 Installing dependencies for CI..."
 	pip install -e ".[dev,test]"
 
-ci-check: lint type-check security test-cov
+ci-test-cov:
+	@echo "🧪 Running tests with coverage for CI..."
+	cd backend && uv run pytest \
+		--cov=. \
+		--cov-report=xml \
+		--cov-report=html \
+		--cov-report=term-missing \
+		--cov-fail-under=70 \
+		--junitxml=pytest-results.xml \
+		-v
+	@echo "✅ CI tests with coverage complete!"
+
+ci-check: lint type-check security ci-test-cov
 	@echo "🤖 CI checks complete!"
 
 # Build matrix generation for CI/CD
