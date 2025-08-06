@@ -1,0 +1,59 @@
+name: Codecov AI PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, develop]
+
+jobs:
+  codecov-ai-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Add Codecov AI Review Comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              // Check if a Codecov AI review comment already exists
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+              });
+
+              // Look for existing Codecov AI review comment
+              const existingComment = comments.find(comment =>
+                comment.body.includes('@codecov-ai-reviewer review') &&
+                comment.user.type === 'Bot'
+              );
+
+              // If no existing comment, create one
+              if (!existingComment) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: '@codecov-ai-reviewer review'
+                });
+
+                console.log('✅ Codecov AI review comment added successfully');
+              } else {
+                console.log('ℹ️ Codecov AI review comment already exists, skipping...');
+              }
+            } catch (error) {
+              if (error.status === 403) {
+                core.setFailed(`Permission denied: ${error.message}`);
+              } else if (error.status === 422) {
+                core.setFailed(`Invalid request: ${error.message}`);
+              } else {
+                core.error('❌ Failed to process Codecov AI review comment:', error.message);
+                core.setFailed(`Workflow failed: ${error.message}`);
+              }
+            }
