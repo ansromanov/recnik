@@ -4,6 +4,7 @@ always source .venv/bin/activate on new terminal
 - do not create additional md files
 - always move documentation files (like CODE_QUALITY.md) to docs/cline/
 - refer to docs/cline/ when working on tasks for project-specific documentation
+- refer to docs/cursor/ when looking for Cursor-managed documentation, like roadmap, architecture, etc.
 
 ## Structure
 - Use MVC: models/, views/, controllers/

@@ -1,5 +1,6 @@
 issues/
 docs/cline/
+docs/cursor/
 
 # Dependencies
 node_modules/

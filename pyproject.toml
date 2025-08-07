@@ -70,10 +70,10 @@ Issues = "https://github.com/yourorg/recnik/issues"
 
 # Hatch build configuration
 [tool.hatch.build.targets.wheel]
-packages = ["backend"]
+packages = ["services/backend-service"]
 
 [tool.hatch.build.targets.sdist]
-include = ["/backend", "/README.md", "/pyproject.toml"]
+include = ["/services/backend-service", "/README.md", "/pyproject.toml"]
 
 # Black configuration
 [tool.black]
@@ -243,12 +243,12 @@ addopts = [
     "-ra",
     "--strict-markers",
     "--strict-config",
-    "--cov=.",
+    "--cov=services/backend-service",
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-fail-under=80",
 ]
-testpaths = ["tests"]
+testpaths = ["services/backend-service/tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -262,7 +262,7 @@ filterwarnings = ["error", "ignore::UserWarning", "ignore::DeprecationWarning"]
 
 # Coverage configuration
 [tool.coverage.run]
-source = ["."]
+source = ["services/backend-service"]
 omit = [
     "*/tests/*",
     "*/migrations/*",

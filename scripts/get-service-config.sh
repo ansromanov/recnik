@@ -81,8 +81,8 @@ get_service_config() {
 
     case "$service" in
         "backend")
-            context="./backend"
-            dockerfile="./backend/Dockerfile"
+            context="./services/backend-service"
+            dockerfile="./services/backend-service/Dockerfile"
             image_name="${REGISTRY}/${IMAGE_NAME}/backend"
             ;;
         "frontend")
