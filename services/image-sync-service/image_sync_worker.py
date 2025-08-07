@@ -22,7 +22,7 @@ import requests
 load_dotenv()
 
 # Import configuration
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "backend"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "backend-service"))
 try:
     from config import RATE_LIMIT_WINDOW, UNSPLASH_RATE_LIMIT
 except ImportError:
