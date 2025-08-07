@@ -4,8 +4,9 @@ always source .venv/bin/activate on new terminal
 
 - do not open browser on acting, as it broke Cline API calls
 - do not create additional md files
-- always move documentation files (like CODE_QUALITY.md) to docs/cline/
+- always move documentation files (like ROADMAP.md) to docs/cursor/
 - refer to docs/cline/ when working on tasks for project-specific documentation
+- refer to docs/cursor/ when looking for Cursor-managed documentation, like roadmap, architecture, etc.
 
 ## Structure
 

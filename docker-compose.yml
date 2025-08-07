@@ -38,7 +38,7 @@ services:
 
   # Core Services - Using existing backend for now, auth-service when ready
   backend:
-    build: ./backend
+    build: ./services/backend-service
     container_name: recnik-backend
     environment:
       DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
@@ -61,7 +61,7 @@ services:
     networks:
       - vocab-network
     volumes:
-      - ./backend:/app
+      - ./services/backend-service:/app
       - /app/node_modules
     restart: unless-stopped
     healthcheck:
@@ -124,7 +124,7 @@ services:
 
   # Background Services
   cache-updater:
-    build: ./backend
+    build: ./services/backend-service
     container_name: recnik-cache-updater
     environment:
       DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
@@ -137,7 +137,7 @@ services:
     networks:
       - vocab-network
     volumes:
-      - ./backend:/app
+      - ./services/backend-service:/app
       - /app/node_modules
     command: python cache_updater.py
     restart: unless-stopped
@@ -167,7 +167,7 @@ services:
       start_period: 30s
 
   queue-populator:
-    build: ./backend
+    build: ./services/backend-service
     container_name: recnik-queue-populator
     environment:
       DATABASE_URL: postgresql://vocab_user:vocab_pass@postgres:5432/serbian_vocabulary
@@ -180,7 +180,7 @@ services:
     networks:
       - vocab-network
     volumes:
-      - ./backend:/app
+      - ./services/backend-service:/app
       - /app/node_modules
     command: python image_queue_populator.py --continuous --interval 30
     restart: unless-stopped

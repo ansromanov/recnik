@@ -132,15 +132,15 @@ security:
 test:
 	@echo "🧪 Running tests with pytest..."
 	uv sync --extra test
-	cd backend && uv run pytest
+	cd services/backend-service && uv run pytest
 	@echo "✅ Tests complete!"
 
 test-cov:
 	@echo "🧪 Running tests with coverage..."
 	uv sync --extra test
-	cd backend && uv run pytest --cov=. --cov-report=html --cov-report=term-missing
+	cd services/backend-service && uv run pytest --cov=. --cov-report=html --cov-report=term-missing
 	@echo "✅ Tests with coverage complete!"
-	@echo "📊 Coverage report generated in backend/htmlcov/"
+	@echo "📊 Coverage report generated in services/backend-service/htmlcov/"
 
 # Run all quality checks
 check-all: format lint type-check security test-cov
@@ -174,7 +174,7 @@ dev-check: format lint type-check
 
 quick-test:
 	@echo "⚡ Running quick tests..."
-	cd backend && uv run pytest -x --tb=short
+	cd services/backend-service && uv run pytest -x --tb=short
 	@echo "✅ Quick tests complete!"
 
 # CI/CD helpers
@@ -184,7 +184,7 @@ ci-install:
 
 ci-test-cov:
 	@echo "🧪 Running tests with coverage for CI..."
-	cd backend && uv run pytest \
+	cd services/backend-service && uv run pytest \
 		--cov=. \
 		--cov-report=xml \
 		--cov-report=html \
@@ -477,8 +477,8 @@ setup:
 		cp .env.example .env; \
 		echo "📝 Created .env file from template"; \
 	fi
-	@if [ ! -f backend/.env ]; then \
-		cp backend/.env.example backend/.env; \
+	@if [ ! -f services/backend-service/.env ]; then \
+		cp services/backend-service/.env.example services/backend-service/.env; \
 		echo "📝 Created backend/.env file from template"; \
 	fi
 	make build
