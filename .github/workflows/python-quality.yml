@@ -69,7 +69,7 @@ jobs:
       - name: Set up test environment
         run: |
           # Create test environment file
-          cat > backend/.env.test << EOF
+          cat > services/backend-service/.env.test << EOF
           DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_db
           REDIS_URL=redis://localhost:6379/0
           SECRET_KEY=test_secret_key_for_testing_only
@@ -105,8 +105,8 @@ jobs:
         if: matrix.python-version == '3.11'
         uses: codecov/codecov-action@v4
         with:
-          file: ./backend/coverage.xml
-          directory: ./backend
+          file: ./services/backend-service/coverage.xml
+          directory: ./services/backend-service
           flags: backend
           name: backend-coverage
           fail_ci_if_error: false
@@ -119,6 +119,6 @@ jobs:
         with:
           name: test-results
           path: |
-            backend/pytest-results.xml
-            backend/htmlcov/
-            backend/coverage.xml
+            services/backend-service/pytest-results.xml
+            services/backend-service/htmlcov/
+            services/backend-service/coverage.xml

@@ -1,5 +1,8 @@
 # Recnik - Backend Development Makefile
 
+# Backend service path configuration
+BACKEND_PATH = services/backend-service
+
 .PHONY: help install install-dev format lint type-check test test-cov clean security check-all pre-commit setup-dev up down restart logs build rebuild-backend rebuild-frontend rebuild-grafana rebuild-all force-rebuild-backend force-rebuild-frontend force-rebuild-grafana force-rebuild-all rebuild-auth rebuild-news rebuild-vocab rebuild-image-sync force-rebuild-auth force-rebuild-news force-rebuild-vocab force-rebuild-image-sync migrate db-shell redis-shell clean-all open-app open-grafana status dev-logs backend-shell frontend-shell quick-restart install-deps setup setup-full dev-setup prod-deploy backup-db restore-db
 
 # Default target
@@ -132,15 +135,15 @@ security:
 test:
 	@echo "🧪 Running tests with pytest..."
 	uv sync --extra test
-	cd services/backend-service && uv run pytest
+	cd $(BACKEND_PATH) && uv run pytest
 	@echo "✅ Tests complete!"
 
 test-cov:
 	@echo "🧪 Running tests with coverage..."
 	uv sync --extra test
-	cd services/backend-service && uv run pytest --cov=. --cov-report=html --cov-report=term-missing
+	cd $(BACKEND_PATH) && uv run pytest --cov=. --cov-report=html --cov-report=term-missing
 	@echo "✅ Tests with coverage complete!"
-	@echo "📊 Coverage report generated in services/backend-service/htmlcov/"
+	@echo "📊 Coverage report generated in $(BACKEND_PATH)/htmlcov/"
 
 # Run all quality checks
 check-all: format lint type-check security test-cov
@@ -174,7 +177,7 @@ dev-check: format lint type-check
 
 quick-test:
 	@echo "⚡ Running quick tests..."
-	cd services/backend-service && uv run pytest -x --tb=short
+	cd $(BACKEND_PATH) && uv run pytest -x --tb=short
 	@echo "✅ Quick tests complete!"
 
 # CI/CD helpers
@@ -184,7 +187,7 @@ ci-install:
 
 ci-test-cov:
 	@echo "🧪 Running tests with coverage for CI..."
-	cd services/backend-service && uv run pytest \
+	cd $(BACKEND_PATH) && uv run pytest \
 		--cov=. \
 		--cov-report=xml \
 		--cov-report=html \
@@ -478,8 +481,12 @@ setup:
 		echo "📝 Created .env file from template"; \
 	fi
 	@if [ ! -f services/backend-service/.env ]; then \
-		cp services/backend-service/.env.example services/backend-service/.env; \
-		echo "📝 Created backend/.env file from template"; \
+		if [ ! -f services/backend-service/.env.example ]; then \
+			echo "⚠️  Warning: services/backend-service/.env.example not found. Please create it."; \
+		else \
+			cp services/backend-service/.env.example services/backend-service/.env; \
+			echo "📝 Created backend/.env file from template"; \
+		fi; \
 	fi
 	make build
 	make up
