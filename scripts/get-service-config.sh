@@ -106,8 +106,8 @@ get_service_config() {
             image_name="${REGISTRY}/${IMAGE_NAME}/news-service"
             ;;
         "image-sync-service")
-            context="./image-sync-service"
-            dockerfile="./image-sync-service/Dockerfile"
+            context="./services/image-sync-service"
+            dockerfile="./services/image-sync-service/Dockerfile"
             image_name="${REGISTRY}/${IMAGE_NAME}/image-sync-service"
             ;;
         *)
