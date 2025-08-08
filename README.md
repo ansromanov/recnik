@@ -64,40 +64,36 @@ docker-compose up -d
 
 ## Architecture
 
-The application follows a microservices architecture with 5 core services, background workers, and monitoring infrastructure:
+The application follows a microservices architecture with 5 core services, frontend, and monitoring infrastructure:
 
 ```mermaid
 graph TB
     %% User and Frontend
     User[User] --> Frontend[React App<br/>:3000]
 
-    %% API Gateway
-    Frontend --> Gateway[API Gateway<br/>:3001]
-
     %% Core Services
-    Gateway --> Auth[Auth Service]
-    Gateway --> Vocab[Vocabulary Service]
-    Gateway --> Practice[Practice Service]
-    Gateway --> News[News Service]
+    Frontend --> Auth[Auth Service]
+    Frontend --> Backend[Backend Service]
+    Frontend --> Vocab[Vocabulary Service]
+    Frontend --> News[News Service]
 
     %% Background Services
     ImageSync[Image Sync Service] --> Redis
-    CacheUpdater[Cache Updater] --> Redis
-    QueuePopulator[Queue Populator] --> Redis
-    QueuePopulator --> Postgres
+    Backend --> ImageSync
 
     %% Infrastructure
     Auth --> Postgres[(PostgreSQL<br/>:5432)]
+    Backend --> Postgres
     Vocab --> Postgres
-    Practice --> Postgres
     News --> Redis[(Redis<br/>:6379)]
+    ImageSync --> Redis
 
     %% Monitoring
-    Prometheus[Prometheus<br/>:9090] --> Gateway
-    Prometheus --> Auth
+    Prometheus[Prometheus<br/>:9090] --> Auth
+    Prometheus --> Backend
     Prometheus --> Vocab
-    Prometheus --> Practice
     Prometheus --> News
+    Prometheus --> ImageSync
     Grafana[Grafana<br/>:3100] --> Prometheus
 
     %% External APIs
@@ -113,26 +109,25 @@ graph TB
     classDef monitoring fill:#e8f5e8,stroke:#2e7d2e,stroke-width:2px
     classDef background fill:#fce4ec,stroke:#880e4f,stroke-width:2px
 
-    class Auth,Vocab,Practice,News,Gateway service
+    class Auth,Backend,Vocab,News service
     class Postgres,Redis infrastructure
     class OpenAI,Unsplash,ResponsiveVoice,RSS external
     class Prometheus,Grafana monitoring
-    class ImageSync,CacheUpdater,QueuePopulator background
+    class ImageSync background
 ```
 
 ### Core Services
 
 - **Auth Service**: User management & authentication
+- **Backend Service**: Main application logic & API orchestration
 - **Vocabulary Service**: Words & text processing with OpenAI
-- **Practice Service**: Learning sessions & progress tracking
 - **News Service**: Serbian news aggregation
-- **API Gateway**: Request routing & composition
-
-### Background Services
-
 - **Image Sync Service**: Unsplash API integration for vocabulary images
-- **Cache Updater**: RSS feed processing for news articles
-- **Queue Populator**: Image processing queue management
+
+### Frontend & Monitoring
+
+- **Frontend**: React application serving the user interface
+- **Prometheus + Grafana**: Comprehensive monitoring and observability
 
 ### Infrastructure
 
@@ -160,21 +155,17 @@ graph TB
 
 ## Features
 
-### AI-Powered Learning & Text Processing
+### AI-Powered Learning & Content Processing
 
-OpenAI integration provides intelligent text processing, contextual translations, and personalized vocabulary recommendations. Analyzes learning patterns to suggest optimal study sessions.
+OpenAI integration provides intelligent text processing, contextual translations, and personalized vocabulary recommendations. Real-time Serbian news articles provide authentic language exposure while keeping you informed about current events.
 
 ### Multimedia Learning Experience
 
 Vocabulary words automatically paired with high-quality Unsplash images and text-to-speech audio powered by ResponsiveVoice to enhance memory retention through visual and auditory association.
 
-### Progress Tracking & Gamification
+### Progress Tracking & Adaptive Learning
 
-Track vocabulary growth, practice streaks, and mastery levels. Earn XP points and unlock achievements to stay motivated. Spaced repetition algorithm focuses on challenging vocabulary while reinforcing mastered words.
-
-### Contextual Learning with Serbian News
-
-Real-time Serbian news articles provide authentic language exposure while keeping you informed about current events in Serbian-speaking regions.
+Track vocabulary growth, practice streaks, and mastery levels. Earn XP points and unlock achievements to stay motivated. Spaced repetition algorithm focuses on challenging vocabulary while reinforcing mastered words for maximum efficiency.
 
 ## Monitoring & Health Checks
 
