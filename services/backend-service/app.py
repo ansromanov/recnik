@@ -886,35 +886,31 @@ def process_text():
                 excluded_words=excluded_words,
             )
 
-            # Transform the result to match frontend expectations
-            if "translations" in result:
-                # Convert backend format to frontend expected format
-                words = []
-                for i, word_data in enumerate(result["translations"]):
-                    words.append(
-                        {
-                            "id": i + 1,  # Generate sequential ID
-                            "serbian": word_data.get("serbian_word", ""),
-                            "english": word_data.get("english_translation", ""),
-                            "category": word_data.get("category_name", "Common Words"),
-                            "original": word_data.get("original_form", ""),
-                            "category_id": word_data.get("category_id", 1),
-                        }
-                    )
-
-                # Return in the format expected by frontend
+            # Ensure the result always has the expected structure for frontend
+            if result.get("translations"):
+                # Frontend expects the 'translations' field directly
                 return jsonify(
                     {
-                        "words": words,
-                        "total_words": result.get("total_words", len(words)),
-                        "new_words": result.get("new_words", len(words)),
+                        "total_words": result.get("total_words", len(result["translations"])),
                         "existing_words": result.get("existing_words", 0),
+                        "new_words": result.get("new_words", len(result["translations"])),
+                        "translations": result[
+                            "translations"
+                        ],  # Keep the translations as expected by frontend
                         "filtering_summary": result.get("filtering_summary", {}),
                     }
                 )
-
-            # Return the original result if no translations found
-            return jsonify(result)
+            else:
+                # Return empty translations array if no words found
+                return jsonify(
+                    {
+                        "total_words": result.get("total_words", 0),
+                        "existing_words": result.get("existing_words", 0),
+                        "new_words": 0,
+                        "translations": [],  # Empty array instead of undefined
+                        "filtering_summary": result.get("filtering_summary", {}),
+                    }
+                )
 
         except Exception as processor_error:
             print(f"Optimized processor error: {processor_error}")

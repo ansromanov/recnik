@@ -76,7 +76,7 @@ jobs:
           JWT_SECRET_KEY=test_jwt_secret_key_for_testing_only
           FLASK_ENV=testing
           TESTING=true
-          OPENAI_API_KEY=test_key
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
           EOF
 
       - name: Format check with Ruff
@@ -99,7 +99,7 @@ jobs:
           JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only
           FLASK_ENV: testing
           TESTING: true
-          OPENAI_API_KEY: test_key
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.11'
