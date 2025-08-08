@@ -6,13 +6,20 @@
 
 A modern microservices-based Serbian vocabulary learning application with comprehensive observability and monitoring.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
 - Docker and Docker Compose
-- OpenAI API key (for text processing)
-- Unsplash API key (for images)
+- Required API keys (see API Keys section below)
+
+### Required API Keys
+
+| API Service | Purpose | Get API Key | Environment Variable |
+|-------------|---------|-------------|---------------------|
+| OpenAI | Text processing and translations | [OpenAI Platform](https://platform.openai.com) | `OPENAI_API_KEY` |
+| Unsplash | Vocabulary word images | [Unsplash Developers](https://unsplash.com/developers) | `UNSPLASH_ACCESS_KEY` |
+| ResponsiveVoice | Text-to-speech functionality | [ResponsiveVoice.org API](https://responsivevoice.org/api/) | `RESPONSIVEVOICE_API_KEY` |
 
 ### Setup
 
@@ -22,7 +29,7 @@ A modern microservices-based Serbian vocabulary learning application with compre
 git clone <repository-url>
 cd recnik
 cp .env.example .env
-# Edit .env with your API keys
+# Edit .env with your API keys (see API Keys section above)
 ```
 
 2. Start all services:
@@ -39,59 +46,119 @@ docker-compose up -d
 - **API Gateway**: <http://localhost:3001>
 - **Monitoring**: <http://localhost:3100> (Grafana)
 
-## 🏗️ Architecture
+## Architecture
 
-**Microservices Architecture** with 5 core services:
+The application follows a microservices architecture with 5 core services, background workers, and monitoring infrastructure:
 
-- **Auth Service** (3002): User management & authentication
-- **Vocabulary Service** (3003): Words & text processing with OpenAI
-- **Practice Service** (3004): Learning sessions & progress tracking
-- **News Service** (3005): Serbian news aggregation
-- **API Gateway** (3001): Request routing & composition
+```mermaid
+graph TB
+    %% User and Frontend
+    User[User] --> Frontend[React App<br/>:3000]
 
-**Background Services:**
+    %% API Gateway
+    Frontend --> Gateway[API Gateway<br/>:3001]
 
-- Image Sync Service (Unsplash API integration)
-- Cache Updater (RSS feeds)
-- Queue Populator (image processing)
+    %% Core Services
+    Gateway --> Auth[Auth Service]
+    Gateway --> Vocab[Vocabulary Service]
+    Gateway --> Practice[Practice Service]
+    Gateway --> News[News Service]
 
-**Infrastructure:**
+    %% Background Services
+    ImageSync[Image Sync Service] --> Redis
+    CacheUpdater[Cache Updater] --> Redis
+    QueuePopulator[Queue Populator] --> Redis
+    QueuePopulator --> Postgres
 
-- PostgreSQL (primary database)
-- Redis (caching & job queues)
-- Prometheus + Grafana (monitoring)
+    %% Infrastructure
+    Auth --> Postgres[(PostgreSQL<br/>:5432)]
+    Vocab --> Postgres
+    Practice --> Postgres
+    News --> Redis[(Redis<br/>:6379)]
 
-## 🔧 Development
+    %% Monitoring
+    Prometheus[Prometheus<br/>:9090] --> Gateway
+    Prometheus --> Auth
+    Prometheus --> Vocab
+    Prometheus --> Practice
+    Prometheus --> News
+    Grafana[Grafana<br/>:3100] --> Prometheus
 
-### Common Commands
+    %% External APIs
+    Vocab -.-> OpenAI[OpenAI API]
+    ImageSync -.-> Unsplash[Unsplash API]
+    Frontend -.-> ResponsiveVoice[ResponsiveVoice API]
+    News -.-> RSS[RSS Feeds]
+
+    %% Styling
+    classDef service fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef infrastructure fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef monitoring fill:#e8f5e8,stroke:#2e7d2e,stroke-width:2px
+    classDef background fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+
+    class Auth,Vocab,Practice,News,Gateway service
+    class Postgres,Redis infrastructure
+    class OpenAI,Unsplash,ResponsiveVoice,RSS external
+    class Prometheus,Grafana monitoring
+    class ImageSync,CacheUpdater,QueuePopulator background
+```
+
+### Core Services
+
+- **Auth Service**: User management & authentication
+- **Vocabulary Service**: Words & text processing with OpenAI
+- **Practice Service**: Learning sessions & progress tracking
+- **News Service**: Serbian news aggregation
+- **API Gateway**: Request routing & composition
+
+### Background Services
+
+- **Image Sync Service**: Unsplash API integration for vocabulary images
+- **Cache Updater**: RSS feed processing for news articles
+- **Queue Populator**: Image processing queue management
+
+### Infrastructure
+
+- **PostgreSQL**: Primary database for user data, vocabulary, and sessions
+- **Redis**: Caching and job queues for background processing
+- **Prometheus + Grafana**: Comprehensive monitoring and observability
+
+## Development & Deployment
+
+### Quick Start Commands
 
 ```bash
+# Initial Setup
+make setup           # Complete setup with all dependencies
+docker-compose up -d # Start all services
+
 # Development
 make up              # Start all services
 make down            # Stop all services
 make logs            # View logs
 make rebuild-all     # Rebuild all services
+```
 
+### Code Quality & Testing
+
+```bash
 # Code Quality
 make format          # Format with Black
 make lint            # Lint with Ruff
-make test-cov        # Run tests with coverage
 make check-all       # Run all quality checks
+
+# Testing
+make test            # Run tests
+make test-cov        # Tests with coverage report
+make ci-test-cov     # CI-compatible tests with XML output
 
 # Database
 make migrate         # Run migrations
 make db-shell        # PostgreSQL shell
 ```
 
-### Testing
-
-```bash
-make test            # Run tests
-make test-cov        # Tests with coverage report
-make ci-test-cov     # CI-compatible tests with XML output
-```
-
-## 📊 Monitoring
+### Monitoring & Health Checks
 
 **Health Checks**: Each service exposes `/health` endpoint
 
@@ -106,15 +173,15 @@ curl http://localhost:3003/health  # Vocabulary Service
 
 **Grafana Dashboards**: Pre-configured dashboards for service monitoring, performance metrics, and business insights
 
-## 🔐 Security
+### Production Considerations
 
-- JWT authentication across all services
-- Input validation and sanitization
-- Rate limiting on public endpoints
-- Environment-based secrets management
-- Network isolation via Docker
+- Use environment-specific configurations
+- Implement proper secrets management
+- Configure SSL/TLS termination
+- Set up log aggregation
+- Configure monitoring alerts
 
-## 📚 API Endpoints
+## API Endpoints
 
 ### Authentication
 
@@ -141,24 +208,7 @@ GET  /api/news            # Serbian news articles
 GET  /api/news/sources    # Available sources
 ```
 
-## 🚀 Deployment
-
-### Development
-
-```bash
-make setup           # Complete setup
-docker-compose up -d # Start services
-```
-
-### Production
-
-- Use environment-specific configurations
-- Implement proper secrets management
-- Configure SSL/TLS termination
-- Set up log aggregation
-- Configure monitoring alerts
-
-## 📈 Features
+## Features
 
 - **AI-Powered Learning**: OpenAI integration for text processing and translations
 - **Image Integration**: Automatic vocabulary images from Unsplash
@@ -167,7 +217,23 @@ docker-compose up -d # Start services
 - **Responsive Design**: Modern React frontend with mobile support
 - **Observability**: Complete monitoring stack with alerts
 
-## 🤝 Contributing
+## Environment Configuration
+
+Create a `.env` file with your API keys:
+
+```bash
+# API Keys
+OPENAI_API_KEY=your_openai_api_key_here
+UNSPLASH_ACCESS_KEY=your_unsplash_access_key_here
+RESPONSIVEVOICE_API_KEY=your_responsivevoice_api_key_here
+
+# Database (defaults work for Docker setup)
+DATABASE_URL=postgresql://recnik:recnik@postgres:5432/recnik
+REDIS_URL=redis://redis:6379/0
+JWT_SECRET_KEY=your_jwt_secret_key_here
+```
+
+## Contributing
 
 1. Fork the repository
 2. Create feature branch: `git checkout -b feature/new-feature`
@@ -175,7 +241,7 @@ docker-compose up -d # Start services
 4. Ensure all quality checks pass: `make check-all`
 5. Submit pull request
 
-## 📄 License
+## License
 
 MIT License - see LICENSE file for details.
 

@@ -17,55 +17,56 @@ Recnik has been redesigned as a microservices architecture following 12-factor a
 
 ```mermaid
 graph TB
-    %% User Interface
-    User[👤 User] --> Frontend[🖥️ Frontend<br/>React App<br/>:3000]
+    %% User and Frontend
+    User[User] --> Frontend[React App<br/>:3000]
 
     %% API Gateway
-    Frontend --> Gateway[🚪 API Gateway<br/>Request Router<br/>:3001]
+    Frontend --> Gateway[API Gateway<br/>:3001]
 
-    %% Core Microservices
-    Gateway --> Auth[🔐 Auth Service<br/>User Management<br/>:3002]
-    Gateway --> Vocab[📚 Vocabulary Service<br/>Words & Categories<br/>:3003]
-    Gateway --> Practice[🎯 Practice Service<br/>Learning Sessions<br/>:3004]
-    Gateway --> News[📰 News Service<br/>Content Aggregation<br/>:3005]
+    %% Core Services
+    Gateway --> Auth[Auth Service<br/>:3002]
+    Gateway --> Vocab[Vocabulary Service<br/>:3003]
+    Gateway --> Practice[Practice Service<br/>:3004]
+    Gateway --> News[News Service<br/>:3005]
 
     %% Background Services
-    ImageSync[🖼️ Image Sync Service<br/>Background Worker] --> Redis
-    CacheUpdater[⚡ Cache Updater<br/>News Background Worker] --> Redis
-    QueuePopulator[📋 Queue Populator<br/>Image Queue Management] --> Redis
+    ImageSync[Image Sync Service] --> Redis
+    CacheUpdater[Cache Updater] --> Redis
+    QueuePopulator[Queue Populator] --> Redis
     QueuePopulator --> Postgres
 
     %% Infrastructure
-    Auth --> Postgres[(🗄️ PostgreSQL<br/>:5432)]
+    Auth --> Postgres[(PostgreSQL<br/>:5432)]
     Vocab --> Postgres
     Practice --> Postgres
-    News --> Redis[(⚡ Redis<br/>:6379)]
-    ImageSync --> Redis
+    News --> Redis[(Redis<br/>:6379)]
 
     %% Monitoring
-    Prometheus[📊 Prometheus<br/>Metrics Collection<br/>:9090] --> Gateway
+    Prometheus[Prometheus<br/>:9090] --> Gateway
     Prometheus --> Auth
     Prometheus --> Vocab
     Prometheus --> Practice
     Prometheus --> News
+    Grafana[Grafana<br/>:3100] --> Prometheus
 
-    Grafana[📈 Grafana<br/>Dashboards<br/>:3100] --> Prometheus
-
-    %% External Services
-    Vocab -.-> OpenAI[🤖 OpenAI API<br/>Text Processing]
-    ImageSync -.-> Unsplash[📸 Unsplash API<br/>Image Search]
-    News -.-> RSS[📡 RSS Feeds<br/>News Sources]
+    %% External APIs
+    Vocab -.-> OpenAI[OpenAI API]
+    ImageSync -.-> Unsplash[Unsplash API]
+    Frontend -.-> ResponsiveVoice[ResponsiveVoice API]
+    News -.-> RSS[RSS Feeds]
 
     %% Styling
     classDef service fill:#e1f5fe,stroke:#01579b,stroke-width:2px
     classDef infrastructure fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
     classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef monitoring fill:#e8f5e8,stroke:#2e7d2e,stroke-width:2px
+    classDef background fill:#fce4ec,stroke:#880e4f,stroke-width:2px
 
     class Auth,Vocab,Practice,News,Gateway service
     class Postgres,Redis infrastructure
-    class OpenAI,Unsplash,RSS external
+    class OpenAI,Unsplash,ResponsiveVoice,RSS external
     class Prometheus,Grafana monitoring
+    class ImageSync,CacheUpdater,QueuePopulator background
 ```
 
 ## Service Details
