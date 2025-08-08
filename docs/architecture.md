@@ -16,68 +16,57 @@ Recnik has been redesigned as a microservices architecture following 12-factor a
 ## System Architecture
 
 ```mermaid
-architecture-beta
-    group frontend(cloud)[Frontend Layer]
-    group api(cloud)[API Layer]
-    group services(cloud)[Microservices]
-    group background(cloud)[Background Services]
-    group data(database)[Data Layer]
-    group monitoring(cloud)[Monitoring]
-    group external(internet)[External APIs]
+graph TB
+    %% User and Frontend
+    User[User] --> Frontend[React App<br/>:3000]
 
-    service user(internet)[User] in frontend
-    service react(server)[React App :3000] in frontend
+    %% API Gateway
+    Frontend --> Gateway[API Gateway<br/>:3001]
 
-    service gateway(server)[API Gateway :3001] in api
+    %% Core Services
+    Gateway --> Auth[Auth Service<br/>:3002]
+    Gateway --> Vocab[Vocabulary Service<br/>:3003]
+    Gateway --> Practice[Practice Service<br/>:3004]
+    Gateway --> News[News Service<br/>:3005]
 
-    service auth(server)[Auth Service :3002] in services
-    service vocab(server)[Vocabulary Service :3003] in services
-    service practice(server)[Practice Service :3004] in services
-    service news(server)[News Service :3005] in services
+    %% Background Services
+    ImageSync[Image Sync Service] --> Redis
+    CacheUpdater[Cache Updater] --> Redis
+    QueuePopulator[Queue Populator] --> Redis
+    QueuePopulator --> Postgres
 
-    service imagesync(server)[Image Sync Service] in background
-    service cacheupdater(server)[Cache Updater] in background
-    service queuepop(server)[Queue Populator] in background
+    %% Infrastructure
+    Auth --> Postgres[(PostgreSQL<br/>:5432)]
+    Vocab --> Postgres
+    Practice --> Postgres
+    News --> Redis[(Redis<br/>:6379)]
 
-    service postgres(database)[PostgreSQL :5432] in data
-    service redis(database)[Redis :6379] in data
+    %% Monitoring
+    Prometheus[Prometheus<br/>:9090] --> Gateway
+    Prometheus --> Auth
+    Prometheus --> Vocab
+    Prometheus --> Practice
+    Prometheus --> News
+    Grafana[Grafana<br/>:3100] --> Prometheus
 
-    service prometheus(server)[Prometheus :9090] in monitoring
-    service grafana(server)[Grafana :3100] in monitoring
+    %% External APIs
+    Vocab -.-> OpenAI[OpenAI API]
+    ImageSync -.-> Unsplash[Unsplash API]
+    Frontend -.-> ResponsiveVoice[ResponsiveVoice API]
+    News -.-> RSS[RSS Feeds]
 
-    service openai(internet)[OpenAI API] in external
-    service unsplash(internet)[Unsplash API] in external
-    service responsivevoice(internet)[ResponsiveVoice API] in external
-    service rss(internet)[RSS Feeds] in external
+    %% Styling
+    classDef service fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef infrastructure fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef monitoring fill:#e8f5e8,stroke:#2e7d2e,stroke-width:2px
+    classDef background fill:#fce4ec,stroke:#880e4f,stroke-width:2px
 
-    user:R --> L:react
-    react:R --> L:gateway
-    gateway:R --> L:auth
-    gateway:R --> L:vocab
-    gateway:R --> L:practice
-    gateway:R --> L:news
-
-    auth:B --> T:postgres
-    vocab:B --> T:postgres
-    practice:B --> T:postgres
-    news:B --> T:redis
-
-    imagesync:B --> T:redis
-    cacheupdater:B --> T:redis
-    queuepop:B --> T:redis
-    queuepop:B --> T:postgres
-
-    prometheus:L --> R:gateway
-    prometheus:L --> R:auth
-    prometheus:L --> R:vocab
-    prometheus:L --> R:practice
-    prometheus:L --> R:news
-    grafana:L --> R:prometheus
-
-    vocab:T --> B:openai
-    imagesync:T --> B:unsplash
-    react:T --> B:responsivevoice
-    news:T --> B:rss
+    class Auth,Vocab,Practice,News,Gateway service
+    class Postgres,Redis infrastructure
+    class OpenAI,Unsplash,ResponsiveVoice,RSS external
+    class Prometheus,Grafana monitoring
+    class ImageSync,CacheUpdater,QueuePopulator background
 ```
 
 ## Service Details

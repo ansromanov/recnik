@@ -51,77 +51,66 @@ docker-compose up -d
 The application follows a microservices architecture with 5 core services, background workers, and monitoring infrastructure:
 
 ```mermaid
-architecture-beta
-    group frontend(cloud)[Frontend Layer]
-    group api(cloud)[API Layer]
-    group services(cloud)[Microservices]
-    group background(cloud)[Background Services]
-    group data(database)[Data Layer]
-    group monitoring(cloud)[Monitoring]
-    group external(internet)[External APIs]
+graph TB
+    %% User and Frontend
+    User[User] --> Frontend[React App<br/>:3000]
 
-    service user(internet)[User] in frontend
-    service react(server)[React App :3000] in frontend
+    %% API Gateway
+    Frontend --> Gateway[API Gateway<br/>:3001]
 
-    service gateway(server)[API Gateway :3001] in api
+    %% Core Services
+    Gateway --> Auth[Auth Service]
+    Gateway --> Vocab[Vocabulary Service]
+    Gateway --> Practice[Practice Service]
+    Gateway --> News[News Service]
 
-    service auth(server)[Auth Service :3002] in services
-    service vocab(server)[Vocabulary Service :3003] in services
-    service practice(server)[Practice Service :3004] in services
-    service news(server)[News Service :3005] in services
+    %% Background Services
+    ImageSync[Image Sync Service] --> Redis
+    CacheUpdater[Cache Updater] --> Redis
+    QueuePopulator[Queue Populator] --> Redis
+    QueuePopulator --> Postgres
 
-    service imagesync(server)[Image Sync Service] in background
-    service cacheupdater(server)[Cache Updater] in background
-    service queuepop(server)[Queue Populator] in background
+    %% Infrastructure
+    Auth --> Postgres[(PostgreSQL<br/>:5432)]
+    Vocab --> Postgres
+    Practice --> Postgres
+    News --> Redis[(Redis<br/>:6379)]
 
-    service postgres(database)[PostgreSQL :5432] in data
-    service redis(database)[Redis :6379] in data
+    %% Monitoring
+    Prometheus[Prometheus<br/>:9090] --> Gateway
+    Prometheus --> Auth
+    Prometheus --> Vocab
+    Prometheus --> Practice
+    Prometheus --> News
+    Grafana[Grafana<br/>:3100] --> Prometheus
 
-    service prometheus(server)[Prometheus :9090] in monitoring
-    service grafana(server)[Grafana :3100] in monitoring
+    %% External APIs
+    Vocab -.-> OpenAI[OpenAI API]
+    ImageSync -.-> Unsplash[Unsplash API]
+    Frontend -.-> ResponsiveVoice[ResponsiveVoice API]
+    News -.-> RSS[RSS Feeds]
 
-    service openai(internet)[OpenAI API] in external
-    service unsplash(internet)[Unsplash API] in external
-    service responsivevoice(internet)[ResponsiveVoice API] in external
-    service rss(internet)[RSS Feeds] in external
+    %% Styling
+    classDef service fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef infrastructure fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef monitoring fill:#e8f5e8,stroke:#2e7d2e,stroke-width:2px
+    classDef background fill:#fce4ec,stroke:#880e4f,stroke-width:2px
 
-    user:R --> L:react
-    react:R --> L:gateway
-    gateway:R --> L:auth
-    gateway:R --> L:vocab
-    gateway:R --> L:practice
-    gateway:R --> L:news
-
-    auth:B --> T:postgres
-    vocab:B --> T:postgres
-    practice:B --> T:postgres
-    news:B --> T:redis
-
-    imagesync:B --> T:redis
-    cacheupdater:B --> T:redis
-    queuepop:B --> T:redis
-    queuepop:B --> T:postgres
-
-    prometheus:L --> R:gateway
-    prometheus:L --> R:auth
-    prometheus:L --> R:vocab
-    prometheus:L --> R:practice
-    prometheus:L --> R:news
-    grafana:L --> R:prometheus
-
-    vocab:T --> B:openai
-    imagesync:T --> B:unsplash
-    react:T --> B:responsivevoice
-    news:T --> B:rss
+    class Auth,Vocab,Practice,News,Gateway service
+    class Postgres,Redis infrastructure
+    class OpenAI,Unsplash,ResponsiveVoice,RSS external
+    class Prometheus,Grafana monitoring
+    class ImageSync,CacheUpdater,QueuePopulator background
 ```
 
 ### Core Services
 
-- **Auth Service** (3002): User management & authentication
-- **Vocabulary Service** (3003): Words & text processing with OpenAI
-- **Practice Service** (3004): Learning sessions & progress tracking
-- **News Service** (3005): Serbian news aggregation
-- **API Gateway** (3001): Request routing & composition
+- **Auth Service**: User management & authentication
+- **Vocabulary Service**: Words & text processing with OpenAI
+- **Practice Service**: Learning sessions & progress tracking
+- **News Service**: Serbian news aggregation
+- **API Gateway**: Request routing & composition
 
 ### Background Services
 
@@ -135,37 +124,41 @@ architecture-beta
 - **Redis**: Caching and job queues for background processing
 - **Prometheus + Grafana**: Comprehensive monitoring and observability
 
-## Development
+## Development & Deployment
 
-### Common Commands
+### Quick Start Commands
 
 ```bash
+# Initial Setup
+make setup           # Complete setup with all dependencies
+docker-compose up -d # Start all services
+
 # Development
 make up              # Start all services
 make down            # Stop all services
 make logs            # View logs
 make rebuild-all     # Rebuild all services
+```
 
+### Code Quality & Testing
+
+```bash
 # Code Quality
 make format          # Format with Black
 make lint            # Lint with Ruff
-make test-cov        # Run tests with coverage
 make check-all       # Run all quality checks
+
+# Testing
+make test            # Run tests
+make test-cov        # Tests with coverage report
+make ci-test-cov     # CI-compatible tests with XML output
 
 # Database
 make migrate         # Run migrations
 make db-shell        # PostgreSQL shell
 ```
 
-### Testing
-
-```bash
-make test            # Run tests
-make test-cov        # Tests with coverage report
-make ci-test-cov     # CI-compatible tests with XML output
-```
-
-## Monitoring
+### Monitoring & Health Checks
 
 **Health Checks**: Each service exposes `/health` endpoint
 
@@ -180,13 +173,13 @@ curl http://localhost:3003/health  # Vocabulary Service
 
 **Grafana Dashboards**: Pre-configured dashboards for service monitoring, performance metrics, and business insights
 
-## Security
+### Production Considerations
 
-- JWT authentication across all services
-- Input validation and sanitization
-- Rate limiting on public endpoints
-- Environment-based secrets management
-- Network isolation via Docker
+- Use environment-specific configurations
+- Implement proper secrets management
+- Configure SSL/TLS termination
+- Set up log aggregation
+- Configure monitoring alerts
 
 ## API Endpoints
 
@@ -214,23 +207,6 @@ POST /api/practice/submit  # Submit answers
 GET  /api/news            # Serbian news articles
 GET  /api/news/sources    # Available sources
 ```
-
-## Deployment
-
-### Development
-
-```bash
-make setup           # Complete setup
-docker-compose up -d # Start services
-```
-
-### Production
-
-- Use environment-specific configurations
-- Implement proper secrets management
-- Configure SSL/TLS termination
-- Set up log aggregation
-- Configure monitoring alerts
 
 ## Features
 
