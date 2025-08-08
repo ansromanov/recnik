@@ -160,33 +160,21 @@ graph TB
 
 ## Features
 
-### AI-Powered Learning
+### AI-Powered Learning & Text Processing
 
-OpenAI integration provides intelligent text processing and contextual translations. Analyzes learning patterns to suggest optimal study sessions.
+OpenAI integration provides intelligent text processing, contextual translations, and personalized vocabulary recommendations. Analyzes learning patterns to suggest optimal study sessions.
 
-### Visual Learning
+### Multimedia Learning Experience
 
-Vocabulary words automatically paired with high-quality Unsplash images to enhance memory retention through visual association.
+Vocabulary words automatically paired with high-quality Unsplash images and text-to-speech audio powered by ResponsiveVoice to enhance memory retention through visual and auditory association.
 
 ### Progress Tracking & Gamification
 
-Track vocabulary growth, practice streaks, and mastery levels. Earn XP points and unlock achievements to stay motivated.
+Track vocabulary growth, practice streaks, and mastery levels. Earn XP points and unlock achievements to stay motivated. Spaced repetition algorithm focuses on challenging vocabulary while reinforcing mastered words.
 
-### Contextual Learning
+### Contextual Learning with Serbian News
 
-Real-time Serbian news articles provide authentic language exposure while keeping you informed about current events.
-
-### Audio Learning
-
-Text-to-speech powered by ResponsiveVoice helps master Serbian pronunciation with natural-sounding voices.
-
-### Mobile-Friendly Design
-
-Responsive design works seamlessly across desktop, tablet, and mobile devices for learning anywhere.
-
-### Adaptive Practice Sessions
-
-Spaced repetition algorithm focuses on challenging vocabulary while reinforcing mastered words for maximum efficiency.
+Real-time Serbian news articles provide authentic language exposure while keeping you informed about current events in Serbian-speaking regions.
 
 ## Monitoring & Health Checks
 
