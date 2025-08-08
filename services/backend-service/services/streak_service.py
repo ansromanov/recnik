@@ -61,6 +61,7 @@ class StreakService:
 
             if existing_activity:
                 # Update existing activity
+                old_count = existing_activity.activity_count
                 existing_activity.activity_count += activity_count
 
                 # Handle activity type properly - don't concatenate if it's the same type
@@ -68,12 +69,18 @@ class StreakService:
                 if activity_type not in existing_types:
                     existing_activity.activity_type += f",{activity_type}"
 
-                # Re-check if it now qualifies for streak using the primary activity type
-                primary_activity_type = existing_types[0]  # Use first (primary) activity type
-                existing_activity.streak_qualifying = self._is_qualifying_activity(
-                    primary_activity_type, existing_activity.activity_count
-                )
+                # Re-check if it now qualifies for streak - check each activity type
+                qualifying = False
+                for act_type in existing_types:
+                    if self._is_qualifying_activity(act_type, existing_activity.activity_count):
+                        qualifying = True
+                        break
 
+                # Also check the new activity type
+                if self._is_qualifying_activity(activity_type, existing_activity.activity_count):
+                    qualifying = True
+
+                existing_activity.streak_qualifying = qualifying
                 activity_record = existing_activity
             else:
                 # Create new activity record
@@ -109,9 +116,9 @@ class StreakService:
 
     def _is_qualifying_activity(self, activity_type: str, activity_count: int) -> bool:
         """Check if an activity qualifies for streak maintenance"""
-        if "practice_session" in activity_type and activity_count >= self.MIN_PRACTICE_QUESTIONS:
+        if activity_type == "practice_session" and activity_count >= self.MIN_PRACTICE_QUESTIONS:
             return True
-        if "vocabulary_added" in activity_type and activity_count >= self.MIN_VOCABULARY_WORDS:
+        if activity_type == "vocabulary_added" and activity_count >= self.MIN_VOCABULARY_WORDS:
             return True
         return False
 
@@ -154,15 +161,19 @@ class StreakService:
             elif streak.last_activity_date == expected_prev_date:
                 # Consecutive period - increment streak
                 streak.current_streak += 1
-            elif streak.last_activity_date < expected_prev_date:
-                # Missed period(s) - reset streak
+            elif activity_date < streak.last_activity_date:
+                # Past date activity - warn but don't update current streak
+                logger.warning(
+                    f"Past date activity detected: {activity_date} vs {streak.last_activity_date}"
+                )
+                # Don't update last_activity_date for past activities
+                return None
+            elif (activity_date - streak.last_activity_date).days > 1:
+                # Missed period(s) - reset streak to 1 for this new activity
                 streak.current_streak = 1
             else:
-                # Future date activity (shouldn't happen normally)
-                logger.warning(
-                    f"Future date activity detected: {activity_date} vs {streak.last_activity_date}"
-                )
-                return None
+                # This covers the case where activity_date is consecutive to last_activity_date
+                streak.current_streak += 1
 
             # Update last activity date
             streak.last_activity_date = activity_date
