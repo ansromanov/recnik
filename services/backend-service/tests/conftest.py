@@ -14,7 +14,17 @@ import pytest
 load_dotenv()
 
 # Import application components
-from models import Category, ExcludedWord, Settings, User, UserVocabulary, Word, db
+from models import (
+    Category,
+    ExcludedWord,
+    Settings,
+    StreakActivity,
+    User,
+    UserStreak,
+    UserVocabulary,
+    Word,
+    db,
+)
 from services.text_processor import SerbianTextProcessor
 from services.translation_cache import TranslationCache
 
@@ -304,8 +314,18 @@ def db_session(app_context):
         if test_user:
             test_user_id = test_user.id
 
+            # Clean up streak-related data for test user
+            db.session.query(StreakActivity).filter(StreakActivity.user_id == test_user_id).delete()
+            db.session.query(UserStreak).filter(UserStreak.user_id == test_user_id).delete()
+
             # Clean up user vocabulary entries for the test user that might have been added during tests
             db.session.query(UserVocabulary).filter(UserVocabulary.user_id == test_user_id).delete()
+
+            # Clean up streak data for any additional users created during tests
+            additional_users = User.query.filter(User.id != test_user_id).all()
+            for user in additional_users:
+                db.session.query(StreakActivity).filter(StreakActivity.user_id == user.id).delete()
+                db.session.query(UserStreak).filter(UserStreak.user_id == user.id).delete()
 
             # Clean up any additional users created during tests (keep test user)
             db.session.query(User).filter(User.id != test_user_id).delete()

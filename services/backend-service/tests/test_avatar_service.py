@@ -2,16 +2,16 @@
 Tests for Avatar Service functionality
 """
 
-import pytest
-import sys
 import os
-from unittest.mock import patch, Mock
+import sys
+
+import pytest
 
 # Add backend to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from models import User
 from services.avatar_service import AvatarService
-from models import db, User
 
 
 class TestAvatarService:
@@ -59,7 +59,7 @@ class TestAvatarService:
         # MD5 hash of "testuser" truncated to 16 chars
         import hashlib
 
-        expected_seed = hashlib.md5("testuser".encode()).hexdigest()[:16]
+        expected_seed = hashlib.md5(b"testuser").hexdigest()[:16]
         assert seed1 == expected_seed
 
     def test_get_avatar_url(self, avatar_service):
@@ -226,7 +226,7 @@ class TestAvatarServiceIntegration:
         db_session.add(user)
         db_session.commit()
         assert user.avatar_url is None
-        assert user.avatar_type is None
+        assert user.avatar_type == "ai_generated"  # Default value from model
         assert user.avatar_seed is None
 
         # Generate avatar for user
