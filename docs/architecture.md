@@ -18,43 +18,43 @@ Recnik has been redesigned as a microservices architecture following 12-factor a
 ```mermaid
 graph TB
     %% User Interface
-    User[👤 User] --> Frontend[🖥️ Frontend<br/>React App<br/>:3000]
+    User[User] --> Frontend[Frontend<br/>React App<br/>:3000]
 
     %% API Gateway
-    Frontend --> Gateway[🚪 API Gateway<br/>Request Router<br/>:3001]
+    Frontend --> Gateway[API Gateway<br/>Request Router<br/>:3001]
 
     %% Core Microservices
-    Gateway --> Auth[🔐 Auth Service<br/>User Management<br/>:3002]
-    Gateway --> Vocab[📚 Vocabulary Service<br/>Words & Categories<br/>:3003]
-    Gateway --> Practice[🎯 Practice Service<br/>Learning Sessions<br/>:3004]
-    Gateway --> News[📰 News Service<br/>Content Aggregation<br/>:3005]
+    Gateway --> Auth[Auth Service<br/>User Management<br/>:3002]
+    Gateway --> Vocab[Vocabulary Service<br/>Words & Categories<br/>:3003]
+    Gateway --> Practice[Practice Service<br/>Learning Sessions<br/>:3004]
+    Gateway --> News[News Service<br/>Content Aggregation<br/>:3005]
 
     %% Background Services
-    ImageSync[🖼️ Image Sync Service<br/>Background Worker] --> Redis
-    CacheUpdater[⚡ Cache Updater<br/>News Background Worker] --> Redis
-    QueuePopulator[📋 Queue Populator<br/>Image Queue Management] --> Redis
+    ImageSync[Image Sync Service<br/>Background Worker] --> Redis
+    CacheUpdater[Cache Updater<br/>News Background Worker] --> Redis
+    QueuePopulator[Queue Populator<br/>Image Queue Management] --> Redis
     QueuePopulator --> Postgres
 
     %% Infrastructure
-    Auth --> Postgres[(🗄️ PostgreSQL<br/>:5432)]
+    Auth --> Postgres[(PostgreSQL<br/>:5432)]
     Vocab --> Postgres
     Practice --> Postgres
-    News --> Redis[(⚡ Redis<br/>:6379)]
+    News --> Redis[(Redis<br/>:6379)]
     ImageSync --> Redis
 
     %% Monitoring
-    Prometheus[📊 Prometheus<br/>Metrics Collection<br/>:9090] --> Gateway
+    Prometheus[Prometheus<br/>Metrics Collection<br/>:9090] --> Gateway
     Prometheus --> Auth
     Prometheus --> Vocab
     Prometheus --> Practice
     Prometheus --> News
 
-    Grafana[📈 Grafana<br/>Dashboards<br/>:3100] --> Prometheus
+    Grafana[Grafana<br/>Dashboards<br/>:3100] --> Prometheus
 
     %% External Services
-    Vocab -.-> OpenAI[🤖 OpenAI API<br/>Text Processing]
-    ImageSync -.-> Unsplash[📸 Unsplash API<br/>Image Search]
-    News -.-> RSS[📡 RSS Feeds<br/>News Sources]
+    Vocab -.-> OpenAI[OpenAI API<br/>Text Processing]
+    ImageSync -.-> Unsplash[Unsplash API<br/>Image Search]
+    News -.-> RSS[RSS Feeds<br/>News Sources]
 
     %% Styling
     classDef service fill:#e1f5fe,stroke:#01579b,stroke-width:2px
