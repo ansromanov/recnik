@@ -21,7 +21,18 @@ A modern microservices-based Serbian vocabulary learning application with compre
 | Unsplash | Vocabulary word images | [Unsplash Developers](https://unsplash.com/developers) | `UNSPLASH_ACCESS_KEY` |
 | ResponsiveVoice | Text-to-speech functionality | [ResponsiveVoice.org API](https://responsivevoice.org/api/) | `RESPONSIVEVOICE_API_KEY` |
 
-### Environment Configuration
+### Setup
+
+1. Clone and configure:
+
+```bash
+git clone <repository-url>
+cd recnik
+cp .env.example .env
+# Edit .env with your API keys (see Environment Configuration above)
+```
+
+2. Environment Configuration
 
 Create a `.env` file with your API keys:
 
@@ -37,18 +48,7 @@ REDIS_URL=redis://redis:6379/0
 JWT_SECRET_KEY=your_jwt_secret_key_here
 ```
 
-### Setup
-
-1. Clone and configure:
-
-```bash
-git clone <repository-url>
-cd recnik
-cp .env.example .env
-# Edit .env with your API keys (see Environment Configuration above)
-```
-
-2. Start all services:
+3. Start all services:
 
 ```bash
 make setup
@@ -56,7 +56,7 @@ make setup
 docker-compose up -d
 ```
 
-3. Access:
+4. Access:
 
 - **Application**: <http://localhost:3000>
 - **API Gateway**: <http://localhost:3001>
