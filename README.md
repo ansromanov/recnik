@@ -25,42 +25,44 @@ A modern microservices-based Serbian vocabulary learning application with compre
 
 1. Clone and configure:
 
-```bash
-git clone <repository-url>
-cd recnik
-cp .env.example .env
-# Edit .env with your API keys (see Environment Configuration above)
-```
+    ```bash
+    git clone <repository-url>
+    cd recnik
+    cp .env.example .env
+    # Edit .env with your API keys (see Environment Configuration above)
+    ```
 
-2. Environment Configuration
+1. Environment Configuration
 
-Create a `.env` file with your API keys:
+    Create a `.env` file with your API keys:
 
-```bash
-# API Keys
-OPENAI_API_KEY=your_openai_api_key_here
-UNSPLASH_ACCESS_KEY=your_unsplash_access_key_here
-RESPONSIVEVOICE_API_KEY=your_responsivevoice_api_key_here
+    ```bash
+    # API Keys
+    OPENAI_API_KEY=your_openai_api_key_here
+    UNSPLASH_ACCESS_KEY=your_unsplash_access_key_here
+    RESPONSIVEVOICE_API_KEY=your_responsivevoice_api_key_here
 
-# Database (defaults work for Docker setup)
-DATABASE_URL=postgresql://recnik:recnik@postgres:5432/recnik
-REDIS_URL=redis://redis:6379/0
-JWT_SECRET_KEY=your_jwt_secret_key_here
-```
+    # Database (defaults work for Docker setup)
+    DATABASE_URL=postgresql://recnik:recnik@postgres:5432/recnik
+    REDIS_URL=redis://redis:6379/0
+    JWT_SECRET_KEY=your_jwt_secret_key_here
+    ```
 
-3. Start all services:
+1. Start all services:
 
-```bash
-make setup
-# OR
-docker-compose up -d
-```
+    ```bash
+    make setup
+    # OR
+    docker-compose up -d
+    ```
 
-4. Access:
+1. Access:
 
-- **Application**: <http://localhost:3000>
-- **API Gateway**: <http://localhost:3001>
-- **Monitoring**: <http://localhost:3100> (Grafana)
+    | Service         | URL                          | Notes     |
+    |-----------------|-----------------------------|-----------|
+    | Application     | <http://localhost:3000>      |           |
+    | API Gateway     | <http://localhost:3001>      |           |
+    | Monitoring      | <http://localhost:3100>      | Grafana   |
 
 ## Architecture
 
