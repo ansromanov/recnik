@@ -25,63 +25,77 @@ A modern microservices-based Serbian vocabulary learning application with compre
 
 1. Clone and configure:
 
-```bash
-git clone <repository-url>
-cd recnik
-cp .env.example .env
-# Edit .env with your API keys (see API Keys section above)
-```
+    ```bash
+    git clone <repository-url>
+    cd recnik
+    cp .env.example .env
+    # Edit .env with your API keys (see Environment Configuration above)
+    ```
 
-2. Start all services:
+1. Environment Configuration
 
-```bash
-make setup
-# OR
-docker-compose up -d
-```
+    Create a `.env` file with your API keys:
 
-3. Access:
+    ```bash
+    # API Keys
+    OPENAI_API_KEY=your_openai_api_key_here
+    UNSPLASH_ACCESS_KEY=your_unsplash_access_key_here
+    RESPONSIVEVOICE_API_KEY=your_responsivevoice_api_key_here
 
-- **Application**: <http://localhost:3000>
-- **API Gateway**: <http://localhost:3001>
-- **Monitoring**: <http://localhost:3100> (Grafana)
+    # Database (defaults work for Docker setup)
+    DATABASE_URL=postgresql://recnik:recnik@postgres:5432/recnik
+    REDIS_URL=redis://redis:6379/0
+    JWT_SECRET_KEY=your_jwt_secret_key_here
+    ```
+
+1. Start all services:
+
+    ```bash
+    make setup
+    # OR
+    docker-compose up -d
+    ```
+
+1. Access:
+
+    | Service         | URL                          | Notes     |
+    |-----------------|-----------------------------|-----------|
+    | Application     | <http://localhost:3000>      |           |
+    | API Gateway     | <http://localhost:3001>      |           |
+    | Monitoring      | <http://localhost:3100>      | Grafana   |
 
 ## Architecture
 
-The application follows a microservices architecture with 5 core services, background workers, and monitoring infrastructure:
+The application follows a microservices architecture with 5 core services, frontend, and monitoring infrastructure:
 
 ```mermaid
 graph TB
     %% User and Frontend
     User[User] --> Frontend[React App<br/>:3000]
 
-    %% API Gateway
-    Frontend --> Gateway[API Gateway<br/>:3001]
-
     %% Core Services
-    Gateway --> Auth[Auth Service]
-    Gateway --> Vocab[Vocabulary Service]
-    Gateway --> Practice[Practice Service]
-    Gateway --> News[News Service]
+    Frontend --> Auth[Auth Service]
+    Frontend --> Backend[Backend Service]
+    Frontend --> Vocab[Vocabulary Service]
+    Frontend --> News[News Service]
 
     %% Background Services
     ImageSync[Image Sync Service] --> Redis
-    CacheUpdater[Cache Updater] --> Redis
-    QueuePopulator[Queue Populator] --> Redis
-    QueuePopulator --> Postgres
+    Backend --> ImageSync
 
     %% Infrastructure
     Auth --> Postgres[(PostgreSQL<br/>:5432)]
+    Backend --> Postgres
     Vocab --> Postgres
-    Practice --> Postgres
     News --> Redis[(Redis<br/>:6379)]
+    ImageSync --> Redis
 
     %% Monitoring
-    Prometheus[Prometheus<br/>:9090] --> Gateway
-    Prometheus --> Auth
+    Prometheus[Prometheus<br/>:9090] --> Auth
+    Prometheus --> Backend
     Prometheus --> Vocab
-    Prometheus --> Practice
     Prometheus --> News
+    Prometheus --> ImageSync
     Grafana[Grafana<br/>:3100] --> Prometheus
 
     %% External APIs
@@ -97,26 +111,25 @@ graph TB
     classDef monitoring fill:#e8f5e8,stroke:#2e7d2e,stroke-width:2px
     classDef background fill:#fce4ec,stroke:#880e4f,stroke-width:2px
 
-    class Auth,Vocab,Practice,News,Gateway service
+    class Auth,Backend,Vocab,News service
     class Postgres,Redis infrastructure
     class OpenAI,Unsplash,ResponsiveVoice,RSS external
     class Prometheus,Grafana monitoring
-    class ImageSync,CacheUpdater,QueuePopulator background
+    class ImageSync background
 ```
 
 ### Core Services
 
 - **Auth Service**: User management & authentication
+- **Backend Service**: Main application logic & API orchestration
 - **Vocabulary Service**: Words & text processing with OpenAI
-- **Practice Service**: Learning sessions & progress tracking
 - **News Service**: Serbian news aggregation
-- **API Gateway**: Request routing & composition
-
-### Background Services
-
 - **Image Sync Service**: Unsplash API integration for vocabulary images
-- **Cache Updater**: RSS feed processing for news articles
-- **Queue Populator**: Image processing queue management
+
+### Frontend & Monitoring
+
+- **Frontend**: React application serving the user interface
+- **Prometheus + Grafana**: Comprehensive monitoring and observability
 
 ### Infrastructure
 
@@ -124,41 +137,39 @@ graph TB
 - **Redis**: Caching and job queues for background processing
 - **Prometheus + Grafana**: Comprehensive monitoring and observability
 
-## Development & Deployment
+### API Endpoints
 
-### Quick Start Commands
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| **Authentication** |
+| POST | `/api/auth/register` | Register new user |
+| POST | `/api/auth/login` | User login |
+| GET | `/api/auth/me` | Get current user |
+| **Vocabulary & Learning** |
+| GET | `/api/words` | Get user's vocabulary |
+| POST | `/api/words` | Add new words |
+| POST | `/api/process-text` | AI text processing |
+| GET | `/api/practice/words` | Get practice session |
+| POST | `/api/practice/submit` | Submit practice answers |
+| **News & Content** |
+| GET | `/api/news` | Get Serbian news articles |
+| GET | `/api/news/sources` | Get available news sources |
 
-```bash
-# Initial Setup
-make setup           # Complete setup with all dependencies
-docker-compose up -d # Start all services
+## Features
 
-# Development
-make up              # Start all services
-make down            # Stop all services
-make logs            # View logs
-make rebuild-all     # Rebuild all services
-```
+### AI-Powered Learning & Content Processing
 
-### Code Quality & Testing
+OpenAI integration provides intelligent text processing, contextual translations, and personalized vocabulary recommendations. Real-time Serbian news articles provide authentic language exposure while keeping you informed about current events.
 
-```bash
-# Code Quality
-make format          # Format with Black
-make lint            # Lint with Ruff
-make check-all       # Run all quality checks
+### Multimedia Learning Experience
 
-# Testing
-make test            # Run tests
-make test-cov        # Tests with coverage report
-make ci-test-cov     # CI-compatible tests with XML output
+Vocabulary words automatically paired with high-quality Unsplash images and text-to-speech audio powered by ResponsiveVoice to enhance memory retention through visual and auditory association.
 
-# Database
-make migrate         # Run migrations
-make db-shell        # PostgreSQL shell
-```
+### Progress Tracking & Adaptive Learning
 
-### Monitoring & Health Checks
+Track vocabulary growth, practice streaks, and mastery levels. Earn XP points and unlock achievements to stay motivated. Spaced repetition algorithm focuses on challenging vocabulary while reinforcing mastered words for maximum efficiency.
+
+## Monitoring & Health Checks
 
 **Health Checks**: Each service exposes `/health` endpoint
 
@@ -172,66 +183,6 @@ curl http://localhost:3003/health  # Vocabulary Service
 **Structured Logging**: JSON logs with consistent format across services
 
 **Grafana Dashboards**: Pre-configured dashboards for service monitoring, performance metrics, and business insights
-
-### Production Considerations
-
-- Use environment-specific configurations
-- Implement proper secrets management
-- Configure SSL/TLS termination
-- Set up log aggregation
-- Configure monitoring alerts
-
-## API Endpoints
-
-### Authentication
-
-```
-POST /api/auth/register    # Register user
-POST /api/auth/login       # User login
-GET  /api/auth/me          # Current user
-```
-
-### Vocabulary & Learning
-
-```
-GET  /api/words            # User's vocabulary
-POST /api/words            # Add words
-POST /api/process-text     # AI text processing
-GET  /api/practice/words   # Practice session
-POST /api/practice/submit  # Submit answers
-```
-
-### News & Content
-
-```
-GET  /api/news            # Serbian news articles
-GET  /api/news/sources    # Available sources
-```
-
-## Features
-
-- **AI-Powered Learning**: OpenAI integration for text processing and translations
-- **Image Integration**: Automatic vocabulary images from Unsplash
-- **Progress Tracking**: Comprehensive learning statistics and achievements
-- **News Integration**: Real-time Serbian news for contextual learning
-- **Responsive Design**: Modern React frontend with mobile support
-- **Observability**: Complete monitoring stack with alerts
-
-## Environment Configuration
-
-Create a `.env` file with your API keys:
-
-```bash
-# API Keys
-OPENAI_API_KEY=your_openai_api_key_here
-UNSPLASH_ACCESS_KEY=your_unsplash_access_key_here
-RESPONSIVEVOICE_API_KEY=your_responsivevoice_api_key_here
-
-# Database (defaults work for Docker setup)
-DATABASE_URL=postgresql://recnik:recnik@postgres:5432/recnik
-REDIS_URL=redis://redis:6379/0
-JWT_SECRET_KEY=your_jwt_secret_key_here
-```
 
 ## Contributing
 
