@@ -16,56 +16,68 @@ Recnik has been redesigned as a microservices architecture following 12-factor a
 ## System Architecture
 
 ```mermaid
-graph TB
-    %% User Interface
-    User[User] --> Frontend[Frontend<br/>React App<br/>:3000]
+architecture-beta
+    group frontend(cloud)[Frontend Layer]
+    group api(cloud)[API Layer]
+    group services(cloud)[Microservices]
+    group background(cloud)[Background Services]
+    group data(database)[Data Layer]
+    group monitoring(cloud)[Monitoring]
+    group external(internet)[External APIs]
 
-    %% API Gateway
-    Frontend --> Gateway[API Gateway<br/>Request Router<br/>:3001]
+    service user(internet)[User] in frontend
+    service react(server)[React App :3000] in frontend
 
-    %% Core Microservices
-    Gateway --> Auth[Auth Service<br/>User Management<br/>:3002]
-    Gateway --> Vocab[Vocabulary Service<br/>Words & Categories<br/>:3003]
-    Gateway --> Practice[Practice Service<br/>Learning Sessions<br/>:3004]
-    Gateway --> News[News Service<br/>Content Aggregation<br/>:3005]
+    service gateway(server)[API Gateway :3001] in api
 
-    %% Background Services
-    ImageSync[Image Sync Service<br/>Background Worker] --> Redis
-    CacheUpdater[Cache Updater<br/>News Background Worker] --> Redis
-    QueuePopulator[Queue Populator<br/>Image Queue Management] --> Redis
-    QueuePopulator --> Postgres
+    service auth(server)[Auth Service :3002] in services
+    service vocab(server)[Vocabulary Service :3003] in services
+    service practice(server)[Practice Service :3004] in services
+    service news(server)[News Service :3005] in services
 
-    %% Infrastructure
-    Auth --> Postgres[(PostgreSQL<br/>:5432)]
-    Vocab --> Postgres
-    Practice --> Postgres
-    News --> Redis[(Redis<br/>:6379)]
-    ImageSync --> Redis
+    service imagesync(server)[Image Sync Service] in background
+    service cacheupdater(server)[Cache Updater] in background
+    service queuepop(server)[Queue Populator] in background
 
-    %% Monitoring
-    Prometheus[Prometheus<br/>Metrics Collection<br/>:9090] --> Gateway
-    Prometheus --> Auth
-    Prometheus --> Vocab
-    Prometheus --> Practice
-    Prometheus --> News
+    service postgres(database)[PostgreSQL :5432] in data
+    service redis(database)[Redis :6379] in data
 
-    Grafana[Grafana<br/>Dashboards<br/>:3100] --> Prometheus
+    service prometheus(server)[Prometheus :9090] in monitoring
+    service grafana(server)[Grafana :3100] in monitoring
 
-    %% External Services
-    Vocab -.-> OpenAI[OpenAI API<br/>Text Processing]
-    ImageSync -.-> Unsplash[Unsplash API<br/>Image Search]
-    News -.-> RSS[RSS Feeds<br/>News Sources]
+    service openai(internet)[OpenAI API] in external
+    service unsplash(internet)[Unsplash API] in external
+    service responsivevoice(internet)[ResponsiveVoice API] in external
+    service rss(internet)[RSS Feeds] in external
 
-    %% Styling
-    classDef service fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef infrastructure fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef monitoring fill:#e8f5e8,stroke:#2e7d2e,stroke-width:2px
+    user:R --> L:react
+    react:R --> L:gateway
+    gateway:R --> L:auth
+    gateway:R --> L:vocab
+    gateway:R --> L:practice
+    gateway:R --> L:news
 
-    class Auth,Vocab,Practice,News,Gateway service
-    class Postgres,Redis infrastructure
-    class OpenAI,Unsplash,RSS external
-    class Prometheus,Grafana monitoring
+    auth:B --> T:postgres
+    vocab:B --> T:postgres
+    practice:B --> T:postgres
+    news:B --> T:redis
+
+    imagesync:B --> T:redis
+    cacheupdater:B --> T:redis
+    queuepop:B --> T:redis
+    queuepop:B --> T:postgres
+
+    prometheus:L --> R:gateway
+    prometheus:L --> R:auth
+    prometheus:L --> R:vocab
+    prometheus:L --> R:practice
+    prometheus:L --> R:news
+    grafana:L --> R:prometheus
+
+    vocab:T --> B:openai
+    imagesync:T --> B:unsplash
+    react:T --> B:responsivevoice
+    news:T --> B:rss
 ```
 
 ## Service Details
