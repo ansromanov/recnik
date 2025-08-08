@@ -295,3 +295,212 @@ class TestOptimizedTextProcessorAnalysis:
         # Test poor rating
         rating = processor._get_performance_rating(20.0, 5.0)
         assert rating == "Poor"
+
+
+class TestOptimizedTextProcessorCacheMethods:
+    """Test cache-related methods with missing coverage"""
+
+    @pytest.fixture
+    def mock_redis_client(self):
+        """Create mock Redis client for cache testing"""
+        mock_redis = MagicMock()
+        mock_redis.get.return_value = None
+        mock_redis.setex.return_value = True
+        mock_redis.keys.return_value = ["text_processing:key1", "text_processing:key2"]
+        mock_redis.delete.return_value = 2
+        return mock_redis
+
+    @pytest.fixture
+    def processor(self, mock_redis_client):
+        """Create processor for cache testing"""
+        with patch("services.optimized_text_processor.TranslationCache"):
+            return OptimizedSerbianTextProcessor("test-key", mock_redis_client)
+
+    def test_clear_processing_cache_success(self, processor, mock_redis_client):
+        """Test successful cache clearing"""
+        result = processor.clear_processing_cache()
+
+        # Should search for text processing keys and delete them
+        mock_redis_client.keys.assert_called_once_with("text_processing:*")
+        mock_redis_client.delete.assert_called_once_with(
+            "text_processing:key1", "text_processing:key2"
+        )
+        assert result == 2
+
+    def test_clear_processing_cache_no_keys(self, processor, mock_redis_client):
+        """Test cache clearing when no keys exist"""
+        mock_redis_client.keys.return_value = []
+
+        result = processor.clear_processing_cache()
+
+        mock_redis_client.keys.assert_called_once_with("text_processing:*")
+        mock_redis_client.delete.assert_not_called()
+        assert result == 0
+
+    def test_clear_processing_cache_error(self, processor, mock_redis_client):
+        """Test cache clearing with Redis error"""
+        mock_redis_client.keys.side_effect = Exception("Redis connection error")
+
+        result = processor.clear_processing_cache()
+
+        assert result == 0
+
+    def test_warm_cache_with_vocabulary_success(self, processor):
+        """Test successful vocabulary cache warming"""
+        vocabulary_words = [
+            {
+                "serbian_word": "raditi",
+                "english_translation": "to work",
+                "category_id": 2,
+                "category_name": "Verbs",
+            },
+            {
+                "serbian_word": "pas",
+                "english_translation": "dog",
+                "category_id": 3,
+                "category_name": "Nouns",
+            },
+        ]
+
+        # Mock the translation cache warm_cache method
+        processor.cache.warm_cache.return_value = 2
+
+        result = processor.warm_cache_with_vocabulary(vocabulary_words)
+
+        # Should call cache.warm_cache with properly formatted data
+        processor.cache.warm_cache.assert_called_once()
+        args = processor.cache.warm_cache.call_args[0][0]
+
+        assert "raditi" in args
+        assert "pas" in args
+        assert args["raditi"]["english_translation"] == "to work"
+        assert args["pas"]["category_name"] == "Nouns"
+        assert result == 2
+
+    def test_warm_cache_with_vocabulary_empty_data(self, processor):
+        """Test vocabulary cache warming with incomplete data"""
+        vocabulary_words = [
+            {"serbian_word": "raditi"},  # Missing translation
+            {"english_translation": "dog"},  # Missing serbian word
+            {"serbian_word": "pas", "english_translation": "dog"},  # Valid entry
+        ]
+
+        processor.cache.warm_cache.return_value = 1
+
+        result = processor.warm_cache_with_vocabulary(vocabulary_words)
+
+        # Should only process valid entries
+        args = processor.cache.warm_cache.call_args[0][0]
+        assert len(args) == 1
+        assert "pas" in args
+        assert "raditi" not in args
+        assert result == 1
+
+
+class TestOptimizedTextProcessorPreprocessing:
+    """Test preprocessing and caching methods"""
+
+    @pytest.fixture
+    def processor(self):
+        """Create processor for preprocessing tests"""
+        mock_redis = MagicMock()
+        mock_redis.setex.return_value = True
+        with patch("services.optimized_text_processor.TranslationCache"):
+            return OptimizedSerbianTextProcessor("test-key", mock_redis)
+
+    @patch("services.optimized_text_processor.SerbianTextProcessor.process_text")
+    def test_preprocess_and_cache_common_words_success(self, mock_process_text, processor):
+        """Test successful preprocessing and caching of common words"""
+        common_texts = ["Jutros sam ustao rano", "Večeras idem u bioskop", "Sutra radim od kuće"]
+
+        # Mock successful processing results
+        mock_process_text.return_value = {
+            "translations": [{"serbian_word": "test", "english_translation": "test"}],
+            "new_words": 1,
+        }
+
+        result = processor.preprocess_and_cache_common_words(common_texts)
+
+        # Should call process_text for each text
+        assert mock_process_text.call_count == 3
+
+        # Should return count of successfully cached entries
+        assert result == 3
+
+    @patch("services.optimized_text_processor.SerbianTextProcessor.process_text")
+    def test_preprocess_and_cache_common_words_with_errors(self, mock_process_text, processor):
+        """Test preprocessing with some processing errors"""
+        common_texts = ["Text 1", "Text 2", "Text 3"]
+
+        # Mock mixed results - some success, some error
+        def mock_process_side_effect(text, categories, max_words=20, temperature=0.3):
+            if text == "Text 2":
+                raise Exception("Processing error")
+            elif text == "Text 3":
+                return {"error": "Invalid result"}
+            else:
+                return {
+                    "translations": [{"serbian_word": "test", "english_translation": "test"}],
+                    "new_words": 1,
+                }
+
+        mock_process_text.side_effect = mock_process_side_effect
+
+        result = processor.preprocess_and_cache_common_words(common_texts)
+
+        # Should only cache successful results (Text 1)
+        assert result == 1
+
+    def test_preprocess_and_cache_common_words_empty_list(self, processor):
+        """Test preprocessing with empty text list"""
+        result = processor.preprocess_and_cache_common_words([])
+
+        assert result == 0
+
+
+class TestOptimizedTextProcessorErrorHandling:
+    """Test error handling scenarios"""
+
+    @pytest.fixture
+    def processor(self):
+        """Create processor for error testing"""
+        mock_redis = MagicMock()
+        with patch("services.optimized_text_processor.TranslationCache"):
+            return OptimizedSerbianTextProcessor("test-key", mock_redis)
+
+    def test_get_cached_result_json_error(self, processor):
+        """Test error handling in _get_cached_result with invalid JSON"""
+        processor.redis.get.return_value = "invalid json data"
+
+        result = processor._get_cached_result("test_key")
+
+        assert result is None
+
+    def test_get_cached_result_redis_error(self, processor):
+        """Test error handling in _get_cached_result with Redis exception"""
+        processor.redis.get.side_effect = Exception("Redis connection error")
+
+        result = processor._get_cached_result("test_key")
+
+        assert result is None
+
+    def test_cache_result_redis_error(self, processor):
+        """Test error handling in _cache_result with Redis exception"""
+        processor.redis.setex.side_effect = Exception("Redis connection error")
+
+        result = processor._cache_result("test_key", {"test": "data"})
+
+        assert result is False
+
+    @patch("services.optimized_text_processor.SerbianTextProcessor.process_text")
+    def test_process_text_optimized_error_handling(self, mock_process_text, processor):
+        """Test main processing method error handling"""
+        mock_process_text.side_effect = Exception("LLM processing error")
+
+        categories = [{"id": 1, "name": "Test"}]
+        result = processor.process_text_optimized("test text", categories)
+
+        # Should return error result
+        assert "error" in result
+        assert "Processing error:" in result["error"]
+        assert result["processed_words"] == []

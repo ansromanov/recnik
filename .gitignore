@@ -1,7 +1,3 @@
-issues/
-docs/cline/
-docs/cursor/
-
 pytest-results.xml*
 # Dependencies
 node_modules/
